@@ -1,0 +1,26 @@
+# Datos del cliente — NUNCA se suben
+datos-origen/
+Datos/
+*.db
+*.db-shm
+*.db-wal
+
+# .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+publish/
+*.user
+
+# Rider / Visual Studio
+.idea/
+.vs/
+
+# Configuración local con secretos
+appsettings.Development.json
+appsettings.Local.json
+
+# Sistema
+Thumbs.db
+.DS_Store
