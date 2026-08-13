@@ -38,7 +38,9 @@ builder.Services.AddDbContext<GaleriaDbContext>(options =>
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
-        options.SignIn.RequireConfirmedAccount = true;
+        // Sin registro público y sin mail real (login = usuario + contraseña), "cuenta confirmada"
+        // no es un concepto que exista en esta app.
+        options.SignIn.RequireConfirmedAccount = false;
 
         // Cuenta bloqueada tras intentos fallidos — clave porque hay un solo usuario admin
         // y la app va a estar expuesta en la red local de la galería.
@@ -46,7 +48,12 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 
+        // Política de contraseña aflojada a propósito: login local de un solo usuario, sin
+        // exposición a internet — no un servicio público. Si eso cambia (acceso remoto, más
+        // usuarios), esto es lo primero que hay que endurecer.
         options.Password.RequiredLength = 8;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
