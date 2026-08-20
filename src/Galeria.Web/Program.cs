@@ -1,9 +1,16 @@
+using System.Globalization;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Galeria.Application.Artistas;
+using Galeria.Application.Catalogos;
+using Galeria.Application.Obras;
+using Galeria.Application.Parametros;
 using Galeria.Infrastructure.Persistence;
+using Galeria.Infrastructure.Persistence.Repositories;
 using Galeria.Web.Components;
 using Galeria.Web.Components.Account;
 using Galeria.Web.Data;
@@ -35,6 +42,15 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 // pero DbContext separado: GaleriaDbContext no sabe nada de autenticación, y viceversa (SRP).
 builder.Services.AddDbContext<GaleriaDbContext>(options =>
     options.UseSqlite(connectionString));
+
+// Repositorios (Infrastructure implementa las interfaces que define Application — DIP)
+// y servicios de aplicación, uno por caso de uso.
+builder.Services.AddScoped<IArtistaRepository, ArtistaRepository>();
+builder.Services.AddScoped<IObraRepository, ObraRepository>();
+builder.Services.AddScoped<IParametroRepository, ParametroRepository>();
+builder.Services.AddScoped<ICatalogoRepository, CatalogoRepository>();
+builder.Services.AddScoped<ArtistaService>();
+builder.Services.AddScoped<ObraService>();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
@@ -102,6 +118,16 @@ else
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
+
+// Todo en español rioplatense (requerimiento 0.7): fechas dd/MM/aaaa, miles con punto,
+// decimales con coma. Cultura fija, no depende del navegador de quien entre.
+var culturaFija = new[] { new CultureInfo("es-UY") };
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture("es-UY"),
+    SupportedCultures = culturaFija,
+    SupportedUICultures = culturaFija
+});
 
 app.UseHttpsRedirection();
 

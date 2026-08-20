@@ -1,0 +1,292 @@
+@page "/obras/nueva"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using Galeria.Application.Artistas
+@using Galeria.Application.Catalogos
+@using Galeria.Application.Obras
+@using Galeria.Domain.Entities
+@inject ObraService ObraService
+@inject ArtistaService ArtistaService
+@inject ICatalogoRepository CatalogoRepository
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nueva obra</PageTitle>
+<HeadContent>
+    <meta name="description" content="Alta de una nueva obra en el stock de la galería." />
+</HeadContent>
+
+<h1>Nueva obra</h1>
+
+@if (parametros is null || artistas is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    <EditForm Model="Input" OnValidSubmit="GuardarAsync" class="col-md-8">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" role="alert" />
+
+        <div class="row">
+            <div class="col-md-8 mb-3">
+                <label class="form-label">Artista</label>
+                <div class="input-group">
+                    <InputSelect class="form-select" @bind-Value="Input.ArtistaId" @bind:after="VerificarCoincidenciaAsync">
+                        <option value="">Seleccioná un artista...</option>
+                        @foreach (var artista in artistas)
+                        {
+                            <option value="@artista.Id">@artista.Codigo.ToString("D3") — @artista.NombreCompleto</option>
+                        }
+                    </InputSelect>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="RecargarArtistasAsync" title="Releer la lista de artistas">↻</button>
+                </div>
+                <ValidationMessage For="() => Input.ArtistaId" class="text-danger" />
+                <div class="form-text">
+                    ¿El artista es nuevo? <a href="artistas/nuevo" target="_blank">Crealo acá</a> y después apretá ↻.
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Nombre de la obra</label>
+            <InputText class="form-control" @bind-Value="Input.Titulo" @bind:after="VerificarCoincidenciaAsync" />
+            <ValidationMessage For="() => Input.Titulo" class="text-danger" />
+        </div>
+
+        @if (coincidencia is not null)
+        {
+            <div class="alert alert-warning">
+                <p>
+                    Este artista ya tiene una obra llamada <strong>@coincidencia.Titulo</strong>
+                    (código @coincidencia.CodigoVisible, stock actual @coincidencia.Existencia).
+                </p>
+                @if (Input.Costo > 0 && Input.Costo != coincidencia.Costo)
+                {
+                    <p class="mb-2">
+                        ⚠️ El costo que ingresaste (@Formato.Monto(Input.Costo, Input.Moneda)) es distinto al de esa obra
+                        (@Formato.Monto(coincidencia.Costo, Input.Moneda)) — podría ser un cambio de precio encubierto.
+                    </p>
+                }
+                <div class="d-flex align-items-end gap-2">
+                    <div>
+                        <label class="form-label mb-0">Cantidad a agregar</label>
+                        <InputNumber class="form-control" @bind-Value="cantidadAAgregar" style="width: 8rem;" />
+                    </div>
+                    <button type="button" class="btn btn-warning" @onclick="AgregarExistenciaAsync">Agregar existencia a esa obra</button>
+                </div>
+                <p class="mt-2 mb-0">
+                    <small>¿Es en realidad una obra distinta? Completá el resto del formulario y guardá normalmente.</small>
+                </p>
+            </div>
+        }
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Rubro</label>
+                <InputSelect class="form-select" @bind-Value="Input.RubroId">
+                    <option value="">Sin especificar</option>
+                    @foreach (var rubro in rubros)
+                    {
+                        <option value="@rubro.Id">@rubro.Nombre</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Técnica</label>
+                <InputSelect class="form-select" @bind-Value="Input.TecnicaId">
+                    <option value="">Sin especificar</option>
+                    @foreach (var tecnica in tecnicas)
+                    {
+                        <option value="@tecnica.Id">@tecnica.Nombre</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Alto (cm)</label>
+                <InputNumber class="form-control" @bind-Value="Input.AltoCm" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Ancho (cm)</label>
+                <InputNumber class="form-control" @bind-Value="Input.AnchoCm" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Largo (cm)</label>
+                <InputNumber class="form-control" @bind-Value="Input.LargoCm" />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Existencia</label>
+                <InputNumber class="form-control" @bind-Value="Input.Existencia" />
+                <ValidationMessage For="() => Input.Existencia" class="text-danger" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Moneda</label>
+                <InputSelect class="form-select" @bind-Value="Input.Moneda" @bind:after="RecalcularPrecio">
+                    <option value="@Moneda.Pesos">Pesos ($)</option>
+                    <option value="@Moneda.USD">Dólares (U$S)</option>
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3 form-check pt-4 mt-2">
+                <InputCheckbox class="form-check-input" id="tieneIva" @bind-Value="Input.TieneIVA" @bind:after="RecalcularPrecio" />
+                <label class="form-check-label" for="tieneIva">Tiene IVA</label>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Costo (lo que cobra el artista)</label>
+                <InputNumber class="form-control" @bind-Value="Input.Costo" @bind:after="RecalcularPrecio" />
+                <ValidationMessage For="() => Input.Costo" class="text-danger" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Utilidad (%)</label>
+                <InputNumber class="form-control" @bind-Value="Input.Utilidad" @bind:after="RecalcularPrecio" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Precio de venta</label>
+                <InputNumber class="form-control fw-bold" @bind-Value="Input.PrecioVenta" @bind:after="MarcarPrecioEditado" />
+                <div class="form-text">Calculado automático — se puede ajustar a mano.</div>
+            </div>
+        </div>
+
+        <div class="mb-3 form-check">
+            <InputCheckbox class="form-check-input" id="pagoContado" @bind-Value="Input.PagoContado" />
+            <label class="form-check-label" for="pagoContado">
+                Pago contado (ya se le pagó al artista al ingresar la pieza)
+            </label>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Observaciones</label>
+            <InputTextArea class="form-control" @bind-Value="Input.Observaciones" rows="2" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <a href="obras" class="btn btn-link">Cancelar</a>
+    </EditForm>
+}
+
+@code {
+    private InputModel Input { get; set; } = new();
+
+    private List<ArtistaOpcion>? artistas;
+    private List<OpcionCatalogo> rubros = [];
+    private List<OpcionCatalogo> tecnicas = [];
+    private ParametrosCalculoPrecio? parametros;
+    private ObraCoincidente? coincidencia;
+    private int cantidadAAgregar = 1;
+    private bool precioEditadoManualmente;
+
+    protected override async Task OnInitializedAsync()
+    {
+        artistas = await ArtistaService.ListarParaSeleccionAsync();
+        rubros = await CatalogoRepository.ListarRubrosAsync();
+        tecnicas = await CatalogoRepository.ListarTecnicasAsync();
+        parametros = await ObraService.ObtenerParametrosCalculoAsync();
+        Input.Utilidad = parametros.UtilidadDefault;
+        RecalcularPrecio();
+    }
+
+    private async Task RecargarArtistasAsync()
+    {
+        artistas = await ArtistaService.ListarParaSeleccionAsync();
+    }
+
+    private async Task VerificarCoincidenciaAsync()
+    {
+        coincidencia = Input.ArtistaId is null
+            ? null
+            : await ObraService.BuscarCoincidenciaAsync(Input.ArtistaId.Value, Input.Titulo);
+    }
+
+    private void RecalcularPrecio()
+    {
+        if (parametros is null || precioEditadoManualmente)
+        {
+            return;
+        }
+
+        var redondeo = parametros.RedondeoPara(Input.Moneda);
+        Input.PrecioVenta = Obra.CalcularPrecioVenta(Input.Costo, Input.Utilidad, Input.TieneIVA, parametros.IvaPorcentaje, redondeo);
+    }
+
+    private void MarcarPrecioEditado() => precioEditadoManualmente = true;
+
+    private async Task AgregarExistenciaAsync()
+    {
+        if (coincidencia is null)
+        {
+            return;
+        }
+
+        await ObraService.AgregarExistenciaAsync(coincidencia.Id, cantidadAAgregar);
+        NavigationManager.NavigateTo("obras");
+    }
+
+    private async Task GuardarAsync()
+    {
+        var request = new CrearObraRequest(
+            Input.ArtistaId!.Value,
+            Input.Titulo.Trim(),
+            Input.RubroId,
+            Input.TecnicaId,
+            Input.AltoCm,
+            Input.AnchoCm,
+            Input.LargoCm,
+            Input.Existencia,
+            Input.Moneda,
+            Input.Costo,
+            Input.Utilidad,
+            Input.TieneIVA,
+            Input.PrecioVenta,
+            Input.PagoContado,
+            Input.Observaciones);
+
+        await ObraService.CrearAsync(request);
+
+        NavigationManager.NavigateTo("obras");
+    }
+
+    private sealed class InputModel
+    {
+        [Required(ErrorMessage = "Elegí un artista.")]
+        public int? ArtistaId { get; set; }
+
+        [Required(ErrorMessage = "El nombre de la obra es obligatorio.")]
+        [MaxLength(200)]
+        public string Titulo { get; set; } = "";
+
+        public int? RubroId { get; set; }
+        public int? TecnicaId { get; set; }
+
+        public decimal? AltoCm { get; set; }
+        public decimal? AnchoCm { get; set; }
+        public decimal? LargoCm { get; set; }
+
+        [Range(1, 9999, ErrorMessage = "La existencia tiene que ser al menos 1.")]
+        public int Existencia { get; set; } = 1;
+
+        public Moneda Moneda { get; set; } = Moneda.Pesos;
+
+        [Range(0.01, 999999999, ErrorMessage = "El costo tiene que ser mayor a 0.")]
+        public decimal Costo { get; set; }
+
+        [Range(0, 1000, ErrorMessage = "La utilidad no puede ser negativa.")]
+        public decimal Utilidad { get; set; } = 50;
+
+        public bool TieneIVA { get; set; }
+
+        [Range(0, 999999999)]
+        public decimal PrecioVenta { get; set; }
+
+        public bool PagoContado { get; set; }
+
+        [MaxLength(2000)]
+        public string? Observaciones { get; set; }
+    }
+}

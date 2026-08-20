@@ -1,0 +1,37 @@
+using Galeria.Domain.Entities;
+
+namespace Galeria.Application.Artistas;
+
+public class ArtistaService(IArtistaRepository repositorio)
+{
+    public Task<List<ArtistaListItem>> BuscarAsync(string? textoLibre, CancellationToken ct = default) =>
+        repositorio.BuscarAsync(textoLibre, ct);
+
+    public Task<List<ArtistaOpcion>> ListarParaSeleccionAsync(CancellationToken ct = default) =>
+        repositorio.ListarActivosAsync(ct);
+
+    public async Task<int> CrearAsync(CrearArtistaRequest request, CancellationToken ct = default)
+    {
+        // GRASP Creator: quien mejor sabe cuál es el próximo código libre es el repositorio
+        // (es el único que puede consultar la tabla), el servicio solo orquesta.
+        var codigo = await repositorio.ProximoCodigoAsync(ct);
+
+        var artista = new Artista
+        {
+            Codigo = codigo,
+            Apellido = request.Apellido.Trim(),
+            Nombre = request.Nombre.Trim(),
+            Taller = request.Taller,
+            Celular = request.Celular,
+            TelFijo = request.TelFijo,
+            Direccion = request.Direccion,
+            Correo = request.Correo,
+            Perfil = request.Perfil
+        };
+
+        await repositorio.AgregarAsync(artista, ct);
+        await repositorio.GuardarCambiosAsync(ct);
+
+        return artista.Id;
+    }
+}

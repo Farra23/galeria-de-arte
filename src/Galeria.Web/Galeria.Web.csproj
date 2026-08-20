@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Galeria.Application\Galeria.Application.csproj" />
     <ProjectReference Include="..\Galeria.Infrastructure\Galeria.Infrastructure.csproj" />
   </ItemGroup>
 

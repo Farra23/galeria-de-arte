@@ -1,0 +1,117 @@
+@page "/artistas/nuevo"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using Galeria.Application.Artistas
+@inject ArtistaService ArtistaService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nuevo artista</PageTitle>
+<HeadContent>
+    <meta name="description" content="Alta de un nuevo artista en la galería." />
+</HeadContent>
+
+<h1>Nuevo artista</h1>
+
+<EditForm Model="Input" OnValidSubmit="GuardarAsync" FormName="nuevo-artista" class="col-md-6">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger" role="alert" />
+
+    <div class="mb-3">
+        <label class="form-label">Apellido</label>
+        <InputText class="form-control" @bind-Value="Input.Apellido" />
+        <ValidationMessage For="() => Input.Apellido" class="text-danger" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Nombre</label>
+        <InputText class="form-control" @bind-Value="Input.Nombre" />
+        <ValidationMessage For="() => Input.Nombre" class="text-danger" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Taller</label>
+        <InputText class="form-control" @bind-Value="Input.Taller" />
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Celular</label>
+            <InputText class="form-control" @bind-Value="Input.Celular" />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Teléfono fijo</label>
+            <InputText class="form-control" @bind-Value="Input.TelFijo" />
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Dirección</label>
+        <InputText class="form-control" @bind-Value="Input.Direccion" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Correo</label>
+        <InputText class="form-control" @bind-Value="Input.Correo" />
+        <ValidationMessage For="() => Input.Correo" class="text-danger" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Perfil / notas</label>
+        <InputTextArea class="form-control" @bind-Value="Input.Perfil" rows="3" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a href="artistas" class="btn btn-link">Cancelar</a>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    private async Task GuardarAsync()
+    {
+        var request = new CrearArtistaRequest(
+            Input.Apellido.Trim(),
+            Input.Nombre.Trim(),
+            Input.Taller,
+            Input.Celular,
+            Input.TelFijo,
+            Input.Direccion,
+            Input.Correo,
+            Input.Perfil);
+
+        await ArtistaService.CrearAsync(request);
+
+        NavigationManager.NavigateTo("artistas");
+    }
+
+    private sealed class InputModel
+    {
+        [Required(ErrorMessage = "El apellido es obligatorio.")]
+        [MaxLength(100)]
+        public string Apellido { get; set; } = "";
+
+        [Required(ErrorMessage = "El nombre es obligatorio.")]
+        [MaxLength(100)]
+        public string Nombre { get; set; } = "";
+
+        [MaxLength(200)]
+        public string? Taller { get; set; }
+
+        [MaxLength(30)]
+        public string? Celular { get; set; }
+
+        [MaxLength(30)]
+        public string? TelFijo { get; set; }
+
+        [MaxLength(300)]
+        public string? Direccion { get; set; }
+
+        [EmailAddress(ErrorMessage = "El correo no es válido.")]
+        [MaxLength(200)]
+        public string? Correo { get; set; }
+
+        [MaxLength(2000)]
+        public string? Perfil { get; set; }
+    }
+}

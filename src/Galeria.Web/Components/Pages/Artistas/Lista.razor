@@ -1,0 +1,70 @@
+@page "/artistas"
+@attribute [Authorize]
+@using Galeria.Application.Artistas
+@inject ArtistaService ArtistaService
+
+<PageTitle>Artistas</PageTitle>
+<HeadContent>
+    <meta name="description" content="Listado de artistas de la galería." />
+</HeadContent>
+
+<h1>Artistas</h1>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input class="form-control" placeholder="Buscar por nombre o taller..."
+               @bind="TextoLibre" @bind:event="oninput" @bind:after="BuscarAsync" />
+    </div>
+    <div class="col-md-8 text-end">
+        <a class="btn btn-primary" href="artistas/nuevo">+ Nuevo artista</a>
+    </div>
+</div>
+
+@if (artistas is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (artistas.Count == 0)
+{
+    <p>No hay artistas cargados todavía.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Taller</th>
+                <th>Celular</th>
+                <th>Correo</th>
+                <th class="text-end">Obras</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var artista in artistas)
+            {
+                <tr>
+                    <td>@artista.Codigo.ToString("D3")</td>
+                    <td>@artista.NombreCompleto</td>
+                    <td>@artista.Taller</td>
+                    <td>@artista.Celular</td>
+                    <td>@artista.Correo</td>
+                    <td class="text-end">@artista.CantidadObras</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ArtistaListItem>? artistas;
+    private string? TextoLibre;
+
+    protected override Task OnInitializedAsync() => BuscarAsync();
+
+    private async Task BuscarAsync()
+    {
+        artistas = await ArtistaService.BuscarAsync(TextoLibre);
+    }
+}

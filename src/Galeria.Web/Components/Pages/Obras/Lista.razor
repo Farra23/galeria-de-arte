@@ -1,0 +1,99 @@
+@page "/obras"
+@attribute [Authorize]
+@using Galeria.Application.Artistas
+@using Galeria.Application.Obras
+@inject ObraService ObraService
+@inject ArtistaService ArtistaService
+
+<PageTitle>Obras</PageTitle>
+<HeadContent>
+    <meta name="description" content="Listado de obras en stock de la galería." />
+</HeadContent>
+
+<h1>Obras</h1>
+
+<div class="row mb-3 g-2">
+    <div class="col-md-4">
+        <input class="form-control" placeholder="Buscar por nombre de obra o artista..."
+               @bind="TextoLibre" @bind:event="oninput" @bind:after="BuscarAsync" />
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" @bind="ArtistaIdFiltro" @bind:after="BuscarAsync">
+            <option value="">Todos los artistas</option>
+            @if (artistas is not null)
+            {
+                @foreach (var artista in artistas)
+                {
+                    <option value="@artista.Id">@artista.NombreCompleto</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-5 text-end">
+        <a class="btn btn-primary" href="obras/nueva">+ Nueva obra</a>
+    </div>
+</div>
+
+@if (obras is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (obras.Count == 0)
+{
+    <p>No hay obras cargadas todavía.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Artista</th>
+                <th>Rubro</th>
+                <th>Técnica</th>
+                <th class="text-end">Costo</th>
+                <th class="text-end">Precio venta</th>
+                <th class="text-end">Stock</th>
+                <th>Estado</th>
+                <th>Ingreso</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var obra in obras)
+            {
+                <tr class="@(obra.Existencia == 0 || obra.Estado != EstadoObra.Disponible ? "text-body-secondary" : "")">
+                    <td>@obra.CodigoVisible</td>
+                    <td>@obra.Titulo</td>
+                    <td>@obra.ArtistaNombre</td>
+                    <td>@obra.Rubro</td>
+                    <td>@obra.Tecnica</td>
+                    <td class="text-end">@Formato.Monto(obra.Costo, obra.Moneda)</td>
+                    <td class="text-end">@Formato.Monto(obra.PrecioVenta, obra.Moneda)</td>
+                    <td class="text-end">@obra.Existencia</td>
+                    <td><span class="badge text-bg-secondary">@Formato.Estado(obra.Estado)</span></td>
+                    <td>@obra.FechaIngreso.ToString("dd/MM/yyyy")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ObraListItem>? obras;
+    private List<ArtistaOpcion>? artistas;
+    private string? TextoLibre;
+    private string? ArtistaIdFiltro;
+
+    protected override async Task OnInitializedAsync()
+    {
+        artistas = await ArtistaService.ListarParaSeleccionAsync();
+        await BuscarAsync();
+    }
+
+    private async Task BuscarAsync()
+    {
+        int? artistaId = int.TryParse(ArtistaIdFiltro, out var id) ? id : null;
+        obras = await ObraService.BuscarAsync(TextoLibre, artistaId);
+    }
+}

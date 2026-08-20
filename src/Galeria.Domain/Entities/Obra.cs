@@ -36,11 +36,20 @@ public class Obra
     public ICollection<Movimiento> Movimientos { get; set; } = [];
 
     // GRASP Information Expert: la obra calcula su propio precio según las reglas del negocio.
-    // El llamador inyecta el IVA real desde Parametro para no acoplar Domain a la BD.
-    public decimal CalcularPrecioVenta(decimal ivaPorcentaje = 22m)
+    // El llamador inyecta IVA y redondeo reales desde Parametro para no acoplar Domain a la BD.
+    public decimal CalcularPrecioVenta(decimal ivaPorcentaje = 22m, decimal redondeo = 1m) =>
+        CalcularPrecioVenta(Costo, Utilidad, TieneIVA, ivaPorcentaje, redondeo);
+
+    // Versión estática de la misma fórmula: la usa la pantalla de Alta, donde todavía no existe
+    // una Obra (solo valores sueltos del formulario). Una sola fuente de verdad para el cálculo,
+    // la instancia de arriba es un atajo cuando la obra ya existe.
+    public static decimal CalcularPrecioVenta(decimal costo, decimal utilidad, bool tieneIva, decimal ivaPorcentaje = 22m, decimal redondeo = 1m)
     {
-        var factorIva = TieneIVA ? 1 + ivaPorcentaje / 100 : 1m;
-        return Costo * factorIva * (1 + Utilidad / 100);
+        var factorIva = tieneIva ? 1 + ivaPorcentaje / 100 : 1m;
+        var precioBruto = costo * factorIva * (1 + utilidad / 100);
+        return redondeo <= 0
+            ? precioBruto
+            : Math.Round(precioBruto / redondeo, MidpointRounding.AwayFromZero) * redondeo;
     }
 
     // Código visible de 6 dígitos (puede ser mayor si NumeroObra > 999)
