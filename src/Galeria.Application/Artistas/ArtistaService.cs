@@ -34,4 +34,13 @@ public class ArtistaService(IArtistaRepository repositorio)
 
         return artista.Id;
     }
+
+    public Task<ArtistaFicha?> ObtenerFichaAsync(int id, CancellationToken ct = default) =>
+        repositorio.ObtenerFichaAsync(id, ct);
+
+    public async Task ActualizarAsync(ActualizarArtistaRequest request, CancellationToken ct = default)
+    {
+        await repositorio.ActualizarAsync(request, ct);
+        await repositorio.GuardarCambiosAsync(ct);
+    }
 }

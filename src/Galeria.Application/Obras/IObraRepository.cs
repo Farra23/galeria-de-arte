@@ -14,5 +14,9 @@ public interface IObraRepository
 
     Task AumentarExistenciaAsync(int obraId, int cantidad, CancellationToken ct = default);
 
+    Task<ObraFicha?> ObtenerFichaAsync(int id, CancellationToken ct = default);
+
+    Task ActualizarAsync(ActualizarObraRequest request, CancellationToken ct = default);
+
     Task GuardarCambiosAsync(CancellationToken ct = default);
 }

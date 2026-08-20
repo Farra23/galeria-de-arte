@@ -41,3 +41,43 @@ public record ParametrosCalculoPrecio(decimal IvaPorcentaje, decimal UtilidadDef
 {
     public decimal RedondeoPara(Moneda moneda) => moneda == Moneda.Pesos ? RedondeoPesos : RedondeoDolar;
 }
+
+// Moneda, Existencia y Estado no viajan acá como editables: la moneda queda fija desde el alta
+// (decisión #13 — pesos y dólares nunca se mezclan) y la existencia solo cambia por movimientos
+// de stock (venta, retiro, alquiler), nunca por edición libre de la ficha.
+public record ObraFicha(
+    int Id,
+    string CodigoVisible,
+    int ArtistaId,
+    string ArtistaNombre,
+    string Titulo,
+    int? RubroId,
+    int? TecnicaId,
+    decimal? AltoCm,
+    decimal? AnchoCm,
+    decimal? LargoCm,
+    int Existencia,
+    Moneda Moneda,
+    decimal Costo,
+    decimal Utilidad,
+    bool TieneIVA,
+    decimal PrecioVenta,
+    bool PagoContado,
+    string? Observaciones,
+    EstadoObra Estado,
+    DateOnly FechaIngreso);
+
+public record ActualizarObraRequest(
+    int Id,
+    string Titulo,
+    int? RubroId,
+    int? TecnicaId,
+    decimal? AltoCm,
+    decimal? AnchoCm,
+    decimal? LargoCm,
+    decimal Costo,
+    decimal Utilidad,
+    bool TieneIVA,
+    decimal PrecioVenta,
+    bool PagoContado,
+    string? Observaciones);

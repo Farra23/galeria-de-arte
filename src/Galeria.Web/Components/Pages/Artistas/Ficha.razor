@@ -1,0 +1,162 @@
+@page "/artistas/{Id:int}"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using Galeria.Application.Artistas
+@inject ArtistaService ArtistaService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(ficha is null ? "Artista" : ficha.Apellido + ", " + ficha.Nombre)</PageTitle>
+<HeadContent>
+    <meta name="description" content="Ficha del artista: datos de contacto y obras." />
+</HeadContent>
+
+@if (cargando)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (ficha is null)
+{
+    <h1>Artista no encontrado</h1>
+    <a href="artistas" class="btn btn-link">Volver a Artistas</a>
+}
+else
+{
+    <h1>@ficha.Codigo.ToString("D3") — @ficha.Apellido, @ficha.Nombre</h1>
+
+    <dl class="row mb-4">
+        <dt class="col-sm-2">Cantidad de obras</dt>
+        <dd class="col-sm-4">@ficha.CantidadObras</dd>
+    </dl>
+
+    <EditForm Model="Input" OnValidSubmit="GuardarAsync" class="col-md-6">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" role="alert" />
+
+        <div class="mb-3">
+            <label class="form-label">Apellido</label>
+            <InputText class="form-control" @bind-Value="Input.Apellido" />
+            <ValidationMessage For="() => Input.Apellido" class="text-danger" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Nombre</label>
+            <InputText class="form-control" @bind-Value="Input.Nombre" />
+            <ValidationMessage For="() => Input.Nombre" class="text-danger" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Taller</label>
+            <InputText class="form-control" @bind-Value="Input.Taller" />
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Celular</label>
+                <InputText class="form-control" @bind-Value="Input.Celular" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Teléfono fijo</label>
+                <InputText class="form-control" @bind-Value="Input.TelFijo" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Dirección</label>
+            <InputText class="form-control" @bind-Value="Input.Direccion" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Correo</label>
+            <InputText class="form-control" @bind-Value="Input.Correo" />
+            <ValidationMessage For="() => Input.Correo" class="text-danger" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Perfil / notas</label>
+            <InputTextArea class="form-control" @bind-Value="Input.Perfil" rows="3" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <a href="artistas" class="btn btn-link">Cancelar</a>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private InputModel Input { get; set; } = new();
+
+    private bool cargando = true;
+    private ArtistaFicha? ficha;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ficha = await ArtistaService.ObtenerFichaAsync(Id);
+
+        if (ficha is not null)
+        {
+            Input = new InputModel
+            {
+                Apellido = ficha.Apellido,
+                Nombre = ficha.Nombre,
+                Taller = ficha.Taller,
+                Celular = ficha.Celular,
+                TelFijo = ficha.TelFijo,
+                Direccion = ficha.Direccion,
+                Correo = ficha.Correo,
+                Perfil = ficha.Perfil
+            };
+        }
+
+        cargando = false;
+    }
+
+    private async Task GuardarAsync()
+    {
+        var request = new ActualizarArtistaRequest(
+            Id,
+            Input.Apellido.Trim(),
+            Input.Nombre.Trim(),
+            Input.Taller,
+            Input.Celular,
+            Input.TelFijo,
+            Input.Direccion,
+            Input.Correo,
+            Input.Perfil);
+
+        await ArtistaService.ActualizarAsync(request);
+
+        NavigationManager.NavigateTo("artistas");
+    }
+
+    private sealed class InputModel
+    {
+        [Required(ErrorMessage = "El apellido es obligatorio.")]
+        [MaxLength(100)]
+        public string Apellido { get; set; } = "";
+
+        [Required(ErrorMessage = "El nombre es obligatorio.")]
+        [MaxLength(100)]
+        public string Nombre { get; set; } = "";
+
+        [MaxLength(200)]
+        public string? Taller { get; set; }
+
+        [MaxLength(30)]
+        public string? Celular { get; set; }
+
+        [MaxLength(30)]
+        public string? TelFijo { get; set; }
+
+        [MaxLength(300)]
+        public string? Direccion { get; set; }
+
+        [EmailAddress(ErrorMessage = "El correo no es válido.")]
+        [MaxLength(200)]
+        public string? Correo { get; set; }
+
+        [MaxLength(2000)]
+        public string? Perfil { get; set; }
+    }
+}

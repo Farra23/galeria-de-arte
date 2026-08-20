@@ -78,5 +78,49 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
         obra.Existencia += cantidad;
     }
 
+    public async Task<ObraFicha?> ObtenerFichaAsync(int id, CancellationToken ct = default) =>
+        await db.Obras.AsNoTracking()
+            .Where(o => o.Id == id)
+            .Select(o => new ObraFicha(
+                o.Id,
+                o.Artista.Codigo.ToString("D3") + o.NumeroObra.ToString("D3"),
+                o.ArtistaId,
+                o.Artista.Apellido + ", " + o.Artista.Nombre,
+                o.Titulo,
+                o.RubroId,
+                o.TecnicaId,
+                o.AltoCm,
+                o.AnchoCm,
+                o.LargoCm,
+                o.Existencia,
+                o.Moneda,
+                o.Costo,
+                o.Utilidad,
+                o.TieneIVA,
+                o.PrecioVenta,
+                o.PagoContado,
+                o.Observaciones,
+                o.Estado,
+                o.FechaIngreso))
+            .FirstOrDefaultAsync(ct);
+
+    // Moneda y Existencia quedan afuera a propósito (ver ObraDtos.cs): no se tocan desde acá.
+    public async Task ActualizarAsync(ActualizarObraRequest request, CancellationToken ct = default)
+    {
+        var obra = await db.Obras.FirstAsync(o => o.Id == request.Id, ct);
+        obra.Titulo = request.Titulo.Trim();
+        obra.RubroId = request.RubroId;
+        obra.TecnicaId = request.TecnicaId;
+        obra.AltoCm = request.AltoCm;
+        obra.AnchoCm = request.AnchoCm;
+        obra.LargoCm = request.LargoCm;
+        obra.Costo = request.Costo;
+        obra.Utilidad = request.Utilidad;
+        obra.TieneIVA = request.TieneIVA;
+        obra.PrecioVenta = request.PrecioVenta;
+        obra.PagoContado = request.PagoContado;
+        obra.Observaciones = request.Observaciones;
+    }
+
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
 }

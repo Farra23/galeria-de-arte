@@ -1,0 +1,240 @@
+@page "/obras/{Id:int}"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using Galeria.Application.Catalogos
+@using Galeria.Application.Obras
+@using Galeria.Domain.Entities
+@inject ObraService ObraService
+@inject ICatalogoRepository CatalogoRepository
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(ficha is null ? "Obra" : ficha.Titulo)</PageTitle>
+<HeadContent>
+    <meta name="description" content="Ficha de la obra: datos, precio y estado." />
+</HeadContent>
+
+@if (cargando)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (ficha is null)
+{
+    <h1>Obra no encontrada</h1>
+    <a href="obras" class="btn btn-link">Volver a Obras</a>
+}
+else
+{
+    <h1>@ficha.CodigoVisible — @ficha.Titulo</h1>
+
+    <dl class="row mb-4">
+        <dt class="col-sm-2">Artista</dt>
+        <dd class="col-sm-4">@ficha.ArtistaNombre</dd>
+        <dt class="col-sm-2">Moneda</dt>
+        <dd class="col-sm-4">@Formato.Simbolo(ficha.Moneda)</dd>
+        <dt class="col-sm-2">Existencia</dt>
+        <dd class="col-sm-4">@ficha.Existencia</dd>
+        <dt class="col-sm-2">Estado</dt>
+        <dd class="col-sm-4"><span class="badge text-bg-secondary">@Formato.Estado(ficha.Estado)</span></dd>
+        <dt class="col-sm-2">Fecha de ingreso</dt>
+        <dd class="col-sm-4">@ficha.FechaIngreso.ToString("dd/MM/yyyy")</dd>
+    </dl>
+
+    <EditForm Model="Input" OnValidSubmit="GuardarAsync" class="col-md-8">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" role="alert" />
+
+        <div class="mb-3">
+            <label class="form-label">Nombre de la obra</label>
+            <InputText class="form-control" @bind-Value="Input.Titulo" />
+            <ValidationMessage For="() => Input.Titulo" class="text-danger" />
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Rubro</label>
+                <InputSelect class="form-select" @bind-Value="Input.RubroId">
+                    <option value="">Sin especificar</option>
+                    @foreach (var rubro in rubros)
+                    {
+                        <option value="@rubro.Id">@rubro.Nombre</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Técnica</label>
+                <InputSelect class="form-select" @bind-Value="Input.TecnicaId">
+                    <option value="">Sin especificar</option>
+                    @foreach (var tecnica in tecnicas)
+                    {
+                        <option value="@tecnica.Id">@tecnica.Nombre</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Alto (cm)</label>
+                <InputNumber class="form-control" @bind-Value="Input.AltoCm" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Ancho (cm)</label>
+                <InputNumber class="form-control" @bind-Value="Input.AnchoCm" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Largo (cm)</label>
+                <InputNumber class="form-control" @bind-Value="Input.LargoCm" />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3 form-check pt-4 mt-2">
+                <InputCheckbox class="form-check-input" id="tieneIva" @bind-Value="Input.TieneIVA" @bind:after="RecalcularPrecio" />
+                <label class="form-check-label" for="tieneIva">Tiene IVA</label>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Costo (lo que cobra el artista)</label>
+                <InputNumber class="form-control" @bind-Value="Input.Costo" @bind:after="RecalcularPrecio" />
+                <ValidationMessage For="() => Input.Costo" class="text-danger" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Utilidad (%)</label>
+                <InputNumber class="form-control" @bind-Value="Input.Utilidad" @bind:after="RecalcularPrecio" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Precio de venta</label>
+                <InputNumber class="form-control fw-bold" @bind-Value="Input.PrecioVenta" @bind:after="MarcarPrecioEditado" />
+                <div class="form-text">Calculado automático — se puede ajustar a mano.</div>
+            </div>
+        </div>
+
+        <div class="mb-3 form-check">
+            <InputCheckbox class="form-check-input" id="pagoContado" @bind-Value="Input.PagoContado" />
+            <label class="form-check-label" for="pagoContado">
+                Pago contado (ya se le pagó al artista al ingresar la pieza)
+            </label>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Observaciones</label>
+            <InputTextArea class="form-control" @bind-Value="Input.Observaciones" rows="2" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <a href="obras" class="btn btn-link">Cancelar</a>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private InputModel Input { get; set; } = new();
+
+    private bool cargando = true;
+    private ObraFicha? ficha;
+    private List<OpcionCatalogo> rubros = [];
+    private List<OpcionCatalogo> tecnicas = [];
+    private ParametrosCalculoPrecio? parametros;
+    private bool precioEditadoManualmente;
+
+    protected override async Task OnInitializedAsync()
+    {
+        rubros = await CatalogoRepository.ListarRubrosAsync();
+        tecnicas = await CatalogoRepository.ListarTecnicasAsync();
+        parametros = await ObraService.ObtenerParametrosCalculoAsync();
+        ficha = await ObraService.ObtenerFichaAsync(Id);
+
+        if (ficha is not null)
+        {
+            Input = new InputModel
+            {
+                Titulo = ficha.Titulo,
+                RubroId = ficha.RubroId,
+                TecnicaId = ficha.TecnicaId,
+                AltoCm = ficha.AltoCm,
+                AnchoCm = ficha.AnchoCm,
+                LargoCm = ficha.LargoCm,
+                Costo = ficha.Costo,
+                Utilidad = ficha.Utilidad,
+                TieneIVA = ficha.TieneIVA,
+                PrecioVenta = ficha.PrecioVenta,
+                PagoContado = ficha.PagoContado,
+                Observaciones = ficha.Observaciones
+            };
+
+            // Precio editado a mano no se recalcula solo al entrar — recién si tocan costo/utilidad/IVA.
+            precioEditadoManualmente = true;
+        }
+
+        cargando = false;
+    }
+
+    private void RecalcularPrecio()
+    {
+        if (parametros is null || ficha is null || precioEditadoManualmente)
+        {
+            return;
+        }
+
+        var redondeo = parametros.RedondeoPara(ficha.Moneda);
+        Input.PrecioVenta = Obra.CalcularPrecioVenta(Input.Costo, Input.Utilidad, Input.TieneIVA, parametros.IvaPorcentaje, redondeo);
+    }
+
+    private void MarcarPrecioEditado() => precioEditadoManualmente = true;
+
+    private async Task GuardarAsync()
+    {
+        var request = new ActualizarObraRequest(
+            Id,
+            Input.Titulo.Trim(),
+            Input.RubroId,
+            Input.TecnicaId,
+            Input.AltoCm,
+            Input.AnchoCm,
+            Input.LargoCm,
+            Input.Costo,
+            Input.Utilidad,
+            Input.TieneIVA,
+            Input.PrecioVenta,
+            Input.PagoContado,
+            Input.Observaciones);
+
+        await ObraService.ActualizarAsync(request);
+
+        NavigationManager.NavigateTo("obras");
+    }
+
+    private sealed class InputModel
+    {
+        [Required(ErrorMessage = "El nombre de la obra es obligatorio.")]
+        [MaxLength(200)]
+        public string Titulo { get; set; } = "";
+
+        public int? RubroId { get; set; }
+        public int? TecnicaId { get; set; }
+
+        public decimal? AltoCm { get; set; }
+        public decimal? AnchoCm { get; set; }
+        public decimal? LargoCm { get; set; }
+
+        [Range(0.01, 999999999, ErrorMessage = "El costo tiene que ser mayor a 0.")]
+        public decimal Costo { get; set; }
+
+        [Range(0, 1000, ErrorMessage = "La utilidad no puede ser negativa.")]
+        public decimal Utilidad { get; set; }
+
+        public bool TieneIVA { get; set; }
+
+        [Range(0, 999999999)]
+        public decimal PrecioVenta { get; set; }
+
+        public bool PagoContado { get; set; }
+
+        [MaxLength(2000)]
+        public string? Observaciones { get; set; }
+    }
+}

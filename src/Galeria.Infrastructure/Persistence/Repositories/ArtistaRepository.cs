@@ -53,5 +53,36 @@ public class ArtistaRepository(GaleriaDbContext db) : IArtistaRepository
         return Task.CompletedTask;
     }
 
+    public async Task<ArtistaFicha?> ObtenerFichaAsync(int id, CancellationToken ct = default) =>
+        await db.Artistas.AsNoTracking()
+            .Where(a => a.Id == id)
+            .Select(a => new ArtistaFicha(
+                a.Id,
+                a.Codigo,
+                a.Apellido,
+                a.Nombre,
+                a.Taller,
+                a.Celular,
+                a.TelFijo,
+                a.Direccion,
+                a.Correo,
+                a.Perfil,
+                a.Obras.Count))
+            .FirstOrDefaultAsync(ct);
+
+    // Código queda afuera a propósito (ver ArtistaDtos.cs): no se toca desde acá.
+    public async Task ActualizarAsync(ActualizarArtistaRequest request, CancellationToken ct = default)
+    {
+        var artista = await db.Artistas.FirstAsync(a => a.Id == request.Id, ct);
+        artista.Apellido = request.Apellido.Trim();
+        artista.Nombre = request.Nombre.Trim();
+        artista.Taller = request.Taller;
+        artista.Celular = request.Celular;
+        artista.TelFijo = request.TelFijo;
+        artista.Direccion = request.Direccion;
+        artista.Correo = request.Correo;
+        artista.Perfil = request.Perfil;
+    }
+
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
 }

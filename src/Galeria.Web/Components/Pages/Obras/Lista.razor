@@ -4,6 +4,7 @@
 @using Galeria.Application.Obras
 @inject ObraService ObraService
 @inject ArtistaService ArtistaService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Obras</PageTitle>
 <HeadContent>
@@ -62,7 +63,8 @@ else
         <tbody>
             @foreach (var obra in obras)
             {
-                <tr class="@(obra.Existencia == 0 || obra.Estado != EstadoObra.Disponible ? "text-body-secondary" : "")">
+                <tr class="@(obra.Existencia == 0 || obra.Estado != EstadoObra.Disponible ? "text-body-secondary" : "")"
+                    style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"obras/{obra.Id}")'>
                     <td>@obra.CodigoVisible</td>
                     <td>@obra.Titulo</td>
                     <td>@obra.ArtistaNombre</td>

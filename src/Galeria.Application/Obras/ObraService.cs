@@ -68,4 +68,13 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros)
         await obras.AumentarExistenciaAsync(obraId, cantidad, ct);
         await obras.GuardarCambiosAsync(ct);
     }
+
+    public Task<ObraFicha?> ObtenerFichaAsync(int id, CancellationToken ct = default) =>
+        obras.ObtenerFichaAsync(id, ct);
+
+    public async Task ActualizarAsync(ActualizarObraRequest request, CancellationToken ct = default)
+    {
+        await obras.ActualizarAsync(request, ct);
+        await obras.GuardarCambiosAsync(ct);
+    }
 }

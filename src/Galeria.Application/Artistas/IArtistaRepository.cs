@@ -12,5 +12,9 @@ public interface IArtistaRepository
 
     Task AgregarAsync(Domain.Entities.Artista artista, CancellationToken ct = default);
 
+    Task<ArtistaFicha?> ObtenerFichaAsync(int id, CancellationToken ct = default);
+
+    Task ActualizarAsync(ActualizarArtistaRequest request, CancellationToken ct = default);
+
     Task GuardarCambiosAsync(CancellationToken ct = default);
 }
