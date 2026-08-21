@@ -123,6 +123,7 @@ else
                 <label class="form-label">Existencia</label>
                 <InputNumber class="form-control" @bind-Value="Input.Existencia" />
                 <ValidationMessage For="() => Input.Existencia" class="text-danger" />
+                <div class="form-text">Piezas iguales bajo un mismo código (ej. 10 caravanas idénticas → existencia 10).</div>
             </div>
             <div class="col-md-4 mb-3">
                 <label class="form-label">Moneda</label>
@@ -135,6 +136,24 @@ else
                 <InputCheckbox class="form-check-input" id="tieneIva" @bind-Value="Input.TieneIVA" @bind:after="RecalcularPrecio" />
                 <label class="form-check-label" for="tieneIva">Tiene IVA</label>
             </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Serie (cantidad de piezas)</label>
+                <InputNumber class="form-control" @bind-Value="Input.CantidadEnSerie" />
+                <div class="form-text">
+                    Piezas distintas con el mismo formulario (ej. 10 caravanas distintas → 10, cada una con su propio código).
+                </div>
+            </div>
+            @if (Input.CantidadEnSerie > 1)
+            {
+                <div class="col-md-8 mb-3">
+                    <label class="form-label">Nombre de la serie</label>
+                    <InputText class="form-control" @bind-Value="Input.NombreSerie" />
+                    <ValidationMessage For="() => Input.NombreSerie" class="text-danger" />
+                </div>
+            }
         </div>
 
         <div class="row">
@@ -247,7 +266,14 @@ else
             Input.PagoContado,
             Input.Observaciones);
 
-        await ObraService.CrearAsync(request);
+        if (Input.CantidadEnSerie > 1)
+        {
+            await ObraService.CrearSerieAsync(request, Input.CantidadEnSerie, Input.NombreSerie ?? Input.Titulo);
+        }
+        else
+        {
+            await ObraService.CrearAsync(request);
+        }
 
         NavigationManager.NavigateTo("obras");
     }
@@ -270,6 +296,12 @@ else
 
         [Range(1, 9999, ErrorMessage = "La existencia tiene que ser al menos 1.")]
         public int Existencia { get; set; } = 1;
+
+        [Range(1, 999, ErrorMessage = "La serie tiene que ser de al menos 1 pieza.")]
+        public int CantidadEnSerie { get; set; } = 1;
+
+        [MaxLength(150)]
+        public string? NombreSerie { get; set; }
 
         public Moneda Moneda { get; set; } = Moneda.Pesos;
 

@@ -35,34 +35,59 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
     public async Task<int> CrearAsync(CrearObraRequest request, CancellationToken ct = default)
     {
         var numeroObra = await obras.ProximoNumeroObraAsync(request.ArtistaId, ct);
-
-        var obra = new Obra
-        {
-            ArtistaId = request.ArtistaId,
-            NumeroObra = numeroObra,
-            Titulo = request.Titulo.Trim(),
-            RubroId = request.RubroId,
-            TecnicaId = request.TecnicaId,
-            AltoCm = request.AltoCm,
-            AnchoCm = request.AnchoCm,
-            LargoCm = request.LargoCm,
-            Existencia = request.Existencia,
-            Moneda = request.Moneda,
-            Costo = request.Costo,
-            Utilidad = request.Utilidad,
-            TieneIVA = request.TieneIVA,
-            PrecioVenta = request.PrecioVenta,
-            PagoContado = request.PagoContado,
-            FechaIngreso = DateOnly.FromDateTime(DateTime.Now),
-            Observaciones = request.Observaciones,
-            Estado = EstadoObra.Disponible
-        };
+        var obra = ConstruirObra(request, numeroObra, serieId: null);
 
         await obras.AgregarAsync(obra, ct);
         await obras.GuardarCambiosAsync(ct);
 
         return obra.Id;
     }
+
+    // Serie (requerimiento 3.3): "10 caravanas distintas" → un solo formulario, N obras con
+    // códigos consecutivos, todas marcadas con la misma Serie (campo aparte, no un sufijo del
+    // código). Si cantidadPiezas es 1 no tiene sentido crear una Serie de una sola pieza — para
+    // ese caso la Web ya usa CrearAsync directamente.
+    public async Task<int> CrearSerieAsync(CrearObraRequest request, int cantidadPiezas, string nombreSerie, CancellationToken ct = default)
+    {
+        var serie = new Serie { ArtistaId = request.ArtistaId, Nombre = nombreSerie.Trim() };
+        await obras.AgregarSerieAsync(serie, ct);
+        await obras.GuardarCambiosAsync(ct); // necesito serie.Id antes de crear las obras
+
+        var numeroInicial = await obras.ProximoNumeroObraAsync(request.ArtistaId, ct);
+
+        for (var i = 0; i < cantidadPiezas; i++)
+        {
+            var obra = ConstruirObra(request, numeroInicial + i, serie.Id);
+            await obras.AgregarAsync(obra, ct);
+        }
+
+        await obras.GuardarCambiosAsync(ct);
+
+        return serie.Id;
+    }
+
+    private static Obra ConstruirObra(CrearObraRequest request, int numeroObra, int? serieId) => new()
+    {
+        ArtistaId = request.ArtistaId,
+        NumeroObra = numeroObra,
+        SerieId = serieId,
+        Titulo = request.Titulo.Trim(),
+        RubroId = request.RubroId,
+        TecnicaId = request.TecnicaId,
+        AltoCm = request.AltoCm,
+        AnchoCm = request.AnchoCm,
+        LargoCm = request.LargoCm,
+        Existencia = request.Existencia,
+        Moneda = request.Moneda,
+        Costo = request.Costo,
+        Utilidad = request.Utilidad,
+        TieneIVA = request.TieneIVA,
+        PrecioVenta = request.PrecioVenta,
+        PagoContado = request.PagoContado,
+        FechaIngreso = DateOnly.FromDateTime(DateTime.Now),
+        Observaciones = request.Observaciones,
+        Estado = EstadoObra.Disponible
+    };
 
     public async Task AgregarExistenciaAsync(int obraId, int cantidad, CancellationToken ct = default)
     {

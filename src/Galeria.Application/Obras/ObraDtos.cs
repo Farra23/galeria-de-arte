@@ -113,7 +113,10 @@ public record ObraFicha(
     bool PagoContado,
     string? Observaciones,
     EstadoObra Estado,
-    DateOnly FechaIngreso);
+    DateOnly FechaIngreso,
+    string? SerieNombre,
+    int? SeriePosicion,
+    int? SerieTotal);
 
 // Historial de movimientos (requerimiento 3.1, pestaña de la ficha): lee directo del libro de
 // stock que ya alimentan Ventas, Retiros, Alquileres y Devoluciones.

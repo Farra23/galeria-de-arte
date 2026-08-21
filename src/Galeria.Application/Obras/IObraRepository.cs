@@ -12,6 +12,11 @@ public interface IObraRepository
 
     Task AgregarAsync(Domain.Entities.Obra obra, CancellationToken ct = default);
 
+    // Serie (requerimiento 3.3): un conjunto de piezas que comparten formulario de alta pero no
+    // el código. Obra sigue siendo dueña de la persistencia — Serie no tiene entidad propia en
+    // el mundo de la aplicación, solo existe como agrupador de Obras.
+    Task AgregarSerieAsync(Domain.Entities.Serie serie, CancellationToken ct = default);
+
     Task AumentarExistenciaAsync(int obraId, int cantidad, CancellationToken ct = default);
 
     Task<ObraFicha?> ObtenerFichaAsync(int id, CancellationToken ct = default);

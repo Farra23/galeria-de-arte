@@ -164,6 +164,12 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
         return Task.CompletedTask;
     }
 
+    public Task AgregarSerieAsync(Serie serie, CancellationToken ct = default)
+    {
+        db.Series.Add(serie);
+        return Task.CompletedTask;
+    }
+
     public async Task AumentarExistenciaAsync(int obraId, int cantidad, CancellationToken ct = default)
     {
         var obra = await db.Obras.FirstAsync(o => o.Id == obraId, ct);
@@ -193,7 +199,10 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.PagoContado,
                 o.Observaciones,
                 o.Estado,
-                o.FechaIngreso))
+                o.FechaIngreso,
+                o.Serie != null ? o.Serie.Nombre : null,
+                o.Serie != null ? o.Serie.Obras.Count(x => x.NumeroObra <= o.NumeroObra) : (int?)null,
+                o.Serie != null ? o.Serie.Obras.Count() : (int?)null))
             .FirstOrDefaultAsync(ct);
 
     // Moneda y Existencia quedan afuera a propósito (ver ObraDtos.cs): no se tocan desde acá.

@@ -38,6 +38,11 @@ else
         <dd class="col-sm-4"><span class="badge bg-secondary">@Formato.Estado(ficha.Estado)</span></dd>
         <dt class="col-sm-2">Fecha de ingreso</dt>
         <dd class="col-sm-4">@ficha.FechaIngreso.ToString("dd/MM/yyyy")</dd>
+        @if (ficha.SerieNombre is not null)
+        {
+            <dt class="col-sm-2">Serie</dt>
+            <dd class="col-sm-4">Pieza @ficha.SeriePosicion de @ficha.SerieTotal · @ficha.SerieNombre</dd>
+        }
     </dl>
 
     <ul class="nav nav-tabs mb-3">
