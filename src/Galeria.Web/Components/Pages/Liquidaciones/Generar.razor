@@ -1,0 +1,142 @@
+@page "/liquidaciones/generar"
+@attribute [Authorize]
+@using Galeria.Application.Artistas
+@using Galeria.Application.Liquidaciones
+@inject LiquidacionService LiquidacionService
+@inject ArtistaService ArtistaService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Generar liquidación</PageTitle>
+<HeadContent>
+    <meta name="description" content="Generar la liquidación de un artista: vista previa antes de confirmar." />
+</HeadContent>
+
+<h1>Generar liquidación</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<div class="row g-2 mb-3">
+    <div class="col-md-4">
+        <label class="form-label">Artista</label>
+        <select class="form-select" @bind="artistaId">
+            <option value="0">Seleccioná un artista...</option>
+            @if (artistas is not null)
+            {
+                @foreach (var artista in artistas)
+                {
+                    <option value="@artista.Id">@artista.Codigo.ToString("D3") — @artista.NombreCompleto</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Moneda</label>
+        <select class="form-select" @bind="moneda">
+            <option value="@Moneda.Pesos">Pesos ($)</option>
+            <option value="@Moneda.USD">Dólares (U$S)</option>
+        </select>
+    </div>
+    <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-primary" @onclick="GenerarVistaPreviaAsync">Ver vista previa</button>
+    </div>
+</div>
+
+@if (vista is not null)
+{
+    <div class="border rounded p-3 mb-3">
+        <h2 class="h5">
+            @vista.ArtistaNombre — @Formato.Simbolo(vista.Moneda)
+        </h2>
+        <p class="text-body-secondary">
+            Última liquidación: @(vista.UltimaLiquidacion?.ToString("dd/MM/yyyy") ?? "nunca se le liquidó")
+        </p>
+
+        @if (vista.Lineas.Count == 0)
+        {
+            <p>No hay nada pendiente para liquidar a este artista en esta moneda.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-striped">
+                <thead>
+                    <tr><th>Fecha</th><th>Tipo</th><th>Código</th><th>Obra</th><th class="text-end">Cant.</th><th class="text-end">Monto</th><th>Detalle</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var linea in vista.Lineas)
+                    {
+                        <tr>
+                            <td>@linea.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td>@TipoTexto(linea.Tipo)</td>
+                            <td>@linea.CodigoObra</td>
+                            <td>@linea.NombreObra</td>
+                            <td class="text-end">@linea.Cantidad</td>
+                            <td class="text-end">@Formato.Monto(linea.MontoTotal, vista.Moneda)</td>
+                            <td>@linea.Observaciones</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <dl class="row">
+                <dt class="col-sm-3">Total bruto</dt><dd class="col-sm-9">@Formato.Monto(vista.TotalBruto, vista.Moneda)</dd>
+                <dt class="col-sm-3">Adelantos</dt><dd class="col-sm-9">@Formato.Monto(vista.TotalAdelantos, vista.Moneda)</dd>
+                <dt class="col-sm-3 fw-bold">Total neto a pagar</dt><dd class="col-sm-9 fw-bold fs-5">@Formato.Monto(vista.TotalNeto, vista.Moneda)</dd>
+            </dl>
+
+            <button class="btn btn-primary" @onclick="ConfirmarAsync">Confirmar liquidación</button>
+        }
+    </div>
+}
+
+@code {
+    private List<ArtistaOpcion>? artistas;
+    private int artistaId;
+    private Moneda moneda = Moneda.Pesos;
+    private VistaPreviaLiquidacion? vista;
+    private string? error;
+
+    protected override async Task OnInitializedAsync() =>
+        artistas = await ArtistaService.ListarParaSeleccionAsync();
+
+    private async Task GenerarVistaPreviaAsync()
+    {
+        error = null;
+        vista = null;
+
+        if (artistaId == 0)
+        {
+            error = "Elegí un artista.";
+            return;
+        }
+
+        vista = await LiquidacionService.GenerarVistaPreviaAsync(artistaId, moneda);
+    }
+
+    private async Task ConfirmarAsync()
+    {
+        error = null;
+
+        try
+        {
+            var liquidacionId = await LiquidacionService.ConfirmarAsync(artistaId, moneda);
+            NavigationManager.NavigateTo($"liquidaciones/{liquidacionId}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private static string TipoTexto(TipoLinea tipo) => tipo switch
+    {
+        TipoLinea.Venta => "Venta",
+        TipoLinea.Alquiler => "Alquiler",
+        TipoLinea.PagoContado => "Pago contado",
+        TipoLinea.Adelanto => "Adelanto",
+        TipoLinea.Devolucion => "Devolución",
+        _ => tipo.ToString()
+    };
+}

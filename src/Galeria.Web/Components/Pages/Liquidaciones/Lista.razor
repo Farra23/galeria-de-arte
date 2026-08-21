@@ -1,0 +1,76 @@
+@page "/liquidaciones"
+@attribute [Authorize]
+@using Galeria.Application.Artistas
+@using Galeria.Application.Liquidaciones
+@inject LiquidacionService LiquidacionService
+@inject ArtistaService ArtistaService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Liquidaciones</PageTitle>
+<HeadContent>
+    <meta name="description" content="Historial de liquidaciones confirmadas por artista." />
+</HeadContent>
+
+<h1>Liquidaciones</h1>
+
+<div class="row mb-3 g-2">
+    <div class="col-md-4">
+        <select class="form-select" value="@(ArtistaId?.ToString() ?? "")" @onchange='e => IrA("artista", ParseIntOrNull(e.Value))'>
+            <option value="">Todos los artistas</option>
+            @if (artistas is not null)
+            {
+                @foreach (var artista in artistas)
+                {
+                    <option value="@artista.Id">@artista.NombreCompleto</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-4 text-end offset-md-4">
+        <a class="btn btn-primary" href="liquidaciones/generar">+ Generar liquidación</a>
+    </div>
+</div>
+
+@if (liquidaciones is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (liquidaciones.Count == 0)
+{
+    <p>Todavía no hay liquidaciones confirmadas.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead><tr><th>N.º</th><th>Fecha</th><th>Artista</th><th class="text-end">Total</th></tr></thead>
+        <tbody>
+            @foreach (var liquidacion in liquidaciones)
+            {
+                <tr style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"liquidaciones/{liquidacion.Id}")'>
+                    <td>@liquidacion.NumeroCorrelativo.ToString("D6")</td>
+                    <td>@liquidacion.Fecha.ToString("dd/MM/yyyy")</td>
+                    <td>@liquidacion.ArtistaNombre</td>
+                    <td class="text-end">@Formato.Monto(liquidacion.TotalNeto, liquidacion.Moneda)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "artista")] public int? ArtistaId { get; set; }
+
+    private List<LiquidacionListItem>? liquidaciones;
+    private List<ArtistaOpcion>? artistas;
+
+    protected override async Task OnInitializedAsync() =>
+        artistas = await ArtistaService.ListarParaSeleccionAsync();
+
+    protected override async Task OnParametersSetAsync() =>
+        liquidaciones = await LiquidacionService.BuscarAsync(new LiquidacionFiltro(ArtistaId));
+
+    private void IrA(string clave, object? valor) =>
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
+
+    private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
+}

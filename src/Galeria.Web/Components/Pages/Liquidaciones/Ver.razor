@@ -1,0 +1,87 @@
+@page "/liquidaciones/{Id:int}"
+@attribute [Authorize]
+@using Galeria.Application.Liquidaciones
+@inject LiquidacionService LiquidacionService
+
+<PageTitle>Liquidación</PageTitle>
+<HeadContent>
+    <meta name="description" content="Comprobante de liquidación confirmada, imprimible." />
+</HeadContent>
+
+@if (detalle is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    <div class="mb-3 d-print-none">
+        <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
+        <a class="btn btn-link" href="liquidaciones">Volver a Liquidaciones</a>
+    </div>
+
+    <div class="border rounded p-4" style="max-width: 900px;">
+        <div class="d-flex justify-content-between">
+            <div>
+                <h5>Galería ACATRAS</h5>
+                <p class="text-body-secondary mb-0">Comprobante de liquidación a artista</p>
+            </div>
+            <div class="text-end">
+                <h1 class="h3">Liquidación N.º @detalle.NumeroCorrelativo.ToString("D6")</h1>
+                <p class="text-body-secondary">Fecha de emisión: <strong>@detalle.Fecha.ToString("dd/MM/yyyy")</strong></p>
+            </div>
+        </div>
+
+        <hr />
+        <p><strong>Artista:</strong> @detalle.ArtistaNombre — <strong>Moneda:</strong> @Formato.Simbolo(detalle.Moneda)</p>
+
+        <table class="table table-sm table-striped mt-3">
+            <thead>
+                <tr><th>Fecha</th><th>Tipo</th><th>Código</th><th>Obra</th><th class="text-end">Cant.</th><th class="text-end">Monto</th><th>Detalle</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var linea in detalle.Lineas)
+                {
+                    <tr>
+                        <td>@linea.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td>@TipoTexto(linea.Tipo)</td>
+                        <td>@linea.CodigoObra</td>
+                        <td>@linea.NombreObra</td>
+                        <td class="text-end">@linea.Cantidad</td>
+                        <td class="text-end">@Formato.Monto(linea.MontoTotal, detalle.Moneda)</td>
+                        <td>@linea.Observaciones</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <dl class="row">
+            <dt class="col-sm-3">Total bruto</dt><dd class="col-sm-9">@Formato.Monto(detalle.TotalBruto, detalle.Moneda)</dd>
+            <dt class="col-sm-3">Adelantos</dt><dd class="col-sm-9">@Formato.Monto(detalle.TotalAdelantos, detalle.Moneda)</dd>
+            <dt class="col-sm-3 fw-bold">Total neto pagado</dt><dd class="col-sm-9 fw-bold fs-5">@Formato.Monto(detalle.TotalNeto, detalle.Moneda)</dd>
+        </dl>
+
+        <p class="text-body-secondary fst-italic">
+            Esta liquidación deja constancia de las piezas vendidas, alquiladas o adelantadas que se pagaron en esta fecha.
+        </p>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private LiquidacionDetalle? detalle;
+
+    protected override async Task OnInitializedAsync() =>
+        detalle = await LiquidacionService.ObtenerDetalleAsync(Id);
+
+    private static string TipoTexto(TipoLinea tipo) => tipo switch
+    {
+        TipoLinea.Venta => "Venta",
+        TipoLinea.Alquiler => "Alquiler",
+        TipoLinea.PagoContado => "Pago contado",
+        TipoLinea.Adelanto => "Adelanto",
+        TipoLinea.Devolucion => "Devolución",
+        _ => tipo.ToString()
+    };
+}
