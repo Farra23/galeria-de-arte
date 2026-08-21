@@ -1,0 +1,145 @@
+@page "/retiros"
+@attribute [Authorize]
+@using Galeria.Application.Artistas
+@using Galeria.Application.Retiros
+@using Galeria.Domain.Enums
+@inject RetiroService RetiroService
+@inject ArtistaService ArtistaService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Retiros</PageTitle>
+<HeadContent>
+    <meta name="description" content="Listado de retiros temporales y definitivos, con devolución de un clic." />
+</HeadContent>
+
+<h1>Retiros</h1>
+
+@if (mensaje is not null)
+{
+    <div class="alert alert-success">@mensaje</div>
+}
+
+<div class="row mb-3 g-2">
+    <div class="col-md-4">
+        <input class="form-control" placeholder="Buscar por obra o artista..."
+               @bind="texto" @bind:event="oninput" @bind:after='() => IrA("q", texto)' />
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" value="@(ArtistaId?.ToString() ?? "")" @onchange='e => IrA("artista", ParseIntOrNull(e.Value))'>
+            <option value="">Todos los artistas</option>
+            @if (artistas is not null)
+            {
+                @foreach (var artista in artistas)
+                {
+                    <option value="@artista.Id">@artista.NombreCompleto</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select class="form-select" value="@(TipoTexto ?? "")" @onchange='e => IrA("tipo", e.Value?.ToString())'>
+            <option value="">Cualquier tipo</option>
+            <option value="Temporal">Temporal</option>
+            <option value="Definitivo">Definitivo</option>
+        </select>
+    </div>
+    <div class="col-md-3 text-end">
+        <a class="btn btn-primary" href="retiros/nueva">+ Nuevo retiro</a>
+    </div>
+</div>
+
+@if (retiros is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (retiros.Count == 0)
+{
+    <p>No hay retiros que coincidan con los filtros.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Fecha</th><th>Artista</th><th>Código</th><th>Obra</th><th>Tipo</th><th>Motivo</th><th>Estado</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var retiro in retiros)
+            {
+                <tr>
+                    <td>@retiro.Fecha.ToString("dd/MM/yyyy")</td>
+                    <td>@retiro.ArtistaNombre</td>
+                    <td>@retiro.CodigoObra</td>
+                    <td>@retiro.Titulo</td>
+                    <td>@retiro.Tipo</td>
+                    <td>@retiro.Motivo</td>
+                    <td>
+                        @if (retiro.EstaDevuelto)
+                        {
+                            <span class="badge bg-secondary">Devuelto</span>
+                        }
+                        else if (retiro.EstaVencido)
+                        {
+                            <span class="badge bg-danger">Vencido</span>
+                        }
+                        else if (retiro.Tipo == TipoRetiro.Temporal)
+                        {
+                            <span class="badge bg-warning text-dark">Fuera de stock</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-dark">Definitivo</span>
+                        }
+                    </td>
+                    <td>
+                        @if (retiro.Tipo == TipoRetiro.Temporal && !retiro.EstaDevuelto)
+                        {
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => DevolverAsync(retiro.Id)">Devolver al stock</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "q")] public string? TextoLibre { get; set; }
+    [SupplyParameterFromQuery(Name = "artista")] public int? ArtistaId { get; set; }
+    [SupplyParameterFromQuery(Name = "tipo")] public string? TipoTexto { get; set; }
+
+    private TipoRetiro? TipoFiltro => Enum.TryParse<TipoRetiro>(TipoTexto, out var t) ? t : null;
+
+    private List<RetiroListItem>? retiros;
+    private List<ArtistaOpcion>? artistas;
+    private string? texto;
+    private string? mensaje;
+
+    protected override async Task OnInitializedAsync()
+    {
+        artistas = await ArtistaService.ListarParaSeleccionAsync();
+        texto = TextoLibre;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        texto = TextoLibre;
+        var filtro = new RetiroFiltro(TextoLibre, ArtistaId, TipoFiltro);
+        retiros = await RetiroService.BuscarAsync(filtro);
+    }
+
+    private async Task DevolverAsync(int retiroId)
+    {
+        mensaje = null;
+        await RetiroService.DevolverAsync(retiroId);
+        mensaje = "La pieza volvió al stock.";
+        var filtro = new RetiroFiltro(TextoLibre, ArtistaId, TipoFiltro);
+        retiros = await RetiroService.BuscarAsync(filtro);
+    }
+
+    private void IrA(string clave, object? valor) =>
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
+
+    private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
+}

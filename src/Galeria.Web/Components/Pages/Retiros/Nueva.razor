@@ -1,0 +1,159 @@
+@page "/retiros/nueva"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using Galeria.Application.Obras
+@using Galeria.Application.Retiros
+@using Galeria.Domain.Enums
+@inject RetiroService RetiroService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nuevo retiro</PageTitle>
+<HeadContent>
+    <meta name="description" content="Registrar el retiro temporal o definitivo de una obra." />
+</HeadContent>
+
+<h1>Nuevo retiro</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (obra is null)
+{
+    <div class="col-md-6">
+        <label class="form-label">Buscar obra por código, nombre o artista</label>
+        <input class="form-control" @bind="texto" @bind:event="oninput" @bind:after="BuscarAsync" autofocus />
+    </div>
+
+    @if (resultados is not null)
+    {
+        @if (resultados.Count == 0)
+        {
+            <p class="mt-3">No se encontraron obras disponibles con ese criterio.</p>
+        }
+        else
+        {
+            <table class="table table-striped mt-3">
+                <thead><tr><th>Código</th><th>Nombre</th><th>Artista</th><th class="text-end">Stock</th></tr></thead>
+                <tbody>
+                    @foreach (var item in resultados)
+                    {
+                        <tr style="cursor:pointer" @onclick="() => Seleccionar(item)">
+                            <td>@item.CodigoVisible</td>
+                            <td>@item.Titulo</td>
+                            <td>@item.ArtistaNombre</td>
+                            <td class="text-end">@item.Existencia</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}
+else
+{
+    <div class="col-md-8">
+        <h2 class="h5">@obra.CodigoVisible — @obra.Titulo</h2>
+        <p class="text-body-secondary mb-3">Artista: @obra.ArtistaNombre — stock: @obra.Existencia</p>
+
+        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Cantidad</label>
+                    <InputNumber class="form-control" @bind-Value="Input.Cantidad" />
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Fecha</label>
+                    <InputDate class="form-control" @bind-Value="Input.Fecha" />
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Tipo</label>
+                    <InputSelect class="form-select" @bind-Value="Input.Tipo">
+                        <option value="@TipoRetiro.Temporal">Temporal</option>
+                        <option value="@TipoRetiro.Definitivo">Definitivo</option>
+                    </InputSelect>
+                </div>
+                @if (Input.Tipo == TipoRetiro.Temporal)
+                {
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Devolución estimada</label>
+                        <InputDate class="form-control" @bind-Value="Input.FechaEstimadaDevolucion" />
+                    </div>
+                }
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Motivo</label>
+                <InputTextArea class="form-control" @bind-Value="Input.Motivo" rows="2" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Confirmar retiro</button>
+            <button type="button" class="btn btn-link" @onclick="Cancelar">Cancelar</button>
+        </EditForm>
+    </div>
+}
+
+@code {
+    private string? texto;
+    private List<ObraParaOperacion>? resultados;
+    private ObraParaOperacion? obra;
+    private string? error;
+    private InputModel Input { get; set; } = new();
+
+    private async Task BuscarAsync() => resultados = await RetiroService.BuscarObrasDisponiblesAsync(texto);
+
+    private void Seleccionar(ObraParaOperacion item)
+    {
+        obra = item;
+        Input = new InputModel { Cantidad = 1, Fecha = DateTime.Now };
+    }
+
+    private void Cancelar()
+    {
+        obra = null;
+        error = null;
+    }
+
+    private async Task ConfirmarAsync()
+    {
+        if (obra is null) return;
+        error = null;
+
+        try
+        {
+            var request = new RegistrarRetiroRequest(
+                obra.Id,
+                DateOnly.FromDateTime(Input.Fecha),
+                Input.Cantidad,
+                Input.Tipo,
+                Input.Motivo,
+                Input.FechaEstimadaDevolucion.HasValue ? DateOnly.FromDateTime(Input.FechaEstimadaDevolucion.Value) : null);
+
+            await RetiroService.RegistrarAsync(request);
+            NavigationManager.NavigateTo("retiros");
+        }
+        catch (InvalidOperationException ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [Range(1, 9999, ErrorMessage = "La cantidad tiene que ser al menos 1.")]
+        public int Cantidad { get; set; } = 1;
+
+        public DateTime Fecha { get; set; } = DateTime.Now;
+
+        public TipoRetiro Tipo { get; set; } = TipoRetiro.Temporal;
+
+        public DateTime? FechaEstimadaDevolucion { get; set; }
+
+        [MaxLength(500)]
+        public string? Motivo { get; set; }
+    }
+}
