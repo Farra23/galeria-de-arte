@@ -1,0 +1,129 @@
+@page "/adelantos/nuevo"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using Galeria.Application.Adelantos
+@using Galeria.Application.Artistas
+@using Galeria.Domain.Enums
+@inject AdelantoService AdelantoService
+@inject ArtistaService ArtistaService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nuevo adelanto</PageTitle>
+<HeadContent>
+    <meta name="description" content="Registrar un adelanto o ajuste a favor para un artista." />
+</HeadContent>
+
+<h1>Nuevo adelanto</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<EditForm Model="Input" OnValidSubmit="ConfirmarAsync" class="col-md-6">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger" role="alert" />
+
+    <div class="mb-3">
+        <label class="form-label">Artista</label>
+        <InputSelect class="form-select" @bind-Value="Input.ArtistaId">
+            <option value="0">Seleccioná un artista...</option>
+            @if (artistas is not null)
+            {
+                @foreach (var artista in artistas)
+                {
+                    <option value="@artista.Id">@artista.NombreCompleto</option>
+                }
+            }
+        </InputSelect>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Tipo</label>
+            <InputSelect class="form-select" @bind-Value="Input.Tipo">
+                <option value="@TipoAdelanto.Adelanto">Adelanto (resta en la liquidación)</option>
+                <option value="@TipoAdelanto.AjusteAFavor">Ajuste a favor (suma en la liquidación)</option>
+            </InputSelect>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Moneda</label>
+            <InputSelect class="form-select" @bind-Value="Input.Moneda">
+                <option value="@Moneda.Pesos">Pesos ($)</option>
+                <option value="@Moneda.USD">Dólares (U$S)</option>
+            </InputSelect>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Monto</label>
+            <InputNumber class="form-control" @bind-Value="Input.Importe" />
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Fecha</label>
+        <InputDate class="form-control" @bind-Value="Input.Fecha" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Motivo / observaciones</label>
+        <InputTextArea class="form-control" @bind-Value="Input.Observaciones" rows="2" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a href="adelantos" class="btn btn-link">Cancelar</a>
+</EditForm>
+
+@code {
+    private List<ArtistaOpcion>? artistas;
+    private string? error;
+    private InputModel Input { get; set; } = new();
+
+    protected override async Task OnInitializedAsync() =>
+        artistas = await ArtistaService.ListarParaSeleccionAsync();
+
+    private async Task ConfirmarAsync()
+    {
+        error = null;
+
+        if (Input.ArtistaId == 0)
+        {
+            error = "Elegí un artista.";
+            return;
+        }
+
+        try
+        {
+            var request = new RegistrarAdelantoRequest(
+                Input.ArtistaId,
+                DateOnly.FromDateTime(Input.Fecha),
+                Input.Moneda,
+                Input.Importe,
+                Input.Tipo,
+                Input.Observaciones);
+
+            await AdelantoService.RegistrarAsync(request);
+            NavigationManager.NavigateTo("adelantos");
+        }
+        catch (InvalidOperationException ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private sealed class InputModel
+    {
+        public int ArtistaId { get; set; }
+
+        public TipoAdelanto Tipo { get; set; } = TipoAdelanto.Adelanto;
+
+        public Moneda Moneda { get; set; } = Moneda.Pesos;
+
+        [Range(0.01, 999999999, ErrorMessage = "El monto tiene que ser mayor a 0.")]
+        public decimal Importe { get; set; }
+
+        public DateTime Fecha { get; set; } = DateTime.Now;
+
+        [MaxLength(500)]
+        public string? Observaciones { get; set; }
+    }
+}

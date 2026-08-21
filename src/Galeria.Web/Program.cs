@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Galeria.Application.Adelantos;
 using Galeria.Application.Alquileres;
 using Galeria.Application.Artistas;
 using Galeria.Application.Auditorias;
@@ -61,6 +62,7 @@ builder.Services.AddScoped<IVentaRepository, VentaRepository>();
 builder.Services.AddScoped<ICertificadoRepository, CertificadoRepository>();
 builder.Services.AddScoped<IRetiroRepository, RetiroRepository>();
 builder.Services.AddScoped<IAlquilerRepository, AlquilerRepository>();
+builder.Services.AddScoped<IAdelantoRepository, AdelantoRepository>();
 builder.Services.AddScoped<ArtistaService>();
 builder.Services.AddScoped<ObraService>();
 builder.Services.AddScoped<AuditoriaService>();
@@ -68,6 +70,7 @@ builder.Services.AddScoped<VentaService>();
 builder.Services.AddScoped<CertificadoService>();
 builder.Services.AddScoped<RetiroService>();
 builder.Services.AddScoped<AlquilerService>();
+builder.Services.AddScoped<AdelantoService>();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {

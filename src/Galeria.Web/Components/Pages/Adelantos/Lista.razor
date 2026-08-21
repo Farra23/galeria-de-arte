@@ -1,0 +1,102 @@
+@page "/adelantos"
+@attribute [Authorize]
+@using Galeria.Application.Adelantos
+@using Galeria.Application.Artistas
+@inject AdelantoService AdelantoService
+@inject ArtistaService ArtistaService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Adelantos</PageTitle>
+<HeadContent>
+    <meta name="description" content="Listado de adelantos y ajustes a favor por artista." />
+</HeadContent>
+
+<h1>Adelantos</h1>
+
+<div class="row mb-3 g-2">
+    <div class="col-md-4">
+        <select class="form-select" value="@(ArtistaId?.ToString() ?? "")" @onchange='e => IrA("artista", ParseIntOrNull(e.Value))'>
+            <option value="">Todos los artistas</option>
+            @if (artistas is not null)
+            {
+                @foreach (var artista in artistas)
+                {
+                    <option value="@artista.Id">@artista.NombreCompleto</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <input type="date" class="form-control" value="@(FechaDesde?.ToString("yyyy-MM-dd"))"
+               @onchange='e => IrA("desde", ParseFechaOrNull(e.Value))' />
+    </div>
+    <div class="col-md-2">
+        <input type="date" class="form-control" value="@(FechaHasta?.ToString("yyyy-MM-dd"))"
+               @onchange='e => IrA("hasta", ParseFechaOrNull(e.Value))' />
+    </div>
+    <div class="col-md-4 text-end">
+        <a class="btn btn-primary" href="adelantos/nuevo">+ Nuevo adelanto</a>
+    </div>
+</div>
+
+@if (adelantos is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (adelantos.Count == 0)
+{
+    <p>No hay adelantos que coincidan con los filtros.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr><th>Fecha</th><th>Artista</th><th>Tipo</th><th class="text-end">Monto</th><th>Motivo</th><th>Descontado</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var adelanto in adelantos)
+            {
+                <tr>
+                    <td>@adelanto.Fecha.ToString("dd/MM/yyyy")</td>
+                    <td>@adelanto.ArtistaNombre</td>
+                    <td>@(adelanto.Tipo == TipoAdelanto.Adelanto ? "Adelanto" : "Ajuste a favor")</td>
+                    <td class="text-end">@Formato.Monto(adelanto.Importe, adelanto.Moneda)</td>
+                    <td>@adelanto.Observaciones</td>
+                    <td>
+                        @if (adelanto.FueDescontado)
+                        {
+                            <span class="badge bg-secondary">Liquidación #@adelanto.LiquidacionId</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "artista")] public int? ArtistaId { get; set; }
+    [SupplyParameterFromQuery(Name = "desde")] public DateOnly? FechaDesde { get; set; }
+    [SupplyParameterFromQuery(Name = "hasta")] public DateOnly? FechaHasta { get; set; }
+
+    private List<AdelantoListItem>? adelantos;
+    private List<ArtistaOpcion>? artistas;
+
+    protected override async Task OnInitializedAsync() =>
+        artistas = await ArtistaService.ListarParaSeleccionAsync();
+
+    protected override async Task OnParametersSetAsync() =>
+        adelantos = await AdelantoService.BuscarAsync(new AdelantoFiltro(ArtistaId, FechaDesde, FechaHasta));
+
+    private void IrA(string clave, object? valor) =>
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
+
+    private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
+
+    private static string? ParseFechaOrNull(object? valor) =>
+        DateOnly.TryParse(valor?.ToString(), out var f) ? f.ToString("yyyy-MM-dd") : null;
+}
