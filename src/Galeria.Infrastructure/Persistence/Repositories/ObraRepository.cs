@@ -6,26 +6,80 @@ namespace Galeria.Infrastructure.Persistence.Repositories;
 
 public class ObraRepository(GaleriaDbContext db) : IObraRepository
 {
-    public async Task<List<ObraListItem>> BuscarAsync(string? textoLibre, int? artistaId, CancellationToken ct = default)
+    public async Task<List<ObraListItem>> BuscarAsync(ObraFiltro filtro, CancellationToken ct = default)
     {
         var query = db.Obras.AsNoTracking().Include(o => o.Artista).AsQueryable();
 
-        if (artistaId is not null)
+        if (filtro.ArtistaId is not null)
         {
-            query = query.Where(o => o.ArtistaId == artistaId);
+            query = query.Where(o => o.ArtistaId == filtro.ArtistaId);
         }
 
-        if (!string.IsNullOrWhiteSpace(textoLibre))
+        if (!string.IsNullOrWhiteSpace(filtro.TextoLibre))
         {
-            var texto = textoLibre.Trim();
+            var texto = filtro.TextoLibre.Trim();
             query = query.Where(o =>
                 EF.Functions.Like(o.Titulo, $"%{texto}%") ||
                 EF.Functions.Like(o.Artista.Nombre, $"%{texto}%") ||
                 EF.Functions.Like(o.Artista.Apellido, $"%{texto}%"));
         }
 
-        return await query
-            .OrderByDescending(o => o.FechaIngreso).ThenByDescending(o => o.Id)
+        if (filtro.RubroId is not null)
+        {
+            query = query.Where(o => o.RubroId == filtro.RubroId);
+        }
+
+        if (filtro.TecnicaId is not null)
+        {
+            query = query.Where(o => o.TecnicaId == filtro.TecnicaId);
+        }
+
+        if (filtro.Moneda is not null)
+        {
+            query = query.Where(o => o.Moneda == filtro.Moneda);
+        }
+
+        if (filtro.TieneIVA is not null)
+        {
+            query = query.Where(o => o.TieneIVA == filtro.TieneIVA);
+        }
+
+        if (filtro.SoloConStock == true)
+        {
+            query = query.Where(o => o.Existencia > 0);
+        }
+        else if (filtro.SoloConStock == false)
+        {
+            query = query.Where(o => o.Existencia == 0);
+        }
+
+        if (filtro.Estado is not null)
+        {
+            query = query.Where(o => o.Estado == filtro.Estado);
+        }
+
+        if (filtro.PrecioMinimo is not null)
+        {
+            query = query.Where(o => o.PrecioVenta >= filtro.PrecioMinimo);
+        }
+
+        if (filtro.PrecioMaximo is not null)
+        {
+            query = query.Where(o => o.PrecioVenta <= filtro.PrecioMaximo);
+        }
+
+        if (filtro.FechaDesde is not null)
+        {
+            query = query.Where(o => o.FechaIngreso >= filtro.FechaDesde);
+        }
+
+        if (filtro.FechaHasta is not null)
+        {
+            query = query.Where(o => o.FechaIngreso <= filtro.FechaHasta);
+        }
+
+        return await Ordenar(query, filtro)
+            .ThenByDescending(o => o.Id)
             .Select(o => new ObraListItem(
                 o.Id,
                 o.Artista.Codigo.ToString("D3") + o.NumeroObra.ToString("D3"),
@@ -41,6 +95,42 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.FechaIngreso))
             .ToListAsync(ct);
     }
+
+    // Orden por columna (requerimiento 0.1): un solo lugar que traduce el campo elegido a la
+    // expresión LINQ correspondiente, en vez de repetir el switch en cada llamado.
+    private static IOrderedQueryable<Obra> Ordenar(IQueryable<Obra> query, ObraFiltro filtro) => filtro.Orden switch
+    {
+        OrdenObra.Codigo => filtro.OrdenDescendente
+            ? query.OrderByDescending(o => o.Artista.Codigo).ThenByDescending(o => o.NumeroObra)
+            : query.OrderBy(o => o.Artista.Codigo).ThenBy(o => o.NumeroObra),
+        OrdenObra.Titulo => filtro.OrdenDescendente
+            ? query.OrderByDescending(o => o.Titulo)
+            : query.OrderBy(o => o.Titulo),
+        OrdenObra.Artista => filtro.OrdenDescendente
+            ? query.OrderByDescending(o => o.Artista.Apellido).ThenByDescending(o => o.Artista.Nombre)
+            : query.OrderBy(o => o.Artista.Apellido).ThenBy(o => o.Artista.Nombre),
+        OrdenObra.Rubro => filtro.OrdenDescendente
+            ? query.OrderByDescending(o => o.Rubro != null ? o.Rubro.Nombre : null)
+            : query.OrderBy(o => o.Rubro != null ? o.Rubro.Nombre : null),
+        OrdenObra.Tecnica => filtro.OrdenDescendente
+            ? query.OrderByDescending(o => o.Tecnica != null ? o.Tecnica.Nombre : null)
+            : query.OrderBy(o => o.Tecnica != null ? o.Tecnica.Nombre : null),
+        OrdenObra.Costo => filtro.OrdenDescendente
+            ? query.OrderByDescending(o => o.Costo)
+            : query.OrderBy(o => o.Costo),
+        OrdenObra.PrecioVenta => filtro.OrdenDescendente
+            ? query.OrderByDescending(o => o.PrecioVenta)
+            : query.OrderBy(o => o.PrecioVenta),
+        OrdenObra.Existencia => filtro.OrdenDescendente
+            ? query.OrderByDescending(o => o.Existencia)
+            : query.OrderBy(o => o.Existencia),
+        OrdenObra.Estado => filtro.OrdenDescendente
+            ? query.OrderByDescending(o => o.Estado)
+            : query.OrderBy(o => o.Estado),
+        _ => filtro.OrdenDescendente
+            ? query.OrderByDescending(o => o.FechaIngreso)
+            : query.OrderBy(o => o.FechaIngreso)
+    };
 
     public async Task<ObraCoincidente?> BuscarCoincidenciaAsync(int artistaId, string titulo, CancellationToken ct = default)
     {

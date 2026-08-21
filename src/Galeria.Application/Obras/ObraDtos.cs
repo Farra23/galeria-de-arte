@@ -16,6 +16,39 @@ public record ObraListItem(
     EstadoObra Estado,
     DateOnly FechaIngreso);
 
+public enum OrdenObra
+{
+    FechaIngreso,
+    Codigo,
+    Titulo,
+    Artista,
+    Rubro,
+    Tecnica,
+    Costo,
+    PrecioVenta,
+    Existencia,
+    Estado
+}
+
+// Parameter object (requerimiento 0.1): agrupa todos los criterios de búsqueda de la Lista de
+// Obras en un solo tipo en vez de una firma con diez parámetros sueltos. Todos opcionales:
+// ausente = ese filtro no se aplica.
+public record ObraFiltro(
+    string? TextoLibre = null,
+    int? ArtistaId = null,
+    int? RubroId = null,
+    int? TecnicaId = null,
+    Moneda? Moneda = null,
+    bool? TieneIVA = null,
+    bool? SoloConStock = null,
+    EstadoObra? Estado = null,
+    decimal? PrecioMinimo = null,
+    decimal? PrecioMaximo = null,
+    DateOnly? FechaDesde = null,
+    DateOnly? FechaHasta = null,
+    OrdenObra Orden = OrdenObra.FechaIngreso,
+    bool OrdenDescendente = true);
+
 // Lo que se ofrece cuando el nombre tipeado coincide con una obra ya cargada al mismo artista
 // (decisión #6, docs/CONTEXTO.md): en vez de crear una obra nueva, se suma existencia a esta.
 public record ObraCoincidente(int Id, string CodigoVisible, string Titulo, int Existencia, decimal Costo);

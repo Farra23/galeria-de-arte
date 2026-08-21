@@ -6,8 +6,8 @@ namespace Galeria.Application.Obras;
 
 public class ObraService(IObraRepository obras, IParametroRepository parametros)
 {
-    public Task<List<ObraListItem>> BuscarAsync(string? textoLibre, int? artistaId, CancellationToken ct = default) =>
-        obras.BuscarAsync(textoLibre, artistaId, ct);
+    public Task<List<ObraListItem>> BuscarAsync(ObraFiltro filtro, CancellationToken ct = default) =>
+        obras.BuscarAsync(filtro, ct);
 
     public Task<ObraCoincidente?> BuscarCoincidenciaAsync(int artistaId, string titulo, CancellationToken ct = default) =>
         string.IsNullOrWhiteSpace(titulo)

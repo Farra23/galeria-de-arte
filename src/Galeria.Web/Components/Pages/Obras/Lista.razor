@@ -1,25 +1,27 @@
 @page "/obras"
 @attribute [Authorize]
 @using Galeria.Application.Artistas
+@using Galeria.Application.Catalogos
 @using Galeria.Application.Obras
 @inject ObraService ObraService
 @inject ArtistaService ArtistaService
+@inject ICatalogoRepository CatalogoRepository
 @inject NavigationManager NavigationManager
 
 <PageTitle>Obras</PageTitle>
 <HeadContent>
-    <meta name="description" content="Listado de obras en stock de la galería." />
+    <meta name="description" content="Listado de obras en stock de la galería, con filtros y orden por columna." />
 </HeadContent>
 
 <h1>Obras</h1>
 
-<div class="row mb-3 g-2">
-    <div class="col-md-4">
-        <input class="form-control" placeholder="Buscar por nombre de obra o artista..."
-               @bind="TextoLibre" @bind:event="oninput" @bind:after="BuscarAsync" />
+<div class="row mb-2 g-2">
+    <div class="col-md-3">
+        <input class="form-control" placeholder="Buscar por código, nombre u artista..."
+               @bind="textoLibre" @bind:event="oninput" @bind:after='() => IrA("q", textoLibre)' />
     </div>
     <div class="col-md-3">
-        <select class="form-select" @bind="ArtistaIdFiltro" @bind:after="BuscarAsync">
+        <select class="form-select" value="@(ArtistaId?.ToString() ?? "")" @onchange='e => IrA("artista", ParseIntOrNull(e.Value))'>
             <option value="">Todos los artistas</option>
             @if (artistas is not null)
             {
@@ -30,9 +32,99 @@
             }
         </select>
     </div>
-    <div class="col-md-5 text-end">
-        <a class="btn btn-primary" href="obras/nueva">+ Nueva obra</a>
+    <div class="col-md-3">
+        <select class="form-select" value="@(RubroId?.ToString() ?? "")" @onchange='e => IrA("rubro", ParseIntOrNull(e.Value))'>
+            <option value="">Todos los rubros</option>
+            @foreach (var rubro in rubros)
+            {
+                <option value="@rubro.Id">@rubro.Nombre</option>
+            }
+        </select>
     </div>
+    <div class="col-md-3">
+        <select class="form-select" value="@(TecnicaId?.ToString() ?? "")" @onchange='e => IrA("tecnica", ParseIntOrNull(e.Value))'>
+            <option value="">Todas las técnicas</option>
+            @foreach (var tecnica in tecnicas)
+            {
+                <option value="@tecnica.Id">@tecnica.Nombre</option>
+            }
+        </select>
+    </div>
+</div>
+
+<div class="row mb-2 g-2">
+    <div class="col-md-2">
+        <select class="form-select" value="@(MonedaFiltro?.ToString() ?? "")" @onchange='e => IrA("moneda", e.Value?.ToString())'>
+            <option value="">Ambas monedas</option>
+            <option value="Pesos">$ Pesos</option>
+            <option value="USD">U$S Dólares</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select class="form-select" value="@(Estado?.ToString() ?? "")" @onchange='e => IrA("estado", e.Value?.ToString())'>
+            <option value="">Cualquier estado</option>
+            @foreach (var estado in Enum.GetValues<EstadoObra>())
+            {
+                <option value="@estado">@Formato.Estado(estado)</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select class="form-select" value="@(TieneIVA?.ToString() ?? "")" @onchange='e => IrA("iva", ParseBoolOrNull(e.Value))'>
+            <option value="">IVA: cualquiera</option>
+            <option value="true">Con IVA</option>
+            <option value="false">Exento</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select class="form-select" value="@(SoloConStock?.ToString() ?? "")" @onchange='e => IrA("stock", ParseBoolOrNull(e.Value))'>
+            <option value="">Existencia: cualquiera</option>
+            <option value="true">Con existencia</option>
+            <option value="false">Sin existencia</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <div class="input-group">
+            <span class="input-group-text">Precio</span>
+            <input type="number" class="form-control" placeholder="mín." value="@PrecioMinimo"
+                   @onchange='e => IrA("precioMin", ParseDecimalOrNull(e.Value))' />
+            <input type="number" class="form-control" placeholder="máx." value="@PrecioMaximo"
+                   @onchange='e => IrA("precioMax", ParseDecimalOrNull(e.Value))' />
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="input-group">
+            <span class="input-group-text">Ingreso</span>
+            <input type="date" class="form-control" value="@(FechaDesde?.ToString("yyyy-MM-dd"))"
+                   @onchange='e => IrA("desde", ParseFechaOrNull(e.Value))' />
+            <input type="date" class="form-control" value="@(FechaHasta?.ToString("yyyy-MM-dd"))"
+                   @onchange='e => IrA("hasta", ParseFechaOrNull(e.Value))' />
+        </div>
+    </div>
+</div>
+
+@{
+    var chips = ChipsActivos().ToList();
+}
+@if (chips.Count > 0)
+{
+    <div class="mb-3">
+        @foreach (var chip in chips)
+        {
+            <span class="badge bg-light text-dark border me-1">
+                @chip.Texto
+                <button type="button" class="btn-close btn-close-sm ms-1" style="font-size:0.6rem"
+                        aria-label="Quitar filtro" @onclick="() => IrA(chip.Quitar)"></button>
+            </span>
+        }
+        <button type="button" class="btn btn-link btn-sm p-0 ms-2" @onclick='() => NavigationManager.NavigateTo("obras")'>
+            Limpiar todo
+        </button>
+    </div>
+}
+
+<div class="mb-3 text-end">
+    <a class="btn btn-primary" href="obras/nueva">+ Nueva obra</a>
 </div>
 
 @if (obras is null)
@@ -41,23 +133,23 @@
 }
 else if (obras.Count == 0)
 {
-    <p>No hay obras cargadas todavía.</p>
+    <p>No hay obras que coincidan con los filtros aplicados.</p>
 }
 else
 {
     <table class="table table-striped">
         <thead>
             <tr>
-                <th>Código</th>
-                <th>Nombre</th>
-                <th>Artista</th>
-                <th>Rubro</th>
-                <th>Técnica</th>
-                <th class="text-end">Costo</th>
-                <th class="text-end">Precio venta</th>
-                <th class="text-end">Stock</th>
-                <th>Estado</th>
-                <th>Ingreso</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenObra.Codigo)">Código @Flecha(OrdenObra.Codigo)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenObra.Titulo)">Nombre @Flecha(OrdenObra.Titulo)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenObra.Artista)">Artista @Flecha(OrdenObra.Artista)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenObra.Rubro)">Rubro @Flecha(OrdenObra.Rubro)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenObra.Tecnica)">Técnica @Flecha(OrdenObra.Tecnica)</th>
+                <th role="button" class="text-end" @onclick="() => OrdenarPor(OrdenObra.Costo)">Costo @Flecha(OrdenObra.Costo)</th>
+                <th role="button" class="text-end" @onclick="() => OrdenarPor(OrdenObra.PrecioVenta)">Precio venta @Flecha(OrdenObra.PrecioVenta)</th>
+                <th role="button" class="text-end" @onclick="() => OrdenarPor(OrdenObra.Existencia)">Stock @Flecha(OrdenObra.Existencia)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenObra.Estado)">Estado @Flecha(OrdenObra.Estado)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenObra.FechaIngreso)">Ingreso @Flecha(OrdenObra.FechaIngreso)</th>
             </tr>
         </thead>
         <tbody>
@@ -73,7 +165,7 @@ else
                     <td class="text-end">@Formato.Monto(obra.Costo, obra.Moneda)</td>
                     <td class="text-end">@Formato.Monto(obra.PrecioVenta, obra.Moneda)</td>
                     <td class="text-end">@obra.Existencia</td>
-                    <td><span class="badge text-bg-secondary">@Formato.Estado(obra.Estado)</span></td>
+                    <td><span class="badge bg-secondary">@Formato.Estado(obra.Estado)</span></td>
                     <td>@obra.FechaIngreso.ToString("dd/MM/yyyy")</td>
                 </tr>
             }
@@ -82,20 +174,159 @@ else
 }
 
 @code {
+    // Cada filtro vive en la URL (requerimiento 0.1): SupplyParameterFromQuery los lee al entrar
+    // o al navegar, así una vista filtrada se puede guardar o compartir como link.
+    [SupplyParameterFromQuery(Name = "q")] public string? TextoLibre { get; set; }
+    [SupplyParameterFromQuery(Name = "artista")] public int? ArtistaId { get; set; }
+    [SupplyParameterFromQuery(Name = "rubro")] public int? RubroId { get; set; }
+    [SupplyParameterFromQuery(Name = "tecnica")] public int? TecnicaId { get; set; }
+    [SupplyParameterFromQuery(Name = "iva")] public bool? TieneIVA { get; set; }
+    [SupplyParameterFromQuery(Name = "stock")] public bool? SoloConStock { get; set; }
+    [SupplyParameterFromQuery(Name = "precioMin")] public decimal? PrecioMinimo { get; set; }
+    [SupplyParameterFromQuery(Name = "precioMax")] public decimal? PrecioMaximo { get; set; }
+    [SupplyParameterFromQuery(Name = "desde")] public DateOnly? FechaDesde { get; set; }
+    [SupplyParameterFromQuery(Name = "hasta")] public DateOnly? FechaHasta { get; set; }
+    [SupplyParameterFromQuery(Name = "desc")] public bool? OrdenDescendente { get; set; }
+
+    // Los enums propios (Moneda, EstadoObra, OrdenObra) no están soportados directamente por
+    // SupplyParameterFromQuery en .NET 8 — solo lee los tipos primitivos del BCL. Se leen como
+    // texto y se parsean acá.
+    [SupplyParameterFromQuery(Name = "moneda")] public string? MonedaTexto { get; set; }
+    [SupplyParameterFromQuery(Name = "estado")] public string? EstadoTexto { get; set; }
+    [SupplyParameterFromQuery(Name = "orden")] public string? OrdenTexto { get; set; }
+
+    private Moneda? MonedaFiltro => Enum.TryParse<Moneda>(MonedaTexto, out var m) ? m : null;
+    private EstadoObra? Estado => Enum.TryParse<EstadoObra>(EstadoTexto, out var e) ? e : null;
+    private OrdenObra? Orden => Enum.TryParse<OrdenObra>(OrdenTexto, out var o) ? o : null;
+
+    private OrdenObra OrdenActual => Orden ?? OrdenObra.FechaIngreso;
+    private bool DescActual => OrdenDescendente ?? true;
+
     private List<ObraListItem>? obras;
     private List<ArtistaOpcion>? artistas;
-    private string? TextoLibre;
-    private string? ArtistaIdFiltro;
+    private List<OpcionCatalogo> rubros = [];
+    private List<OpcionCatalogo> tecnicas = [];
+    private string? textoLibre;
 
     protected override async Task OnInitializedAsync()
     {
         artistas = await ArtistaService.ListarParaSeleccionAsync();
-        await BuscarAsync();
+        rubros = await CatalogoRepository.ListarRubrosAsync();
+        tecnicas = await CatalogoRepository.ListarTecnicasAsync();
+        textoLibre = TextoLibre;
     }
 
-    private async Task BuscarAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        int? artistaId = int.TryParse(ArtistaIdFiltro, out var id) ? id : null;
-        obras = await ObraService.BuscarAsync(TextoLibre, artistaId);
+        textoLibre = TextoLibre;
+
+        var filtro = new ObraFiltro(
+            TextoLibre,
+            ArtistaId,
+            RubroId,
+            TecnicaId,
+            MonedaFiltro,
+            TieneIVA,
+            SoloConStock,
+            Estado,
+            PrecioMinimo,
+            PrecioMaximo,
+            FechaDesde,
+            FechaHasta,
+            OrdenActual,
+            DescActual);
+
+        obras = await ObraService.BuscarAsync(filtro);
     }
+
+    // GetUriWithQueryParameter tiene sobrecargas por tipo concreto (bool, int, string...) y no
+    // acepta object — por eso todo pasa por la variante de diccionario, que sí es tipo-flexible.
+    private void IrA(string clave, object? valor) => IrA(new Dictionary<string, object?> { [clave] = valor });
+
+    private void IrA(IReadOnlyDictionary<string, object?> cambios) =>
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(cambios), replace: true);
+
+    private void OrdenarPor(OrdenObra campo)
+    {
+        var descNuevo = OrdenActual == campo ? !DescActual : true;
+        IrA(new Dictionary<string, object?>
+        {
+            ["orden"] = campo.ToString(),
+            ["desc"] = descNuevo.ToString().ToLowerInvariant()
+        });
+    }
+
+    private string Flecha(OrdenObra campo) => OrdenActual != campo ? "" : (DescActual ? " ▼" : " ▲");
+
+    private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
+
+    private static bool? ParseBoolOrNull(object? valor) => bool.TryParse(valor?.ToString(), out var b) ? b : null;
+
+    private static decimal? ParseDecimalOrNull(object? valor) => decimal.TryParse(valor?.ToString(), out var d) ? d : null;
+
+    private static string? ParseFechaOrNull(object? valor) =>
+        DateOnly.TryParse(valor?.ToString(), out var f) ? f.ToString("yyyy-MM-dd") : null;
+
+    private IEnumerable<(string Texto, IReadOnlyDictionary<string, object?> Quitar)> ChipsActivos()
+    {
+        if (!string.IsNullOrWhiteSpace(TextoLibre))
+        {
+            yield return ($"Texto: \"{TextoLibre}\"", Solo("q"));
+        }
+
+        if (ArtistaId is not null)
+        {
+            var nombre = artistas?.FirstOrDefault(a => a.Id == ArtistaId)?.NombreCompleto ?? "artista";
+            yield return ($"Artista: {nombre}", Solo("artista"));
+        }
+
+        if (RubroId is not null)
+        {
+            var nombre = rubros.FirstOrDefault(r => r.Id == RubroId)?.Nombre ?? "rubro";
+            yield return ($"Rubro: {nombre}", Solo("rubro"));
+        }
+
+        if (TecnicaId is not null)
+        {
+            var nombre = tecnicas.FirstOrDefault(t => t.Id == TecnicaId)?.Nombre ?? "técnica";
+            yield return ($"Técnica: {nombre}", Solo("tecnica"));
+        }
+
+        if (MonedaFiltro is not null)
+        {
+            yield return ($"Moneda: {Formato.Simbolo(MonedaFiltro.Value)}", Solo("moneda"));
+        }
+
+        if (TieneIVA is not null)
+        {
+            yield return (TieneIVA.Value ? "Con IVA" : "Exento de IVA", Solo("iva"));
+        }
+
+        if (SoloConStock is not null)
+        {
+            yield return (SoloConStock.Value ? "Con existencia" : "Sin existencia", Solo("stock"));
+        }
+
+        if (Estado is not null)
+        {
+            yield return ($"Estado: {Formato.Estado(Estado.Value)}", Solo("estado"));
+        }
+
+        if (PrecioMinimo is not null || PrecioMaximo is not null)
+        {
+            yield return (
+                $"Precio: {PrecioMinimo?.ToString("N0") ?? "…"} a {PrecioMaximo?.ToString("N0") ?? "…"}",
+                new Dictionary<string, object?> { ["precioMin"] = null, ["precioMax"] = null });
+        }
+
+        if (FechaDesde is not null || FechaHasta is not null)
+        {
+            yield return (
+                $"Ingreso: {FechaDesde?.ToString("dd/MM/yyyy") ?? "…"} a {FechaHasta?.ToString("dd/MM/yyyy") ?? "…"}",
+                new Dictionary<string, object?> { ["desde"] = null, ["hasta"] = null });
+        }
+    }
+
+    private static IReadOnlyDictionary<string, object?> Solo(string clave) =>
+        new Dictionary<string, object?> { [clave] = null };
 }

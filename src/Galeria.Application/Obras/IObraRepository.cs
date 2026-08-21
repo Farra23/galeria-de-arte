@@ -2,7 +2,7 @@ namespace Galeria.Application.Obras;
 
 public interface IObraRepository
 {
-    Task<List<ObraListItem>> BuscarAsync(string? textoLibre, int? artistaId, CancellationToken ct = default);
+    Task<List<ObraListItem>> BuscarAsync(ObraFiltro filtro, CancellationToken ct = default);
 
     // Nombre idéntico dentro del mismo artista (decisión #6): candidata a "agregar existencia"
     // en vez de crear una obra duplicada.
