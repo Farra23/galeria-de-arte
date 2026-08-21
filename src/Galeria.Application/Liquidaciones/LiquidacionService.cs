@@ -15,6 +15,20 @@ public class LiquidacionService(ILiquidacionRepository repositorio, IArtistaRepo
     public Task<LiquidacionDetalle?> ObtenerDetalleAsync(int id, CancellationToken ct = default) =>
         repositorio.ObtenerDetalleAsync(id, ct);
 
+    // Saldo actual a pagar en las dos monedas (requerimiento 4.2, encabezado de la ficha del
+    // artista): misma fuente que usa Generar liquidación, así el número de la ficha nunca queda
+    // desincronizado de lo que efectivamente se liquidaría si se confirma ahora.
+    public async Task<(decimal Pesos, decimal Dolares)> ObtenerSaldoAsync(int artistaId, CancellationToken ct = default)
+    {
+        var pendientesPesos = await repositorio.BuscarPendientesAsync(artistaId, Moneda.Pesos, ct);
+        var pendientesDolares = await repositorio.BuscarPendientesAsync(artistaId, Moneda.USD, ct);
+
+        var (_, _, _, netoPesos) = CalcularTotales(pendientesPesos);
+        var (_, _, _, netoDolares) = CalcularTotales(pendientesDolares);
+
+        return (netoPesos, netoDolares);
+    }
+
     // GRASP Information Expert + método puro y testable (sin acceso a datos): dado un conjunto de
     // líneas ya armado, calcula los totales. Separarlo de la consulta a la base es lo que permite
     // testear la aritmética de la liquidación sin levantar una base de datos (ver Galeria.Tests).

@@ -7,7 +7,28 @@ public record ArtistaListItem(
     string? Taller,
     string? Celular,
     string? Correo,
-    int CantidadObras);
+    int CantidadObras,
+    int ObrasEnStock,
+    decimal SaldoPesos,
+    decimal SaldoDolares);
+
+public enum OrdenArtista
+{
+    Nombre,
+    Codigo,
+    Taller,
+    CantidadObras,
+    ObrasEnStock,
+    SaldoPesos,
+    SaldoDolares
+}
+
+// Parameter object (mismo patrón que ObraFiltro): agrupa texto libre + orden de la Lista de
+// Artistas (requerimiento 0.1, orden por cualquier columna).
+public record ArtistaFiltro(
+    string? TextoLibre = null,
+    OrdenArtista Orden = OrdenArtista.Nombre,
+    bool OrdenDescendente = false);
 
 // Versión liviana para desplegables (alta de Obra) — no necesita todos los datos de la ficha.
 public record ArtistaOpcion(int Id, int Codigo, string NombreCompleto);

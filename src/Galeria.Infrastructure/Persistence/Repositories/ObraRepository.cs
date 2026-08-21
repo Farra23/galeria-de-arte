@@ -93,7 +93,8 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.PrecioVenta,
                 o.Existencia,
                 o.Estado,
-                o.FechaIngreso))
+                o.FechaIngreso,
+                o.PagoContado))
             .ToListAsync(ct);
     }
 

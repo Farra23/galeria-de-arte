@@ -28,7 +28,8 @@ public record ObraListItem(
     decimal PrecioVenta,
     int Existencia,
     EstadoObra Estado,
-    DateOnly FechaIngreso);
+    DateOnly FechaIngreso,
+    bool PagoContado);
 
 public enum OrdenObra
 {

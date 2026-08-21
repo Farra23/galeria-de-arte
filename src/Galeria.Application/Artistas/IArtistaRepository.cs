@@ -4,7 +4,7 @@ namespace Galeria.Application.Artistas;
 // el servicio de más abajo depende de esta interfaz, nunca de EF Core directamente.
 public interface IArtistaRepository
 {
-    Task<List<ArtistaListItem>> BuscarAsync(string? textoLibre, CancellationToken ct = default);
+    Task<List<ArtistaListItem>> BuscarAsync(ArtistaFiltro filtro, CancellationToken ct = default);
 
     Task<List<ArtistaOpcion>> ListarActivosAsync(CancellationToken ct = default);
 

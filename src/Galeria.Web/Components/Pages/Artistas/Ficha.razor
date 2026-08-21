@@ -1,13 +1,25 @@
 @page "/artistas/{Id:int}"
 @attribute [Authorize]
 @using System.ComponentModel.DataAnnotations
+@using Galeria.Application.Adelantos
+@using Galeria.Application.Alquileres
 @using Galeria.Application.Artistas
+@using Galeria.Application.Liquidaciones
+@using Galeria.Application.Obras
+@using Galeria.Application.Retiros
+@using Galeria.Application.Ventas
 @inject ArtistaService ArtistaService
+@inject ObraService ObraService
+@inject VentaService VentaService
+@inject RetiroService RetiroService
+@inject AlquilerService AlquilerService
+@inject AdelantoService AdelantoService
+@inject LiquidacionService LiquidacionService
 @inject NavigationManager NavigationManager
 
 <PageTitle>@(ficha is null ? "Artista" : ficha.Apellido + ", " + ficha.Nombre)</PageTitle>
 <HeadContent>
-    <meta name="description" content="Ficha del artista: datos de contacto y obras." />
+    <meta name="description" content="Ficha del artista: datos, obras, ventas, liquidaciones y saldo a pagar." />
 </HeadContent>
 
 @if (cargando)
@@ -21,64 +33,289 @@ else if (ficha is null)
 }
 else
 {
-    <h1>@ficha.Codigo.ToString("D3") — @ficha.Apellido, @ficha.Nombre</h1>
-
-    <dl class="row mb-4">
-        <dt class="col-sm-2">Cantidad de obras</dt>
-        <dd class="col-sm-4">@ficha.CantidadObras</dd>
-    </dl>
-
-    <EditForm Model="Input" OnValidSubmit="GuardarAsync" class="col-md-6">
-        <DataAnnotationsValidator />
-        <ValidationSummary class="text-danger" role="alert" />
-
-        <div class="mb-3">
-            <label class="form-label">Apellido</label>
-            <InputText class="form-control" @bind-Value="Input.Apellido" />
-            <ValidationMessage For="() => Input.Apellido" class="text-danger" />
+    <div class="d-flex justify-content-between align-items-start flex-wrap mb-3">
+        <div>
+            <h1>@ficha.Codigo.ToString("D3") — @ficha.Apellido, @ficha.Nombre</h1>
+            <p class="text-body-secondary mb-0">@ficha.CantidadObras obra(s) en total</p>
         </div>
-
-        <div class="mb-3">
-            <label class="form-label">Nombre</label>
-            <InputText class="form-control" @bind-Value="Input.Nombre" />
-            <ValidationMessage For="() => Input.Nombre" class="text-danger" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Taller</label>
-            <InputText class="form-control" @bind-Value="Input.Taller" />
-        </div>
-
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Celular</label>
-                <InputText class="form-control" @bind-Value="Input.Celular" />
+        <div class="text-end">
+            <div class="mb-2">
+                <span class="text-body-secondary">Saldo a pagar:</span>
+                <strong class="ms-1">@Formato.Monto(saldoPesos, Moneda.Pesos)</strong>
+                <strong class="ms-2">@Formato.Monto(saldoDolares, Moneda.USD)</strong>
             </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Teléfono fijo</label>
-                <InputText class="form-control" @bind-Value="Input.TelFijo" />
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick='() => IrA("datos")'>Editar</button>
+            <a class="btn btn-primary btn-sm" href="@($"liquidaciones/generar?artista={Id}")">Liquidar</a>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-3 flex-nowrap overflow-auto">
+        <li class="nav-item"><button type="button" class="nav-link @Activa("datos")" @onclick='() => IrA("datos")'>Datos</button></li>
+        <li class="nav-item"><button type="button" class="nav-link @Activa("obras")" @onclick='() => IrA("obras")'>Obras</button></li>
+        <li class="nav-item"><button type="button" class="nav-link @Activa("ventas")" @onclick='() => IrA("ventas")'>Ventas</button></li>
+        <li class="nav-item"><button type="button" class="nav-link @Activa("liquidaciones")" @onclick='() => IrA("liquidaciones")'>Liquidaciones</button></li>
+        <li class="nav-item"><button type="button" class="nav-link @Activa("adelantos")" @onclick='() => IrA("adelantos")'>Adelantos</button></li>
+        <li class="nav-item"><button type="button" class="nav-link @Activa("pagas")" @onclick='() => IrA("pagas")'>Piezas pagas</button></li>
+        <li class="nav-item"><button type="button" class="nav-link @Activa("retiros")" @onclick='() => IrA("retiros")'>Retiros</button></li>
+        <li class="nav-item"><button type="button" class="nav-link @Activa("alquileres")" @onclick='() => IrA("alquileres")'>Alquileres</button></li>
+    </ul>
+
+    @if (pestania == "datos")
+    {
+        <EditForm Model="Input" OnValidSubmit="GuardarAsync" class="col-md-6">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+
+            <div class="mb-3">
+                <label class="form-label">Apellido</label>
+                <InputText class="form-control" @bind-Value="Input.Apellido" />
+                <ValidationMessage For="() => Input.Apellido" class="text-danger" />
             </div>
-        </div>
 
-        <div class="mb-3">
-            <label class="form-label">Dirección</label>
-            <InputText class="form-control" @bind-Value="Input.Direccion" />
-        </div>
+            <div class="mb-3">
+                <label class="form-label">Nombre</label>
+                <InputText class="form-control" @bind-Value="Input.Nombre" />
+                <ValidationMessage For="() => Input.Nombre" class="text-danger" />
+            </div>
 
-        <div class="mb-3">
-            <label class="form-label">Correo</label>
-            <InputText class="form-control" @bind-Value="Input.Correo" />
-            <ValidationMessage For="() => Input.Correo" class="text-danger" />
-        </div>
+            <div class="mb-3">
+                <label class="form-label">Taller</label>
+                <InputText class="form-control" @bind-Value="Input.Taller" />
+            </div>
 
-        <div class="mb-3">
-            <label class="form-label">Perfil / notas</label>
-            <InputTextArea class="form-control" @bind-Value="Input.Perfil" rows="3" />
-        </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Celular</label>
+                    <InputText class="form-control" @bind-Value="Input.Celular" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Teléfono fijo</label>
+                    <InputText class="form-control" @bind-Value="Input.TelFijo" />
+                </div>
+            </div>
 
-        <button type="submit" class="btn btn-primary">Guardar</button>
-        <a href="artistas" class="btn btn-link">Cancelar</a>
-    </EditForm>
+            <div class="mb-3">
+                <label class="form-label">Dirección</label>
+                <InputText class="form-control" @bind-Value="Input.Direccion" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Correo</label>
+                <InputText class="form-control" @bind-Value="Input.Correo" />
+                <ValidationMessage For="() => Input.Correo" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Perfil / notas</label>
+                <InputTextArea class="form-control" @bind-Value="Input.Perfil" rows="3" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a href="artistas" class="btn btn-link">Cancelar</a>
+        </EditForm>
+    }
+    else if (pestania == "obras")
+    {
+        @if (obras is null)
+        {
+            <p><em>Cargando...</em></p>
+        }
+        else if (obras.Count == 0)
+        {
+            <p>Este artista todavía no tiene obras cargadas.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-striped">
+                <thead><tr><th>Código</th><th>Nombre</th><th class="text-end">Precio</th><th class="text-end">Stock</th><th>Estado</th></tr></thead>
+                <tbody>
+                    @foreach (var obra in obras)
+                    {
+                        <tr style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"obras/{obra.Id}")'>
+                            <td>@obra.CodigoVisible</td>
+                            <td>@obra.Titulo</td>
+                            <td class="text-end">@Formato.Monto(obra.PrecioVenta, obra.Moneda)</td>
+                            <td class="text-end">@obra.Existencia</td>
+                            <td><span class="badge bg-secondary">@Formato.Estado(obra.Estado)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+    else if (pestania == "ventas")
+    {
+        @if (ventas is null)
+        {
+            <p><em>Cargando...</em></p>
+        }
+        else if (ventas.Count == 0)
+        {
+            <p>Este artista todavía no tiene ventas.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-striped">
+                <thead><tr><th>Fecha</th><th>Código</th><th>Obra</th><th class="text-end">Cant.</th><th class="text-end">Precio</th></tr></thead>
+                <tbody>
+                    @foreach (var venta in ventas)
+                    {
+                        <tr>
+                            <td>@venta.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td>@venta.CodigoObra</td>
+                            <td>@venta.Titulo</td>
+                            <td class="text-end">@venta.Cantidad</td>
+                            <td class="text-end">@Formato.Monto(venta.PrecioVenta, venta.Moneda)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+    else if (pestania == "liquidaciones")
+    {
+        @if (liquidaciones is null)
+        {
+            <p><em>Cargando...</em></p>
+        }
+        else if (liquidaciones.Count == 0)
+        {
+            <p>Todavía no se le liquidó nada a este artista.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-striped">
+                <thead><tr><th>N.º</th><th>Fecha</th><th class="text-end">Total</th></tr></thead>
+                <tbody>
+                    @foreach (var liquidacion in liquidaciones)
+                    {
+                        <tr style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"liquidaciones/{liquidacion.Id}")'>
+                            <td>@liquidacion.NumeroCorrelativo.ToString("D6")</td>
+                            <td>@liquidacion.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td class="text-end">@Formato.Monto(liquidacion.TotalNeto, liquidacion.Moneda)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+    else if (pestania == "adelantos")
+    {
+        @if (adelantos is null)
+        {
+            <p><em>Cargando...</em></p>
+        }
+        else if (adelantos.Count == 0)
+        {
+            <p>Este artista no tiene adelantos registrados.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-striped">
+                <thead><tr><th>Fecha</th><th>Tipo</th><th class="text-end">Monto</th><th>Descontado</th></tr></thead>
+                <tbody>
+                    @foreach (var adelanto in adelantos)
+                    {
+                        <tr>
+                            <td>@adelanto.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td>@(adelanto.Tipo == TipoAdelanto.Adelanto ? "Adelanto" : "Ajuste a favor")</td>
+                            <td class="text-end">@Formato.Monto(adelanto.Importe, adelanto.Moneda)</td>
+                            <td>@(adelanto.FueDescontado ? $"Liquidación #{adelanto.LiquidacionId}" : "Pendiente")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+    else if (pestania == "pagas")
+    {
+        @if (obras is null)
+        {
+            <p><em>Cargando...</em></p>
+        }
+        else
+        {
+            var piezasPagas = obras.Where(o => o.PagoContado).ToList();
+            if (piezasPagas.Count == 0)
+            {
+                <p>Este artista no tiene piezas marcadas como pago contado.</p>
+            }
+            else
+            {
+                <table class="table table-sm table-striped">
+                    <thead><tr><th>Código</th><th>Nombre</th><th class="text-end">Costo</th></tr></thead>
+                    <tbody>
+                        @foreach (var obra in piezasPagas)
+                        {
+                            <tr style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"obras/{obra.Id}")'>
+                                <td>@obra.CodigoVisible</td>
+                                <td>@obra.Titulo</td>
+                                <td class="text-end">@Formato.Monto(obra.Costo, obra.Moneda)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    }
+    else if (pestania == "retiros")
+    {
+        @if (retiros is null)
+        {
+            <p><em>Cargando...</em></p>
+        }
+        else if (retiros.Count == 0)
+        {
+            <p>Este artista no tiene retiros registrados.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-striped">
+                <thead><tr><th>Fecha</th><th>Código</th><th>Obra</th><th>Tipo</th><th>Estado</th></tr></thead>
+                <tbody>
+                    @foreach (var retiro in retiros)
+                    {
+                        <tr>
+                            <td>@retiro.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td>@retiro.CodigoObra</td>
+                            <td>@retiro.Titulo</td>
+                            <td>@retiro.Tipo</td>
+                            <td>@(retiro.EstaDevuelto ? "Devuelto" : retiro.EstaVencido ? "Vencido" : "Fuera de stock")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+    else if (pestania == "alquileres")
+    {
+        @if (alquileres is null)
+        {
+            <p><em>Cargando...</em></p>
+        }
+        else if (alquileres.Count == 0)
+        {
+            <p>Este artista no tiene alquileres registrados.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-striped">
+                <thead><tr><th>Inicio</th><th>Código</th><th>Obra</th><th class="text-end">Le corresponde</th><th>Estado</th></tr></thead>
+                <tbody>
+                    @foreach (var alquiler in alquileres)
+                    {
+                        <tr>
+                            <td>@alquiler.FechaInicio.ToString("dd/MM/yyyy")</td>
+                            <td>@alquiler.CodigoObra</td>
+                            <td>@alquiler.Titulo</td>
+                            <td class="text-end">@Formato.Monto(alquiler.MontoArtista, alquiler.Moneda)</td>
+                            <td>@(alquiler.EstaActivo ? "Activo" : "Devuelto")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
 }
 
 @code {
@@ -89,6 +326,16 @@ else
 
     private bool cargando = true;
     private ArtistaFicha? ficha;
+    private decimal saldoPesos;
+    private decimal saldoDolares;
+    private string pestania = "datos";
+
+    private List<ObraListItem>? obras;
+    private List<VentaListItem>? ventas;
+    private List<LiquidacionListItem>? liquidaciones;
+    private List<AdelantoListItem>? adelantos;
+    private List<RetiroListItem>? retiros;
+    private List<AlquilerListItem>? alquileres;
 
     protected override async Task OnInitializedAsync()
     {
@@ -107,9 +354,42 @@ else
                 Correo = ficha.Correo,
                 Perfil = ficha.Perfil
             };
+
+            (saldoPesos, saldoDolares) = await LiquidacionService.ObtenerSaldoAsync(Id);
         }
 
         cargando = false;
+    }
+
+    private string Activa(string pestaniaNombre) => pestania == pestaniaNombre ? "active" : "";
+
+    // Cada pestaña carga sus propios datos la primera vez que se abre (mismo patrón que la Ficha
+    // de Obra) — evita seis consultas de más cuando lo único que se quiere es ver/editar Datos.
+    private async Task IrA(string pestaniaNueva)
+    {
+        pestania = pestaniaNueva;
+
+        switch (pestaniaNueva)
+        {
+            case "obras" or "pagas" when obras is null:
+                obras = await ObraService.BuscarAsync(new ObraFiltro(ArtistaId: Id));
+                break;
+            case "ventas" when ventas is null:
+                ventas = await VentaService.BuscarAsync(new VentaFiltro(ArtistaId: Id));
+                break;
+            case "liquidaciones" when liquidaciones is null:
+                liquidaciones = await LiquidacionService.BuscarAsync(new LiquidacionFiltro(Id));
+                break;
+            case "adelantos" when adelantos is null:
+                adelantos = await AdelantoService.BuscarAsync(new AdelantoFiltro(Id));
+                break;
+            case "retiros" when retiros is null:
+                retiros = await RetiroService.BuscarAsync(new RetiroFiltro(ArtistaId: Id));
+                break;
+            case "alquileres" when alquileres is null:
+                alquileres = await AlquilerService.BuscarAsync(new AlquilerFiltro(ArtistaId: Id));
+                break;
+        }
     }
 
     private async Task GuardarAsync()

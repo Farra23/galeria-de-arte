@@ -4,8 +4,8 @@ namespace Galeria.Application.Artistas;
 
 public class ArtistaService(IArtistaRepository repositorio)
 {
-    public Task<List<ArtistaListItem>> BuscarAsync(string? textoLibre, CancellationToken ct = default) =>
-        repositorio.BuscarAsync(textoLibre, ct);
+    public Task<List<ArtistaListItem>> BuscarAsync(ArtistaFiltro filtro, CancellationToken ct = default) =>
+        repositorio.BuscarAsync(filtro, ct);
 
     public Task<List<ArtistaOpcion>> ListarParaSeleccionAsync(CancellationToken ct = default) =>
         repositorio.ListarActivosAsync(ct);

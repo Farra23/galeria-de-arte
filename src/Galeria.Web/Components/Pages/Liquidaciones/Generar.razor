@@ -92,14 +92,24 @@
 }
 
 @code {
+[SupplyParameterFromQuery(Name = "artista")] public int? ArtistaPreseleccionado { get; set; }
+
     private List<ArtistaOpcion>? artistas;
     private int artistaId;
     private Moneda moneda = Moneda.Pesos;
     private VistaPreviaLiquidacion? vista;
     private string? error;
 
-    protected override async Task OnInitializedAsync() =>
+    protected override async Task OnInitializedAsync()
+    {
         artistas = await ArtistaService.ListarParaSeleccionAsync();
+
+        if (ArtistaPreseleccionado is > 0)
+        {
+            artistaId = ArtistaPreseleccionado.Value;
+            await GenerarVistaPreviaAsync();
+        }
+    }
 
     private async Task GenerarVistaPreviaAsync()
     {

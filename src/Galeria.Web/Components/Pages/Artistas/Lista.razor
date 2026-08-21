@@ -6,17 +6,17 @@
 
 <PageTitle>Artistas</PageTitle>
 <HeadContent>
-    <meta name="description" content="Listado de artistas de la galería." />
+    <meta name="description" content="Listado de artistas de la galería, con obras en stock y saldo a pagar." />
 </HeadContent>
 
 <h1>Artistas</h1>
 
-<div class="row mb-3">
-    <div class="col-md-4">
+<div class="row mb-3 g-2">
+    <div class="col-md-6">
         <input class="form-control" placeholder="Buscar por nombre o taller..."
-               @bind="TextoLibre" @bind:event="oninput" @bind:after="BuscarAsync" />
+               @bind="texto" @bind:event="oninput" @bind:after='() => IrA("q", texto)' />
     </div>
-    <div class="col-md-8 text-end">
+    <div class="col-md-6 text-end">
         <a class="btn btn-primary" href="artistas/nuevo">+ Nuevo artista</a>
     </div>
 </div>
@@ -27,19 +27,22 @@
 }
 else if (artistas.Count == 0)
 {
-    <p>No hay artistas cargados todavía.</p>
+    <p>No hay artistas que coincidan con la búsqueda.</p>
 }
 else
 {
     <table class="table table-striped">
         <thead>
             <tr>
-                <th>Código</th>
-                <th>Nombre</th>
-                <th>Taller</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenArtista.Codigo)">Código @Flecha(OrdenArtista.Codigo)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenArtista.Nombre)">Nombre @Flecha(OrdenArtista.Nombre)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenArtista.Taller)">Taller @Flecha(OrdenArtista.Taller)</th>
                 <th>Celular</th>
                 <th>Correo</th>
-                <th class="text-end">Obras</th>
+                <th role="button" class="text-end" @onclick="() => OrdenarPor(OrdenArtista.CantidadObras)">Obras @Flecha(OrdenArtista.CantidadObras)</th>
+                <th role="button" class="text-end" @onclick="() => OrdenarPor(OrdenArtista.ObrasEnStock)">En stock @Flecha(OrdenArtista.ObrasEnStock)</th>
+                <th role="button" class="text-end" @onclick="() => OrdenarPor(OrdenArtista.SaldoPesos)">Saldo $ @Flecha(OrdenArtista.SaldoPesos)</th>
+                <th role="button" class="text-end" @onclick="() => OrdenarPor(OrdenArtista.SaldoDolares)">Saldo U$S @Flecha(OrdenArtista.SaldoDolares)</th>
             </tr>
         </thead>
         <tbody>
@@ -52,6 +55,9 @@ else
                     <td>@artista.Celular</td>
                     <td>@artista.Correo</td>
                     <td class="text-end">@artista.CantidadObras</td>
+                    <td class="text-end">@artista.ObrasEnStock</td>
+                    <td class="text-end">@Formato.Monto(artista.SaldoPesos, Moneda.Pesos)</td>
+                    <td class="text-end">@Formato.Monto(artista.SaldoDolares, Moneda.USD)</td>
                 </tr>
             }
         </tbody>
@@ -59,13 +65,36 @@ else
 }
 
 @code {
+    [SupplyParameterFromQuery(Name = "q")] public string? TextoLibre { get; set; }
+    [SupplyParameterFromQuery(Name = "orden")] public string? OrdenTexto { get; set; }
+    [SupplyParameterFromQuery(Name = "desc")] public bool? OrdenDescendente { get; set; }
+
+    private OrdenArtista Orden => Enum.TryParse<OrdenArtista>(OrdenTexto, out var o) ? o : OrdenArtista.Nombre;
+    private bool DescActual => OrdenDescendente ?? false;
+
     private List<ArtistaListItem>? artistas;
-    private string? TextoLibre;
+    private string? texto;
 
-    protected override Task OnInitializedAsync() => BuscarAsync();
+    protected override void OnInitialized() => texto = TextoLibre;
 
-    private async Task BuscarAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        artistas = await ArtistaService.BuscarAsync(TextoLibre);
+        texto = TextoLibre;
+        artistas = await ArtistaService.BuscarAsync(new ArtistaFiltro(TextoLibre, Orden, DescActual));
     }
+
+    private void IrA(string clave, object? valor) =>
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
+
+    private void OrdenarPor(OrdenArtista campo)
+    {
+        var descNuevo = Orden == campo && !DescActual;
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["orden"] = campo.ToString(),
+            ["desc"] = descNuevo ? "true" : null
+        }), replace: true);
+    }
+
+    private string Flecha(OrdenArtista campo) => Orden != campo ? "" : (DescActual ? " ▼" : " ▲");
 }
