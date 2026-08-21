@@ -1,0 +1,80 @@
+@page "/certificados/emitir/{VentaId:int}"
+@attribute [Authorize]
+@using Galeria.Application.Certificados
+@inject CertificadoService CertificadoService
+
+<PageTitle>Certificado de autenticidad</PageTitle>
+<HeadContent>
+    <meta name="description" content="Certificado de autenticidad de la pieza vendida, imprimible." />
+</HeadContent>
+
+@if (cargando)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (datos is null)
+{
+    <h1>Emitir certificado</h1>
+    <p>Todavía no se emitió el certificado de esta venta.</p>
+    <button class="btn btn-primary" @onclick="EmitirAsync">Emitir certificado</button>
+}
+else
+{
+    <div class="mb-3 d-print-none">
+        <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
+        <a class="btn btn-link" href="ventas">Volver a Ventas</a>
+    </div>
+
+    <div class="border rounded p-4" style="max-width: 700px;">
+        <h1 class="h3">Certificado de autenticidad</h1>
+        <p class="text-body-secondary">N.º @datos.NumeroCertificado.ToString("D6") — emitido el @datos.FechaEmision.ToString("dd/MM/yyyy")</p>
+        <hr />
+        <dl class="row">
+            <dt class="col-sm-4">Código</dt><dd class="col-sm-8">@datos.CodigoObra</dd>
+            <dt class="col-sm-4">Obra</dt><dd class="col-sm-8">@datos.Titulo</dd>
+            <dt class="col-sm-4">Artista</dt><dd class="col-sm-8">@datos.ArtistaNombre</dd>
+            <dt class="col-sm-4">Técnica</dt><dd class="col-sm-8">@(datos.Tecnica ?? "—")</dd>
+            <dt class="col-sm-4">Rubro</dt><dd class="col-sm-8">@(datos.Rubro ?? "—")</dd>
+            <dt class="col-sm-4">Medidas</dt>
+            <dd class="col-sm-8">@MedidasTexto()</dd>
+            <dt class="col-sm-4">Año</dt><dd class="col-sm-8">@datos.AnioIngreso</dd>
+        </dl>
+        <hr />
+        <p class="fst-italic">
+            La galería certifica que la obra descripta en este documento es una pieza original,
+            y garantiza la autenticidad de los datos consignados.
+        </p>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int VentaId { get; set; }
+
+    private bool cargando = true;
+    private CertificadoDatos? datos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var certificado = await CertificadoService.ObtenerPorVentaAsync(VentaId);
+        if (certificado is not null)
+        {
+            datos = await CertificadoService.ObtenerDatosAsync(certificado.Id);
+        }
+
+        cargando = false;
+    }
+
+    private async Task EmitirAsync()
+    {
+        var certificadoId = await CertificadoService.EmitirAsync(VentaId);
+        datos = await CertificadoService.ObtenerDatosAsync(certificadoId);
+    }
+
+    private string MedidasTexto()
+    {
+        if (datos is null) return "—";
+        if (datos.AltoCm is null && datos.AnchoCm is null && datos.LargoCm is null) return "—";
+        return $"{datos.AltoCm?.ToString("0.##") ?? "—"} x {datos.AnchoCm?.ToString("0.##") ?? "—"} x {datos.LargoCm?.ToString("0.##") ?? "—"} cm";
+    }
+}

@@ -212,5 +212,14 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
         obra.Observaciones = request.Observaciones;
     }
 
+    public Task<Obra?> ObtenerEntidadAsync(int id, CancellationToken ct = default) =>
+        db.Obras.Include(o => o.Artista).FirstOrDefaultAsync(o => o.Id == id, ct);
+
+    public Task RegistrarMovimientoAsync(Movimiento movimiento, CancellationToken ct = default)
+    {
+        db.Movimientos.Add(movimiento);
+        return Task.CompletedTask;
+    }
+
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
 }

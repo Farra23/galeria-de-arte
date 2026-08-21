@@ -47,8 +47,10 @@ public class AuditoriaRepository(GaleriaDbContext db) : IAuditoriaRepository
             query = query.Where(a => a.TipoOperacion == filtro.TipoOperacion);
         }
 
+        // SQLite no soporta ORDER BY sobre DateTimeOffset (traducción no soportada por el
+        // proveedor) — se ordena por Id, que al ser autonumérico va en el mismo orden cronológico.
         return await query
-            .OrderByDescending(a => a.Timestamp)
+            .OrderByDescending(a => a.Id)
             .Take(500)
             .Select(a => new AuditoriaListItem(
                 a.Id,

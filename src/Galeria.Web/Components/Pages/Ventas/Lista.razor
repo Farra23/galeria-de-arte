@@ -1,0 +1,116 @@
+@page "/ventas"
+@attribute [Authorize]
+@using Galeria.Application.Artistas
+@using Galeria.Application.Ventas
+@inject VentaService VentaService
+@inject ArtistaService ArtistaService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Ventas</PageTitle>
+<HeadContent>
+    <meta name="description" content="Listado de ventas registradas, filtrable por artista, moneda y fecha." />
+</HeadContent>
+
+<h1>Ventas</h1>
+
+<div class="row mb-3 g-2">
+    <div class="col-md-4">
+        <input class="form-control" placeholder="Buscar por obra o artista..."
+               @bind="texto" @bind:event="oninput" @bind:after='() => IrA("q", texto)' />
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" value="@(ArtistaId?.ToString() ?? "")" @onchange='e => IrA("artista", ParseIntOrNull(e.Value))'>
+            <option value="">Todos los artistas</option>
+            @if (artistas is not null)
+            {
+                @foreach (var artista in artistas)
+                {
+                    <option value="@artista.Id">@artista.NombreCompleto</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select class="form-select" value="@(MonedaTexto ?? "")" @onchange='e => IrA("moneda", e.Value?.ToString())'>
+            <option value="">Ambas monedas</option>
+            <option value="Pesos">$ Pesos</option>
+            <option value="USD">U$S Dólares</option>
+        </select>
+    </div>
+    <div class="col-md-3 text-end">
+        <a class="btn btn-primary" href="ventas/nueva">+ Nueva venta</a>
+    </div>
+</div>
+
+@if (ventas is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (ventas.Count == 0)
+{
+    <p>No hay ventas que coincidan con los filtros.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Fecha</th><th>Código</th><th>Nombre</th><th>Artista</th>
+                <th class="text-end">Cantidad</th><th class="text-end">Precio</th><th>Certificado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var venta in ventas)
+            {
+                <tr>
+                    <td>@venta.Fecha.ToString("dd/MM/yyyy")</td>
+                    <td>@venta.CodigoObra</td>
+                    <td>@venta.Titulo</td>
+                    <td>@venta.ArtistaNombre</td>
+                    <td class="text-end">@venta.Cantidad</td>
+                    <td class="text-end">@Formato.Monto(venta.PrecioVenta, venta.Moneda)</td>
+                    <td>
+                        @if (venta.TieneCertificado)
+                        {
+                            <a href="certificados/emitir/@venta.Id">Ver certificado</a>
+                        }
+                        else
+                        {
+                            <a href="certificados/emitir/@venta.Id">Emitir certificado</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "q")] public string? TextoLibre { get; set; }
+    [SupplyParameterFromQuery(Name = "artista")] public int? ArtistaId { get; set; }
+    [SupplyParameterFromQuery(Name = "moneda")] public string? MonedaTexto { get; set; }
+
+    private Moneda? MonedaFiltro => Enum.TryParse<Moneda>(MonedaTexto, out var m) ? m : null;
+
+    private List<VentaListItem>? ventas;
+    private List<ArtistaOpcion>? artistas;
+    private string? texto;
+
+    protected override async Task OnInitializedAsync()
+    {
+        artistas = await ArtistaService.ListarParaSeleccionAsync();
+        texto = TextoLibre;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        texto = TextoLibre;
+        var filtro = new VentaFiltro(TextoLibre, ArtistaId, MonedaFiltro);
+        ventas = await VentaService.BuscarAsync(filtro);
+    }
+
+    private void IrA(string clave, object? valor) =>
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
+
+    private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
+}

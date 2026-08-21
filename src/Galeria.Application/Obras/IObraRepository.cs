@@ -18,5 +18,14 @@ public interface IObraRepository
 
     Task ActualizarAsync(ActualizarObraRequest request, CancellationToken ct = default);
 
+    // Entidad rastreada (no DTO): la usan otros módulos (Ventas, Retiros, Alquileres, Devoluciones)
+    // que necesitan mutar Existencia/Estado como parte de su propia operación. Obra sigue siendo
+    // dueña de su propia persistencia — los demás módulos no tocan la tabla Obras directamente.
+    Task<Domain.Entities.Obra?> ObtenerEntidadAsync(int id, CancellationToken ct = default);
+
+    // El libro de movimientos de stock (ver Domain.Entities.Movimiento) también es responsabilidad
+    // de este repositorio: Obra es el agregado dueño de su propio historial de stock.
+    Task RegistrarMovimientoAsync(Domain.Entities.Movimiento movimiento, CancellationToken ct = default);
+
     Task GuardarCambiosAsync(CancellationToken ct = default);
 }
