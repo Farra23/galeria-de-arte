@@ -1,8 +1,134 @@
-﻿@page "/"
+@page "/"
 @attribute [Authorize]
+@using Galeria.Application.Resumen
+@using Galeria.Domain.Enums
+@inject ResumenService ResumenService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Resumen</PageTitle>
+<HeadContent>
+    <meta name="description" content="Panel de entrada: ventas del mes, plata adeudada a artistas y avisos operativos." />
+</HeadContent>
 
 <h1>Resumen</h1>
 
-<p>Dashboard — pendiente de construir.</p>
+@if (resumen is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card h-100" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"ventas?desde={primerDiaDelMes}")'>
+                <div class="card-body">
+                    <div class="text-body-secondary">Ventas del mes</div>
+                    <div class="fs-4 fw-bold">@resumen.VentasDelMes.Cantidad</div>
+                    <div>@Formato.Monto(resumen.VentasDelMes.TotalPesos, Moneda.Pesos) — @Formato.Monto(resumen.VentasDelMes.TotalDolares, Moneda.USD)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("artistas")'>
+                <div class="card-body">
+                    <div class="text-body-secondary">Adeudado a artistas</div>
+                    <div class="fs-5 fw-bold">@Formato.Monto(resumen.TotalAdeudadoPesos, Moneda.Pesos)</div>
+                    <div class="fs-5 fw-bold">@Formato.Monto(resumen.TotalAdeudadoDolares, Moneda.USD)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("retiros")'>
+                <div class="card-body">
+                    <div class="text-body-secondary">Retiros vencidos</div>
+                    <div class="fs-4 fw-bold">@resumen.Avisos.RetirosVencidos</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("alquileres")'>
+                <div class="card-body">
+                    <div class="text-body-secondary">Alquileres sin fecha de recupero</div>
+                    <div class="fs-4 fw-bold">@resumen.Avisos.AlquileresSinFechaRecupero</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (resumen.Avisos.ObrasSinTecnica > 0)
+    {
+        <div class="alert alert-warning" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("obras")'>
+            @resumen.Avisos.ObrasSinTecnica obra(s) sin técnica cargada.
+        </div>
+    }
+
+    <div class="row g-4">
+        <div class="col-md-7">
+            <h2 class="h5">Artistas a los que se les debe</h2>
+            @if (resumen.ArtistasConDeuda.Count == 0)
+            {
+                <p>No hay saldos pendientes.</p>
+            }
+            else
+            {
+                <table class="table table-sm table-striped">
+                    <thead><tr><th>Artista</th><th>Hace cuánto no cobra</th><th class="text-end">Saldo $</th><th class="text-end">Saldo U$S</th></tr></thead>
+                    <tbody>
+                        @foreach (var artista in resumen.ArtistasConDeuda)
+                        {
+                            <tr style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"liquidaciones/generar?artista={artista.ArtistaId}")'>
+                                <td>@artista.ArtistaNombre</td>
+                                <td>@Antiguedad(artista.UltimaLiquidacion)</td>
+                                <td class="text-end">@Formato.Monto(artista.SaldoPesos, Moneda.Pesos)</td>
+                                <td class="text-end">@Formato.Monto(artista.SaldoDolares, Moneda.USD)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        <div class="col-md-5">
+            <h2 class="h5">Últimas ventas</h2>
+            @if (resumen.UltimasVentas.Count == 0)
+            {
+                <p>Todavía no hay ventas registradas.</p>
+            }
+            else
+            {
+                <table class="table table-sm table-striped">
+                    <thead><tr><th>Fecha</th><th>Obra</th><th class="text-end">Precio</th></tr></thead>
+                    <tbody>
+                        @foreach (var venta in resumen.UltimasVentas)
+                        {
+                            <tr>
+                                <td>@venta.Fecha.ToString("dd/MM/yyyy")</td>
+                                <td>@venta.Titulo</td>
+                                <td class="text-end">@Formato.Monto(venta.PrecioVenta, venta.Moneda)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private ResumenDashboard? resumen;
+    private readonly string primerDiaDelMes = new DateOnly(DateTime.Now.Year, DateTime.Now.Month, 1).ToString("yyyy-MM-dd");
+
+    protected override async Task OnInitializedAsync() =>
+        resumen = await ResumenService.ObtenerAsync();
+
+    private static string Antiguedad(DateOnly? ultimaLiquidacion)
+    {
+        if (ultimaLiquidacion is null)
+        {
+            return "nunca cobró";
+        }
+
+        var dias = DateOnly.FromDateTime(DateTime.Now).DayNumber - ultimaLiquidacion.Value.DayNumber;
+        return dias <= 0 ? "hoy" : $"hace {dias} día(s)";
+    }
+}

@@ -15,6 +15,9 @@ public class LiquidacionService(ILiquidacionRepository repositorio, IArtistaRepo
     public Task<LiquidacionDetalle?> ObtenerDetalleAsync(int id, CancellationToken ct = default) =>
         repositorio.ObtenerDetalleAsync(id, ct);
 
+    public Task<DateOnly?> ObtenerUltimaFechaAsync(int artistaId, CancellationToken ct = default) =>
+        repositorio.ObtenerUltimaFechaAsync(artistaId, ct);
+
     // Saldo actual a pagar en las dos monedas (requerimiento 4.2, encabezado de la ficha del
     // artista): misma fuente que usa Generar liquidación, así el número de la ficha nunca queda
     // desincronizado de lo que efectivamente se liquidaría si se confirma ahora.

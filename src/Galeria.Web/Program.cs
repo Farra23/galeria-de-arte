@@ -16,6 +16,7 @@ using Galeria.Application.Devoluciones;
 using Galeria.Application.Liquidaciones;
 using Galeria.Application.Obras;
 using Galeria.Application.Parametros;
+using Galeria.Application.Resumen;
 using Galeria.Application.Retiros;
 using Galeria.Application.Ventas;
 using Galeria.Infrastructure.Persistence;
@@ -77,6 +78,7 @@ builder.Services.AddScoped<AlquilerService>();
 builder.Services.AddScoped<AdelantoService>();
 builder.Services.AddScoped<DevolucionService>();
 builder.Services.AddScoped<LiquidacionService>();
+builder.Services.AddScoped<ResumenService>();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
