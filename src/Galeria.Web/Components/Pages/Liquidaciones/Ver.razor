@@ -1,7 +1,10 @@
 @page "/liquidaciones/{Id:int}"
 @attribute [Authorize]
 @using Galeria.Application.Liquidaciones
+@using Galeria.Application.Parametros
+@using Galeria.Domain.Entities
 @inject LiquidacionService LiquidacionService
+@inject IParametroRepository ParametroRepository
 
 <PageTitle>Liquidación</PageTitle>
 <HeadContent>
@@ -22,7 +25,15 @@ else
     <div class="border rounded p-4" style="max-width: 900px;">
         <div class="d-flex justify-content-between">
             <div>
-                <h5>Galería ACATRAS</h5>
+                <h5>@nombreGaleria</h5>
+                @if (!string.IsNullOrWhiteSpace(direccionGaleria))
+                {
+                    <p class="text-body-secondary mb-0">@direccionGaleria</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(telefonoGaleria))
+                {
+                    <p class="text-body-secondary mb-0">@telefonoGaleria</p>
+                }
                 <p class="text-body-secondary mb-0">Comprobante de liquidación a artista</p>
             </div>
             <div class="text-end">
@@ -71,9 +82,29 @@ else
     public int Id { get; set; }
 
     private LiquidacionDetalle? detalle;
+    private string nombreGaleria = "Galería ACATRAS";
+    private string? direccionGaleria;
+    private string? telefonoGaleria;
 
-    protected override async Task OnInitializedAsync() =>
+    protected override async Task OnInitializedAsync()
+    {
         detalle = await LiquidacionService.ObtenerDetalleAsync(Id);
+
+        var valores = await ParametroRepository.ObtenerVariosAsync(
+        [
+            Parametro.Claves.NombreGaleria,
+            Parametro.Claves.DireccionGaleria,
+            Parametro.Claves.TelefonoGaleria
+        ]);
+
+        if (valores.TryGetValue(Parametro.Claves.NombreGaleria, out var nombre) && !string.IsNullOrWhiteSpace(nombre))
+        {
+            nombreGaleria = nombre;
+        }
+
+        direccionGaleria = valores.GetValueOrDefault(Parametro.Claves.DireccionGaleria);
+        telefonoGaleria = valores.GetValueOrDefault(Parametro.Claves.TelefonoGaleria);
+    }
 
     private static string TipoTexto(TipoLinea tipo) => tipo switch
     {

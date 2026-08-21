@@ -1,0 +1,115 @@
+@page "/configuracion/galeria"
+@attribute [Authorize]
+@using Galeria.Application.Parametros
+@using Galeria.Domain.Entities
+@inject IParametroRepository ParametroRepository
+
+<PageTitle>Datos de la galería</PageTitle>
+<HeadContent>
+    <meta name="description" content="Nombre, dirección y teléfono de la galería para los comprobantes, y plantillas de los mails." />
+</HeadContent>
+
+<h1>Datos de la galería</h1>
+<p class="text-body-secondary">Aparecen en el encabezado de los comprobantes (Liquidación, Certificado).</p>
+
+@if (mensaje is not null)
+{
+    <div class="alert alert-success">@mensaje</div>
+}
+
+@if (cargando)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    <div class="col-md-6 mb-4">
+        <div class="mb-3">
+            <label class="form-label">Nombre</label>
+            <input class="form-control" @bind="nombre" @bind:event="oninput" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Dirección</label>
+            <input class="form-control" @bind="direccion" @bind:event="oninput" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Teléfono</label>
+            <input class="form-control" @bind="telefono" @bind:event="oninput" />
+        </div>
+        <button type="button" class="btn btn-primary" @onclick="GuardarDatosAsync">Guardar</button>
+    </div>
+
+    <h2 class="h5">Plantillas de mail</h2>
+    <p class="text-body-secondary">
+        Podés usar <code>[nombre]</code>, <code>[monto]</code> y <code>[fecha]</code> — se reemplazan al enviar.
+    </p>
+
+    <div class="col-md-8">
+        <div class="mb-3">
+            <label class="form-label">Aviso de Agenda de pagos</label>
+            <textarea class="form-control" rows="3" @bind="plantillaAviso" @bind:event="oninput"></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Envío de Liquidación</label>
+            <textarea class="form-control" rows="3" @bind="plantillaLiquidacion" @bind:event="oninput"></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Envío de Certificado</label>
+            <textarea class="form-control" rows="3" @bind="plantillaCertificado" @bind:event="oninput"></textarea>
+        </div>
+        <button type="button" class="btn btn-primary" @onclick="GuardarPlantillasAsync">Guardar plantillas</button>
+    </div>
+}
+
+@code {
+    private bool cargando = true;
+    private string? mensaje;
+
+    private string? nombre;
+    private string? direccion;
+    private string? telefono;
+    private string? plantillaAviso;
+    private string? plantillaLiquidacion;
+    private string? plantillaCertificado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var valores = await ParametroRepository.ObtenerVariosAsync(
+        [
+            Parametro.Claves.NombreGaleria,
+            Parametro.Claves.DireccionGaleria,
+            Parametro.Claves.TelefonoGaleria,
+            Parametro.Claves.PlantillaAviso,
+            Parametro.Claves.PlantillaLiqui,
+            Parametro.Claves.PlantillaCertif
+        ]);
+
+        nombre = valores.GetValueOrDefault(Parametro.Claves.NombreGaleria, "Galería ACATRAS");
+        direccion = valores.GetValueOrDefault(Parametro.Claves.DireccionGaleria);
+        telefono = valores.GetValueOrDefault(Parametro.Claves.TelefonoGaleria);
+        plantillaAviso = valores.GetValueOrDefault(Parametro.Claves.PlantillaAviso,
+            "Estimado [nombre], usted tiene [monto] para retirar. La fecha pactada sería el [fecha]. Recuerde confirmar al teléfono de la galería.");
+        plantillaLiquidacion = valores.GetValueOrDefault(Parametro.Claves.PlantillaLiqui,
+            "Estimado [nombre], adjuntamos su liquidación por [monto], emitida el [fecha].");
+        plantillaCertificado = valores.GetValueOrDefault(Parametro.Claves.PlantillaCertif,
+            "Estimado [nombre], adjuntamos el certificado de autenticidad de su pieza.");
+
+        cargando = false;
+    }
+
+    private async Task GuardarDatosAsync()
+    {
+        await ParametroRepository.GuardarAsync(Parametro.Claves.NombreGaleria, nombre);
+        await ParametroRepository.GuardarAsync(Parametro.Claves.DireccionGaleria, direccion);
+        await ParametroRepository.GuardarAsync(Parametro.Claves.TelefonoGaleria, telefono);
+        mensaje = "Datos de la galería guardados.";
+    }
+
+    private async Task GuardarPlantillasAsync()
+    {
+        await ParametroRepository.GuardarAsync(Parametro.Claves.PlantillaAviso, plantillaAviso);
+        await ParametroRepository.GuardarAsync(Parametro.Claves.PlantillaLiqui, plantillaLiquidacion);
+        await ParametroRepository.GuardarAsync(Parametro.Claves.PlantillaCertif, plantillaCertificado);
+        mensaje = "Plantillas guardadas.";
+    }
+}
