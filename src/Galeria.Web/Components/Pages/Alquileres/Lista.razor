@@ -1,0 +1,138 @@
+@page "/alquileres"
+@attribute [Authorize]
+@using Galeria.Application.Alquileres
+@using Galeria.Application.Artistas
+@inject AlquilerService AlquilerService
+@inject ArtistaService ArtistaService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Alquileres</PageTitle>
+<HeadContent>
+    <meta name="description" content="Listado de alquileres con reparto entre galería y artista." />
+</HeadContent>
+
+<h1>Alquileres</h1>
+
+@if (mensaje is not null)
+{
+    <div class="alert alert-success">@mensaje</div>
+}
+
+<div class="row mb-3 g-2">
+    <div class="col-md-4">
+        <input class="form-control" placeholder="Buscar por obra, artista o cliente..."
+               @bind="texto" @bind:event="oninput" @bind:after='() => IrA("q", texto)' />
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" value="@(ArtistaId?.ToString() ?? "")" @onchange='e => IrA("artista", ParseIntOrNull(e.Value))'>
+            <option value="">Todos los artistas</option>
+            @if (artistas is not null)
+            {
+                @foreach (var artista in artistas)
+                {
+                    <option value="@artista.Id">@artista.NombreCompleto</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <div class="form-check pt-2">
+            <input type="checkbox" class="form-check-input" id="soloActivos" checked="@(SoloActivos == true)"
+                   @onchange='e => IrA("activos", (bool)(e.Value ?? false) ? "true" : null)' />
+            <label class="form-check-label" for="soloActivos">Solo activos</label>
+        </div>
+    </div>
+    <div class="col-md-3 text-end">
+        <a class="btn btn-primary" href="alquileres/nueva">+ Nuevo alquiler</a>
+    </div>
+</div>
+
+@if (alquileres is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (alquileres.Count == 0)
+{
+    <p>No hay alquileres que coincidan con los filtros.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Inicio</th><th>Código</th><th>Obra</th><th>Artista</th><th>Cliente</th>
+                <th class="text-end">Monto</th><th class="text-end">Artista</th><th>Estado</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var alquiler in alquileres)
+            {
+                <tr>
+                    <td>@alquiler.FechaInicio.ToString("dd/MM/yyyy")</td>
+                    <td>@alquiler.CodigoObra</td>
+                    <td>@alquiler.Titulo</td>
+                    <td>@alquiler.ArtistaNombre</td>
+                    <td>@alquiler.Cliente</td>
+                    <td class="text-end">@Formato.Monto(alquiler.MontoAlquiler, alquiler.Moneda)</td>
+                    <td class="text-end">@Formato.Monto(alquiler.MontoArtista, alquiler.Moneda)</td>
+                    <td>
+                        @if (!alquiler.EstaActivo)
+                        {
+                            <span class="badge bg-secondary">Devuelto</span>
+                        }
+                        else if (alquiler.EstaVencido)
+                        {
+                            <span class="badge bg-danger">Vencido</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-dark">Activo</span>
+                        }
+                    </td>
+                    <td>
+                        @if (alquiler.EstaActivo)
+                        {
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => DevolverAsync(alquiler.Id)">Devolver al stock</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "q")] public string? TextoLibre { get; set; }
+    [SupplyParameterFromQuery(Name = "artista")] public int? ArtistaId { get; set; }
+    [SupplyParameterFromQuery(Name = "activos")] public bool? SoloActivos { get; set; }
+
+    private List<AlquilerListItem>? alquileres;
+    private List<ArtistaOpcion>? artistas;
+    private string? texto;
+    private string? mensaje;
+
+    protected override async Task OnInitializedAsync()
+    {
+        artistas = await ArtistaService.ListarParaSeleccionAsync();
+        texto = TextoLibre;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        texto = TextoLibre;
+        alquileres = await AlquilerService.BuscarAsync(new AlquilerFiltro(TextoLibre, ArtistaId, SoloActivos));
+    }
+
+    private async Task DevolverAsync(int alquilerId)
+    {
+        mensaje = null;
+        await AlquilerService.DevolverAsync(alquilerId);
+        mensaje = "La pieza volvió al stock.";
+        alquileres = await AlquilerService.BuscarAsync(new AlquilerFiltro(TextoLibre, ArtistaId, SoloActivos));
+    }
+
+    private void IrA(string clave, object? valor) =>
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
+
+    private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
+}

@@ -1,0 +1,164 @@
+@page "/alquileres/nueva"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using Galeria.Application.Alquileres
+@using Galeria.Application.Obras
+@inject AlquilerService AlquilerService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nuevo alquiler</PageTitle>
+<HeadContent>
+    <meta name="description" content="Registrar el alquiler de una obra con el reparto entre galería y artista." />
+</HeadContent>
+
+<h1>Nuevo alquiler</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (obra is null)
+{
+    <div class="col-md-6">
+        <label class="form-label">Buscar obra por código, nombre o artista</label>
+        <input class="form-control" @bind="texto" @bind:event="oninput" @bind:after="BuscarAsync" autofocus />
+    </div>
+
+    @if (resultados is not null)
+    {
+        @if (resultados.Count == 0)
+        {
+            <p class="mt-3">No se encontraron obras disponibles con ese criterio.</p>
+        }
+        else
+        {
+            <table class="table table-striped mt-3">
+                <thead><tr><th>Código</th><th>Nombre</th><th>Artista</th><th class="text-end">Precio</th></tr></thead>
+                <tbody>
+                    @foreach (var item in resultados)
+                    {
+                        <tr style="cursor:pointer" @onclick="() => Seleccionar(item)">
+                            <td>@item.CodigoVisible</td>
+                            <td>@item.Titulo</td>
+                            <td>@item.ArtistaNombre</td>
+                            <td class="text-end">@Formato.Monto(item.PrecioVenta, item.Moneda)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}
+else
+{
+    <div class="col-md-8">
+        <h2 class="h5">@obra.CodigoVisible — @obra.Titulo</h2>
+        <p class="text-body-secondary mb-3">
+            Artista: @obra.ArtistaNombre — precio de venta: @Formato.Monto(obra.PrecioVenta, obra.Moneda)
+        </p>
+
+        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Fecha de inicio</label>
+                    <InputDate class="form-control" @bind-Value="Input.FechaInicio" />
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Recupero previsto</label>
+                    <InputDate class="form-control" @bind-Value="Input.FechaRecupero" />
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">% de alquiler (sobre precio de venta)</label>
+                    <InputNumber class="form-control" @bind-Value="Input.PorcentajeAlquiler" @bind:after="StateHasChanged" />
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">% que le toca al artista</label>
+                    <InputNumber class="form-control" @bind-Value="Input.PorcentajeArtista" @bind:after="StateHasChanged" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Cliente (quien paga el alquiler)</label>
+                <InputText class="form-control" @bind-Value="Input.Cliente" />
+            </div>
+
+            <div class="alert alert-light border">
+                <div>Importe del alquiler: <strong>@Formato.Monto(reparto.MontoAlquiler, obra.Moneda)</strong></div>
+                <div>Le corresponde al artista: <strong>@Formato.Monto(reparto.MontoArtista, obra.Moneda)</strong></div>
+                <div>Le corresponde a la galería: <strong>@Formato.Monto(reparto.MontoGaleria, obra.Moneda)</strong></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Confirmar alquiler</button>
+            <button type="button" class="btn btn-link" @onclick="Cancelar">Cancelar</button>
+        </EditForm>
+    </div>
+}
+
+@code {
+    private string? texto;
+    private List<ObraParaOperacion>? resultados;
+    private ObraParaOperacion? obra;
+    private string? error;
+    private InputModel Input { get; set; } = new();
+
+    private (decimal MontoAlquiler, decimal MontoArtista, decimal MontoGaleria) reparto =>
+        obra is null ? (0, 0, 0) : AlquilerService.CalcularReparto(obra.PrecioVenta, Input.PorcentajeAlquiler, Input.PorcentajeArtista);
+
+    private async Task BuscarAsync() => resultados = await AlquilerService.BuscarObrasDisponiblesAsync(texto);
+
+    private void Seleccionar(ObraParaOperacion item)
+    {
+        obra = item;
+        Input = new InputModel { FechaInicio = DateTime.Now };
+    }
+
+    private void Cancelar()
+    {
+        obra = null;
+        error = null;
+    }
+
+    private async Task ConfirmarAsync()
+    {
+        if (obra is null) return;
+        error = null;
+
+        try
+        {
+            var request = new RegistrarAlquilerRequest(
+                obra.Id,
+                DateOnly.FromDateTime(Input.FechaInicio),
+                Input.FechaRecupero.HasValue ? DateOnly.FromDateTime(Input.FechaRecupero.Value) : null,
+                Input.PorcentajeAlquiler,
+                Input.PorcentajeArtista,
+                Input.Cliente);
+
+            await AlquilerService.RegistrarAsync(request);
+            NavigationManager.NavigateTo("alquileres");
+        }
+        catch (InvalidOperationException ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private sealed class InputModel
+    {
+        public DateTime FechaInicio { get; set; } = DateTime.Now;
+
+        public DateTime? FechaRecupero { get; set; }
+
+        [Range(0.01, 100, ErrorMessage = "Tiene que ser un porcentaje entre 0 y 100.")]
+        public decimal PorcentajeAlquiler { get; set; } = 10;
+
+        [Range(0, 100, ErrorMessage = "Tiene que ser un porcentaje entre 0 y 100.")]
+        public decimal PorcentajeArtista { get; set; } = 50;
+
+        [MaxLength(200)]
+        public string? Cliente { get; set; }
+    }
+}
