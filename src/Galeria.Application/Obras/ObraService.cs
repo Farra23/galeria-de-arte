@@ -81,22 +81,39 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
         var anterior = await obras.ObtenerFichaAsync(request.Id, ct);
 
         await obras.ActualizarAsync(request, ct);
+        await RegistrarCambioPrecioSiCorrespondeAsync(anterior, request.Id, request.PrecioVenta, ct);
+        await obras.GuardarCambiosAsync(ct);
+    }
 
-        if (anterior is not null && anterior.PrecioVenta != request.PrecioVenta)
+    // Cambio de precio unitario o global (requerimiento 12): a diferencia de ActualizarAsync no
+    // toca el resto de la ficha — pensado para el flujo de Cambio de precios, que puede tocar
+    // muchas obras de un mismo artista en una sola operación.
+    public async Task ActualizarPrecioAsync(int obraId, decimal nuevoPrecio, CancellationToken ct = default)
+    {
+        var anterior = await obras.ObtenerFichaAsync(obraId, ct);
+
+        await obras.ActualizarPrecioAsync(obraId, nuevoPrecio, ct);
+        await RegistrarCambioPrecioSiCorrespondeAsync(anterior, obraId, nuevoPrecio, ct);
+        await obras.GuardarCambiosAsync(ct);
+    }
+
+    private async Task RegistrarCambioPrecioSiCorrespondeAsync(ObraFicha? anterior, int obraId, decimal precioNuevo, CancellationToken ct)
+    {
+        if (anterior is null || anterior.PrecioVenta == precioNuevo)
         {
-            await auditoria.RegistrarAsync(new RegistrarAuditoriaRequest(
-                Pantalla: "Obras",
-                TipoOperacion: "Modificacion",
-                Tabla: "Obra",
-                Columna: "PrecioVenta",
-                ValorAnterior: anterior.PrecioVenta.ToString("0.##"),
-                ValorNuevo: request.PrecioVenta.ToString("0.##"),
-                ArtistaId: anterior.ArtistaId,
-                ObraId: request.Id,
-                EntidadId: request.Id.ToString()), ct);
+            return;
         }
 
-        await obras.GuardarCambiosAsync(ct);
+        await auditoria.RegistrarAsync(new RegistrarAuditoriaRequest(
+            Pantalla: "Obras",
+            TipoOperacion: "Modificacion",
+            Tabla: "Obra",
+            Columna: "PrecioVenta",
+            ValorAnterior: anterior.PrecioVenta.ToString("0.##"),
+            ValorNuevo: precioNuevo.ToString("0.##"),
+            ArtistaId: anterior.ArtistaId,
+            ObraId: obraId,
+            EntidadId: obraId.ToString()), ct);
     }
 
     public Task<List<MovimientoItem>> ObtenerMovimientosAsync(int obraId, CancellationToken ct = default) =>

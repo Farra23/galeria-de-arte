@@ -18,6 +18,11 @@ public interface IObraRepository
 
     Task ActualizarAsync(ActualizarObraRequest request, CancellationToken ct = default);
 
+    // Cambio de precio unitario, sin tocar el resto de la ficha (requerimiento 12: cambio de
+    // precios global toca muchas obras a la vez, no tiene sentido reenviar título/rubro/etc. de
+    // cada una).
+    Task ActualizarPrecioAsync(int obraId, decimal nuevoPrecio, CancellationToken ct = default);
+
     // Entidad rastreada (no DTO): la usan otros módulos (Ventas, Retiros, Alquileres, Devoluciones)
     // que necesitan mutar Existencia/Estado como parte de su propia operación. Obra sigue siendo
     // dueña de su propia persistencia — los demás módulos no tocan la tabla Obras directamente.

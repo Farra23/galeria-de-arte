@@ -1,0 +1,173 @@
+@page "/precios/cambio-global"
+@attribute [Authorize]
+@using Galeria.Application.Artistas
+@using Galeria.Application.Obras
+@inject ObraService ObraService
+@inject ArtistaService ArtistaService
+
+<PageTitle>Cambio de precios</PageTitle>
+<HeadContent>
+    <meta name="description" content="Cambiar el precio de varias obras de un artista a la vez, por porcentaje o precio a precio." />
+</HeadContent>
+
+<h1>Cambio de precios global</h1>
+<p class="text-body-secondary">
+    El cambio unitario ya se hace desde la ficha de cada obra (Obras → click en la fila → Editar).
+    Esta pantalla es para tocar varias obras del mismo artista de una sola vez.
+</p>
+
+@if (mensaje is not null)
+{
+    <div class="alert alert-success">@mensaje</div>
+}
+
+<div class="row g-2 mb-3">
+    <div class="col-md-5">
+        <label class="form-label">Artista</label>
+        <select class="form-select" value="@artistaId" @onchange="CambiarArtistaAsync">
+            <option value="0">Seleccioná un artista...</option>
+            @if (artistas is not null)
+            {
+                @foreach (var artista in artistas)
+                {
+                    <option value="@artista.Id">@artista.Codigo.ToString("D3") — @artista.NombreCompleto</option>
+                }
+            }
+        </select>
+    </div>
+</div>
+
+@if (filas is not null)
+{
+    @if (filas.Count == 0)
+    {
+        <p>Este artista no tiene obras cargadas.</p>
+    }
+    else
+    {
+        <div class="row g-2 mb-3 align-items-end">
+            <div class="col-auto">
+                <label class="form-label">Aplicar % a las obras tildadas</label>
+                <input type="number" class="form-control" @bind="porcentaje" style="width:120px" />
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-outline-primary" @onclick="AplicarPorcentajeAsync">Aplicar</button>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-link" @onclick="() => MarcarTodas(true)">Tildar todas</button>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-link" @onclick="() => MarcarTodas(false)">Destildar todas</button>
+            </div>
+        </div>
+
+        <table class="table table-sm table-striped">
+            <thead>
+                <tr><th></th><th>Código</th><th>Obra</th><th class="text-end">Precio actual</th><th class="text-end">Precio nuevo</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var fila in filas)
+                {
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input" @bind="fila.Seleccionada" /></td>
+                        <td>@fila.CodigoVisible</td>
+                        <td>@fila.Titulo</td>
+                        <td class="text-end">@Formato.Monto(fila.PrecioActual, fila.Moneda)</td>
+                        <td class="text-end" style="max-width:140px">
+                            <input type="number" class="form-control form-control-sm text-end" @bind="fila.PrecioNuevo" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <button type="button" class="btn btn-primary" @onclick="ConfirmarAsync">Confirmar cambios</button>
+    }
+}
+
+@code {
+    private List<ArtistaOpcion>? artistas;
+    private int artistaId;
+    private List<FilaPrecio>? filas;
+    private decimal porcentaje = 10;
+    private string? mensaje;
+    private ParametrosCalculoPrecio? parametros;
+
+    protected override async Task OnInitializedAsync()
+    {
+        artistas = await ArtistaService.ListarParaSeleccionAsync();
+        parametros = await ObraService.ObtenerParametrosCalculoAsync();
+    }
+
+    private async Task CambiarArtistaAsync(ChangeEventArgs e)
+    {
+        mensaje = null;
+        artistaId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+
+        if (artistaId == 0)
+        {
+            filas = null;
+            return;
+        }
+
+        var obras = await ObraService.BuscarAsync(new ObraFiltro(ArtistaId: artistaId));
+        filas = obras.Select(o => new FilaPrecio
+        {
+            ObraId = o.Id,
+            CodigoVisible = o.CodigoVisible,
+            Titulo = o.Titulo,
+            Moneda = o.Moneda,
+            PrecioActual = o.PrecioVenta,
+            PrecioNuevo = o.PrecioVenta
+        }).ToList();
+    }
+
+    private void MarcarTodas(bool valor)
+    {
+        if (filas is null) return;
+        foreach (var fila in filas) fila.Seleccionada = valor;
+    }
+
+    // Porcentaje sobre el precio actual (requerimiento 12 "+"), no recalcula costo/utilidad —
+    // eso es lo que hace el cálculo automático de la ficha, acá se está ajustando lo ya vigente.
+    private void AplicarPorcentajeAsync()
+    {
+        if (filas is null || parametros is null) return;
+
+        foreach (var fila in filas.Where(f => f.Seleccionada))
+        {
+            var redondeo = parametros.RedondeoPara(fila.Moneda);
+            var bruto = fila.PrecioActual * (1 + porcentaje / 100);
+            fila.PrecioNuevo = redondeo <= 0
+                ? bruto
+                : Math.Round(bruto / redondeo, MidpointRounding.AwayFromZero) * redondeo;
+        }
+    }
+
+    private async Task ConfirmarAsync()
+    {
+        if (filas is null) return;
+
+        var aplicar = filas.Where(f => f.Seleccionada && f.PrecioNuevo != f.PrecioActual).ToList();
+        foreach (var fila in aplicar)
+        {
+            await ObraService.ActualizarPrecioAsync(fila.ObraId, fila.PrecioNuevo);
+            fila.PrecioActual = fila.PrecioNuevo;
+        }
+
+        mensaje = aplicar.Count == 0
+            ? "No había cambios de precio para aplicar."
+            : $"Se actualizó el precio de {aplicar.Count} obra(s).";
+    }
+
+    private sealed class FilaPrecio
+    {
+        public int ObraId { get; set; }
+        public string CodigoVisible { get; set; } = "";
+        public string Titulo { get; set; } = "";
+        public Moneda Moneda { get; set; }
+        public decimal PrecioActual { get; set; }
+        public decimal PrecioNuevo { get; set; }
+        public bool Seleccionada { get; set; }
+    }
+}

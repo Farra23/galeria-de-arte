@@ -214,6 +214,12 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
         obra.Observaciones = request.Observaciones;
     }
 
+    public async Task ActualizarPrecioAsync(int obraId, decimal nuevoPrecio, CancellationToken ct = default)
+    {
+        var obra = await db.Obras.FirstAsync(o => o.Id == obraId, ct);
+        obra.PrecioVenta = nuevoPrecio;
+    }
+
     public Task<Obra?> ObtenerEntidadAsync(int id, CancellationToken ct = default) =>
         db.Obras.Include(o => o.Artista).FirstOrDefaultAsync(o => o.Id == id, ct);
 
