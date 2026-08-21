@@ -1,0 +1,101 @@
+@page "/devoluciones"
+@attribute [Authorize]
+@using Galeria.Application.Artistas
+@using Galeria.Application.Devoluciones
+@inject DevolucionService DevolucionService
+@inject ArtistaService ArtistaService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Devoluciones</PageTitle>
+<HeadContent>
+    <meta name="description" content="Listado de devoluciones de piezas vendidas." />
+</HeadContent>
+
+<h1>Devoluciones</h1>
+
+<div class="row mb-3 g-2">
+    <div class="col-md-4">
+        <input class="form-control" placeholder="Buscar por obra o artista..."
+               @bind="texto" @bind:event="oninput" @bind:after='() => IrA("q", texto)' />
+    </div>
+    <div class="col-md-4">
+        <select class="form-select" value="@(ArtistaId?.ToString() ?? "")" @onchange='e => IrA("artista", ParseIntOrNull(e.Value))'>
+            <option value="">Todos los artistas</option>
+            @if (artistas is not null)
+            {
+                @foreach (var artista in artistas)
+                {
+                    <option value="@artista.Id">@artista.NombreCompleto</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-4 text-end">
+        <a class="btn btn-primary" href="devoluciones/nueva">+ Nueva devolución</a>
+    </div>
+</div>
+
+@if (devoluciones is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (devoluciones.Count == 0)
+{
+    <p>No hay devoluciones que coincidan con los filtros.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr><th>Fecha</th><th>Código</th><th>Obra</th><th>Artista</th><th>Motivo</th><th>Artista ya cobró</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var devolucion in devoluciones)
+            {
+                <tr>
+                    <td>@devolucion.Fecha.ToString("dd/MM/yyyy")</td>
+                    <td>@devolucion.CodigoObra</td>
+                    <td>@devolucion.Titulo</td>
+                    <td>@devolucion.ArtistaNombre</td>
+                    <td>@devolucion.Motivo</td>
+                    <td>
+                        @if (devolucion.ArtistaYaCobro)
+                        {
+                            <span class="badge bg-warning text-dark">Sí — generó adelanto</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">No</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "q")] public string? TextoLibre { get; set; }
+    [SupplyParameterFromQuery(Name = "artista")] public int? ArtistaId { get; set; }
+
+    private List<DevolucionListItem>? devoluciones;
+    private List<ArtistaOpcion>? artistas;
+    private string? texto;
+
+    protected override async Task OnInitializedAsync()
+    {
+        artistas = await ArtistaService.ListarParaSeleccionAsync();
+        texto = TextoLibre;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        texto = TextoLibre;
+        devoluciones = await DevolucionService.BuscarAsync(new DevolucionFiltro(TextoLibre, ArtistaId));
+    }
+
+    private void IrA(string clave, object? valor) =>
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
+
+    private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
+}

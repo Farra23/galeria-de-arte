@@ -12,6 +12,7 @@ using Galeria.Application.Auditorias;
 using Galeria.Application.Catalogos;
 using Galeria.Application.Certificados;
 using Galeria.Application.Common;
+using Galeria.Application.Devoluciones;
 using Galeria.Application.Obras;
 using Galeria.Application.Parametros;
 using Galeria.Application.Retiros;
@@ -63,6 +64,7 @@ builder.Services.AddScoped<ICertificadoRepository, CertificadoRepository>();
 builder.Services.AddScoped<IRetiroRepository, RetiroRepository>();
 builder.Services.AddScoped<IAlquilerRepository, AlquilerRepository>();
 builder.Services.AddScoped<IAdelantoRepository, AdelantoRepository>();
+builder.Services.AddScoped<IDevolucionRepository, DevolucionRepository>();
 builder.Services.AddScoped<ArtistaService>();
 builder.Services.AddScoped<ObraService>();
 builder.Services.AddScoped<AuditoriaService>();
@@ -71,6 +73,7 @@ builder.Services.AddScoped<CertificadoService>();
 builder.Services.AddScoped<RetiroService>();
 builder.Services.AddScoped<AlquilerService>();
 builder.Services.AddScoped<AdelantoService>();
+builder.Services.AddScoped<DevolucionService>();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {

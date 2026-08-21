@@ -1,0 +1,140 @@
+@page "/devoluciones/nueva"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using Galeria.Application.Devoluciones
+@inject DevolucionService DevolucionService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nueva devolución</PageTitle>
+<HeadContent>
+    <meta name="description" content="Registrar la devolución de una pieza vendida." />
+</HeadContent>
+
+<h1>Nueva devolución</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@if (venta is null)
+{
+    <div class="col-md-6">
+        <label class="form-label">Buscar venta por código, nombre de obra o artista</label>
+        <input class="form-control" @bind="texto" @bind:event="oninput" @bind:after="BuscarAsync" autofocus />
+    </div>
+
+    @if (resultados is not null)
+    {
+        @if (resultados.Count == 0)
+        {
+            <p class="mt-3">No se encontraron ventas con ese criterio.</p>
+        }
+        else
+        {
+            <table class="table table-striped mt-3">
+                <thead><tr><th>Fecha</th><th>Código</th><th>Nombre</th><th>Artista</th><th class="text-end">Precio</th></tr></thead>
+                <tbody>
+                    @foreach (var item in resultados)
+                    {
+                        <tr style="cursor:pointer" @onclick="() => Seleccionar(item)">
+                            <td>@item.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td>@item.CodigoObra</td>
+                            <td>@item.Titulo</td>
+                            <td>@item.ArtistaNombre</td>
+                            <td class="text-end">@Formato.Monto(item.PrecioVenta, item.Moneda)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}
+else
+{
+    <div class="col-md-8">
+        <h2 class="h5">@venta.CodigoObra — @venta.Titulo</h2>
+        <p class="text-body-secondary mb-3">
+            Artista: @venta.ArtistaNombre — vendida el @venta.Fecha.ToString("dd/MM/yyyy") a @Formato.Monto(venta.PrecioVenta, venta.Moneda)
+        </p>
+
+        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+
+            <div class="mb-3">
+                <label class="form-label">Fecha de la devolución</label>
+                <InputDate class="form-control" @bind-Value="Input.Fecha" />
+            </div>
+
+            <div class="mb-3 form-check">
+                <InputCheckbox class="form-check-input" id="yaCobro" @bind-Value="Input.ArtistaYaCobro" />
+                <label class="form-check-label" for="yaCobro">
+                    El artista ya cobró esta pieza (queda como adelanto a descontar de la próxima liquidación)
+                </label>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Motivo</label>
+                <InputTextArea class="form-control" @bind-Value="Input.Motivo" rows="2" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Confirmar devolución</button>
+            <button type="button" class="btn btn-link" @onclick="Cancelar">Cancelar</button>
+        </EditForm>
+    </div>
+}
+
+@code {
+    private string? texto;
+    private List<VentaParaDevolucion>? resultados;
+    private VentaParaDevolucion? venta;
+    private string? error;
+    private InputModel Input { get; set; } = new();
+
+    private async Task BuscarAsync() => resultados = await DevolucionService.BuscarVentasAsync(texto);
+
+    private void Seleccionar(VentaParaDevolucion item)
+    {
+        venta = item;
+        Input = new InputModel { Fecha = DateTime.Now };
+    }
+
+    private void Cancelar()
+    {
+        venta = null;
+        error = null;
+    }
+
+    private async Task ConfirmarAsync()
+    {
+        if (venta is null) return;
+        error = null;
+
+        try
+        {
+            var request = new RegistrarDevolucionRequest(
+                venta.VentaId,
+                DateOnly.FromDateTime(Input.Fecha),
+                Input.Motivo,
+                Input.ArtistaYaCobro);
+
+            await DevolucionService.RegistrarAsync(request);
+            NavigationManager.NavigateTo("devoluciones");
+        }
+        catch (InvalidOperationException ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private sealed class InputModel
+    {
+        public DateTime Fecha { get; set; } = DateTime.Now;
+
+        public bool ArtistaYaCobro { get; set; }
+
+        [MaxLength(500)]
+        public string? Motivo { get; set; }
+    }
+}

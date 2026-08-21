@@ -13,6 +13,9 @@ public class VentaRepository(GaleriaDbContext db) : IVentaRepository
         return Task.CompletedTask;
     }
 
+    public Task<Venta?> ObtenerEntidadAsync(int id, CancellationToken ct = default) =>
+        db.Ventas.FirstOrDefaultAsync(v => v.Id == id, ct);
+
     public async Task<List<VentaListItem>> BuscarAsync(VentaFiltro filtro, CancellationToken ct = default)
     {
         var query = db.Ventas.AsNoTracking()
