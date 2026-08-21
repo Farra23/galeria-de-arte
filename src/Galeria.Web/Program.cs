@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Galeria.Application.Artistas;
+using Galeria.Application.Auditorias;
 using Galeria.Application.Catalogos;
+using Galeria.Application.Common;
 using Galeria.Application.Obras;
 using Galeria.Application.Parametros;
 using Galeria.Infrastructure.Persistence;
@@ -49,8 +51,11 @@ builder.Services.AddScoped<IArtistaRepository, ArtistaRepository>();
 builder.Services.AddScoped<IObraRepository, ObraRepository>();
 builder.Services.AddScoped<IParametroRepository, ParametroRepository>();
 builder.Services.AddScoped<ICatalogoRepository, CatalogoRepository>();
+builder.Services.AddScoped<IAuditoriaRepository, AuditoriaRepository>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ArtistaService>();
 builder.Services.AddScoped<ObraService>();
+builder.Services.AddScoped<AuditoriaService>();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
