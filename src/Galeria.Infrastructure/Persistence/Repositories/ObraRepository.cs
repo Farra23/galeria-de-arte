@@ -1,5 +1,6 @@
 using Galeria.Application.Obras;
 using Galeria.Domain.Entities;
+using Galeria.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Galeria.Infrastructure.Persistence.Repositories;
@@ -214,6 +215,55 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
 
     public Task<Obra?> ObtenerEntidadAsync(int id, CancellationToken ct = default) =>
         db.Obras.Include(o => o.Artista).FirstOrDefaultAsync(o => o.Id == id, ct);
+
+    public async Task<List<ObraParaOperacion>> BuscarDisponiblesAsync(string? texto, CancellationToken ct = default)
+    {
+        var query = db.Obras.AsNoTracking()
+            .Include(o => o.Artista)
+            .Where(o => o.Estado == EstadoObra.Disponible && o.Existencia > 0);
+
+        if (!string.IsNullOrWhiteSpace(texto))
+        {
+            var valor = texto.Trim();
+            query = query.Where(o =>
+                EF.Functions.Like(o.Titulo, $"%{valor}%") ||
+                EF.Functions.Like(o.Artista.Nombre, $"%{valor}%") ||
+                EF.Functions.Like(o.Artista.Apellido, $"%{valor}%"));
+        }
+
+        return await query
+            .OrderBy(o => o.Titulo)
+            .Take(15)
+            .Select(o => new ObraParaOperacion(
+                o.Id,
+                o.Artista.Codigo.ToString("D3") + o.NumeroObra.ToString("D3"),
+                o.Titulo,
+                o.ArtistaId,
+                o.Artista.Apellido + ", " + o.Artista.Nombre,
+                o.Existencia,
+                o.Moneda,
+                o.Costo,
+                o.PrecioVenta,
+                o.TieneIVA))
+            .ToListAsync(ct);
+    }
+
+    public async Task<ObraParaOperacion?> ObtenerParaOperacionAsync(int id, CancellationToken ct = default) =>
+        await db.Obras.AsNoTracking()
+            .Include(o => o.Artista)
+            .Where(o => o.Id == id)
+            .Select(o => new ObraParaOperacion(
+                o.Id,
+                o.Artista.Codigo.ToString("D3") + o.NumeroObra.ToString("D3"),
+                o.Titulo,
+                o.ArtistaId,
+                o.Artista.Apellido + ", " + o.Artista.Nombre,
+                o.Existencia,
+                o.Moneda,
+                o.Costo,
+                o.PrecioVenta,
+                o.TieneIVA))
+            .FirstOrDefaultAsync(ct);
 
     public Task RegistrarMovimientoAsync(Movimiento movimiento, CancellationToken ct = default)
     {

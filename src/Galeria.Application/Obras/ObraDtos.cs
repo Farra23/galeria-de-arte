@@ -2,6 +2,20 @@ using Galeria.Domain.Enums;
 
 namespace Galeria.Application.Obras;
 
+// Compartido por Ventas, Retiros y Alquileres: las tres operan sobre "una obra disponible para
+// operar" con la misma forma de datos — reutilizar acá evita triplicar el mismo repositorio.
+public record ObraParaOperacion(
+    int Id,
+    string CodigoVisible,
+    string Titulo,
+    int ArtistaId,
+    string ArtistaNombre,
+    int Existencia,
+    Moneda Moneda,
+    decimal Costo,
+    decimal PrecioVenta,
+    bool TieneIVA);
+
 public record ObraListItem(
     int Id,
     string CodigoVisible,

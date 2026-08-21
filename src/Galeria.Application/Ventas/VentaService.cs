@@ -8,11 +8,11 @@ namespace Galeria.Application.Ventas;
 
 public class VentaService(IVentaRepository ventas, IObraRepository obras, IParametroRepository parametros, AuditoriaService auditoria)
 {
-    public Task<List<ObraParaVenta>> BuscarObrasDisponiblesAsync(string? texto, CancellationToken ct = default) =>
-        ventas.BuscarObrasDisponiblesAsync(texto, ct);
+    public Task<List<ObraParaOperacion>> BuscarObrasDisponiblesAsync(string? texto, CancellationToken ct = default) =>
+        obras.BuscarDisponiblesAsync(texto, ct);
 
-    public Task<ObraParaVenta?> ObtenerObraParaVentaAsync(int obraId, CancellationToken ct = default) =>
-        ventas.ObtenerObraParaVentaAsync(obraId, ct);
+    public Task<ObraParaOperacion?> ObtenerObraParaVentaAsync(int obraId, CancellationToken ct = default) =>
+        obras.ObtenerParaOperacionAsync(obraId, ct);
 
     public Task<List<VentaListItem>> BuscarAsync(VentaFiltro filtro, CancellationToken ct = default) =>
         ventas.BuscarAsync(filtro, ct);

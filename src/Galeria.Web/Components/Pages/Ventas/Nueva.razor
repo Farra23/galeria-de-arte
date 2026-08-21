@@ -1,6 +1,7 @@
 @page "/ventas/nueva"
 @attribute [Authorize]
 @using System.ComponentModel.DataAnnotations
+@using Galeria.Application.Obras
 @using Galeria.Application.Ventas
 @inject VentaService VentaService
 @inject NavigationManager NavigationManager
@@ -111,8 +112,8 @@ else
 
 @code {
     private string? texto;
-    private List<ObraParaVenta>? resultados;
-    private ObraParaVenta? obra;
+    private List<ObraParaOperacion>? resultados;
+    private ObraParaOperacion? obra;
     private bool mostrarCosto;
     private string? error;
     private InputModel Input { get; set; } = new();

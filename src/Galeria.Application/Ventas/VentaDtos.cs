@@ -2,17 +2,6 @@ using Galeria.Domain.Enums;
 
 namespace Galeria.Application.Ventas;
 
-public record ObraParaVenta(
-    int Id,
-    string CodigoVisible,
-    string Titulo,
-    string ArtistaNombre,
-    int Existencia,
-    Moneda Moneda,
-    decimal Costo,
-    decimal PrecioVenta,
-    bool TieneIVA);
-
 public record RegistrarVentaRequest(
     int ObraId,
     DateOnly Fecha,

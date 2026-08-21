@@ -7,53 +7,6 @@ namespace Galeria.Infrastructure.Persistence.Repositories;
 
 public class VentaRepository(GaleriaDbContext db) : IVentaRepository
 {
-    public async Task<List<ObraParaVenta>> BuscarObrasDisponiblesAsync(string? texto, CancellationToken ct = default)
-    {
-        var query = db.Obras.AsNoTracking()
-            .Include(o => o.Artista)
-            .Where(o => o.Estado == EstadoObra.Disponible && o.Existencia > 0);
-
-        if (!string.IsNullOrWhiteSpace(texto))
-        {
-            var valor = texto.Trim();
-            query = query.Where(o =>
-                EF.Functions.Like(o.Titulo, $"%{valor}%") ||
-                EF.Functions.Like(o.Artista.Nombre, $"%{valor}%") ||
-                EF.Functions.Like(o.Artista.Apellido, $"%{valor}%"));
-        }
-
-        return await query
-            .OrderBy(o => o.Titulo)
-            .Take(15)
-            .Select(o => new ObraParaVenta(
-                o.Id,
-                o.Artista.Codigo.ToString("D3") + o.NumeroObra.ToString("D3"),
-                o.Titulo,
-                o.Artista.Apellido + ", " + o.Artista.Nombre,
-                o.Existencia,
-                o.Moneda,
-                o.Costo,
-                o.PrecioVenta,
-                o.TieneIVA))
-            .ToListAsync(ct);
-    }
-
-    public async Task<ObraParaVenta?> ObtenerObraParaVentaAsync(int obraId, CancellationToken ct = default) =>
-        await db.Obras.AsNoTracking()
-            .Include(o => o.Artista)
-            .Where(o => o.Id == obraId)
-            .Select(o => new ObraParaVenta(
-                o.Id,
-                o.Artista.Codigo.ToString("D3") + o.NumeroObra.ToString("D3"),
-                o.Titulo,
-                o.Artista.Apellido + ", " + o.Artista.Nombre,
-                o.Existencia,
-                o.Moneda,
-                o.Costo,
-                o.PrecioVenta,
-                o.TieneIVA))
-            .FirstOrDefaultAsync(ct);
-
     public Task AgregarAsync(Venta venta, CancellationToken ct = default)
     {
         db.Ventas.Add(venta);

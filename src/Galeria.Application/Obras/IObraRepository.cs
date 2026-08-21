@@ -23,6 +23,13 @@ public interface IObraRepository
     // dueña de su propia persistencia — los demás módulos no tocan la tabla Obras directamente.
     Task<Domain.Entities.Obra?> ObtenerEntidadAsync(int id, CancellationToken ct = default);
 
+    // Búsqueda acotada a obras Disponible con existencia > 0 (una obra retirada/alquilada/sin
+    // stock no puede volver a operarse — requerimiento 0.5). La reutilizan Ventas, Retiros y
+    // Alquileres.
+    Task<List<ObraParaOperacion>> BuscarDisponiblesAsync(string? texto, CancellationToken ct = default);
+
+    Task<ObraParaOperacion?> ObtenerParaOperacionAsync(int id, CancellationToken ct = default);
+
     // El libro de movimientos de stock (ver Domain.Entities.Movimiento) también es responsabilidad
     // de este repositorio: Obra es el agregado dueño de su propio historial de stock.
     Task RegistrarMovimientoAsync(Domain.Entities.Movimiento movimiento, CancellationToken ct = default);
