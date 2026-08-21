@@ -1,10 +1,11 @@
+using Galeria.Application.Auditorias;
 using Galeria.Application.Parametros;
 using Galeria.Domain.Entities;
 using Galeria.Domain.Enums;
 
 namespace Galeria.Application.Obras;
 
-public class ObraService(IObraRepository obras, IParametroRepository parametros)
+public class ObraService(IObraRepository obras, IParametroRepository parametros, AuditoriaService auditoria)
 {
     public Task<List<ObraListItem>> BuscarAsync(ObraFiltro filtro, CancellationToken ct = default) =>
         obras.BuscarAsync(filtro, ct);
@@ -72,9 +73,35 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros)
     public Task<ObraFicha?> ObtenerFichaAsync(int id, CancellationToken ct = default) =>
         obras.ObtenerFichaAsync(id, ct);
 
+    // Historial de precios (requerimiento 3.1, pestaña de la ficha): en vez de una tabla nueva,
+    // cada cambio de precio se registra en Auditoría — es la misma fuente que el requerimiento 13
+    // ya pide como "única fuente para reconstruir cómo se llegó al stock actual".
     public async Task ActualizarAsync(ActualizarObraRequest request, CancellationToken ct = default)
     {
+        var anterior = await obras.ObtenerFichaAsync(request.Id, ct);
+
         await obras.ActualizarAsync(request, ct);
+
+        if (anterior is not null && anterior.PrecioVenta != request.PrecioVenta)
+        {
+            await auditoria.RegistrarAsync(new RegistrarAuditoriaRequest(
+                Pantalla: "Obras",
+                TipoOperacion: "Modificacion",
+                Tabla: "Obra",
+                Columna: "PrecioVenta",
+                ValorAnterior: anterior.PrecioVenta.ToString("0.##"),
+                ValorNuevo: request.PrecioVenta.ToString("0.##"),
+                ArtistaId: anterior.ArtistaId,
+                ObraId: request.Id,
+                EntidadId: request.Id.ToString()), ct);
+        }
+
         await obras.GuardarCambiosAsync(ct);
     }
+
+    public Task<List<MovimientoItem>> ObtenerMovimientosAsync(int obraId, CancellationToken ct = default) =>
+        obras.ObtenerMovimientosAsync(obraId, ct);
+
+    public Task<List<Auditorias.AuditoriaListItem>> ObtenerHistorialPreciosAsync(int obraId, CancellationToken ct = default) =>
+        auditoria.BuscarAsync(new Auditorias.AuditoriaFiltro(ObraId: obraId, Columna: "PrecioVenta"), ct);
 }

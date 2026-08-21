@@ -21,7 +21,9 @@ public record AuditoriaFiltro(
     DateOnly? FechaHasta = null,
     string? Usuario = null,
     string? Pantalla = null,
-    string? TipoOperacion = null);
+    string? TipoOperacion = null,
+    int? ObraId = null,
+    string? Columna = null);
 
 public record RegistrarAuditoriaRequest(
     string Pantalla,

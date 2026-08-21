@@ -1,6 +1,7 @@
 @page "/obras/{Id:int}"
 @attribute [Authorize]
 @using System.ComponentModel.DataAnnotations
+@using Galeria.Application.Auditorias
 @using Galeria.Application.Catalogos
 @using Galeria.Application.Obras
 @using Galeria.Domain.Entities
@@ -39,6 +40,75 @@ else
         <dd class="col-sm-4">@ficha.FechaIngreso.ToString("dd/MM/yyyy")</dd>
     </dl>
 
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <button type="button" class="nav-link @(pestania == "datos" ? "active" : "")" @onclick='() => IrA("datos")'>Datos</button>
+        </li>
+        <li class="nav-item">
+            <button type="button" class="nav-link @(pestania == "precios" ? "active" : "")" @onclick='() => IrA("precios")'>Historial de precios</button>
+        </li>
+        <li class="nav-item">
+            <button type="button" class="nav-link @(pestania == "movimientos" ? "active" : "")" @onclick='() => IrA("movimientos")'>Historial de movimientos</button>
+        </li>
+    </ul>
+
+    @if (pestania == "precios")
+    {
+        @if (historialPrecios is null)
+        {
+            <p><em>Cargando...</em></p>
+        }
+        else if (historialPrecios.Count == 0)
+        {
+            <p>El precio no cambió desde que se cargó la obra.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-striped col-md-8">
+                <thead><tr><th>Fecha</th><th>Usuario</th><th class="text-end">Precio anterior</th><th class="text-end">Precio nuevo</th></tr></thead>
+                <tbody>
+                    @foreach (var cambio in historialPrecios)
+                    {
+                        <tr>
+                            <td>@cambio.Timestamp.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@cambio.NombreUsuario</td>
+                            <td class="text-end">@Formato.Monto(decimal.Parse(cambio.ValorAnterior ?? "0"), ficha.Moneda)</td>
+                            <td class="text-end">@Formato.Monto(decimal.Parse(cambio.ValorNuevo ?? "0"), ficha.Moneda)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+    else if (pestania == "movimientos")
+    {
+        @if (movimientos is null)
+        {
+            <p><em>Cargando...</em></p>
+        }
+        else if (movimientos.Count == 0)
+        {
+            <p>Todavía no hay movimientos de stock registrados para esta obra.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-striped col-md-8">
+                <thead><tr><th>Fecha</th><th>Tipo</th><th class="text-end">Cantidad</th></tr></thead>
+                <tbody>
+                    @foreach (var movimiento in movimientos)
+                    {
+                        <tr>
+                            <td>@movimiento.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td>@TipoMovimientoTexto(movimiento.Tipo)</td>
+                            <td class="text-end">@(movimiento.Cantidad > 0 ? "+" : "")@movimiento.Cantidad</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+    else
+    {
     <EditForm Model="Input" OnValidSubmit="GuardarAsync" class="col-md-8">
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
@@ -126,6 +196,7 @@ else
         <button type="submit" class="btn btn-primary">Guardar</button>
         <a href="obras" class="btn btn-link">Cancelar</a>
     </EditForm>
+    }
 }
 
 @code {
@@ -140,6 +211,10 @@ else
     private List<OpcionCatalogo> tecnicas = [];
     private ParametrosCalculoPrecio? parametros;
     private bool precioEditadoManualmente;
+
+    private string pestania = "datos";
+    private List<AuditoriaListItem>? historialPrecios;
+    private List<MovimientoItem>? movimientos;
 
     protected override async Task OnInitializedAsync()
     {
@@ -185,6 +260,37 @@ else
     }
 
     private void MarcarPrecioEditado() => precioEditadoManualmente = true;
+
+    // Cada pestaña carga sus datos recién la primera vez que se abre — evita dos consultas de
+    // más (precios/movimientos) en el caso más común, que es solo mirar/editar los Datos.
+    private async Task IrA(string pestaniaNueva)
+    {
+        pestania = pestaniaNueva;
+
+        if (pestaniaNueva == "precios" && historialPrecios is null)
+        {
+            historialPrecios = await ObraService.ObtenerHistorialPreciosAsync(Id);
+        }
+        else if (pestaniaNueva == "movimientos" && movimientos is null)
+        {
+            movimientos = await ObraService.ObtenerMovimientosAsync(Id);
+        }
+    }
+
+    private static string TipoMovimientoTexto(TipoMovimiento tipo) => tipo switch
+    {
+        TipoMovimiento.Inicial => "Carga inicial",
+        TipoMovimiento.Ingreso => "Ingreso",
+        TipoMovimiento.Venta => "Venta",
+        TipoMovimiento.Ajuste => "Ajuste",
+        TipoMovimiento.Devolucion => "Devolución",
+        TipoMovimiento.RetiroTemporal => "Retiro temporal",
+        TipoMovimiento.RetiroDefinitivo => "Retiro definitivo",
+        TipoMovimiento.Alquiler => "Alquiler",
+        TipoMovimiento.DevolucionAlquiler => "Devolución de alquiler",
+        TipoMovimiento.DevolucionTemporal => "Devolución de retiro temporal",
+        _ => tipo.ToString()
+    };
 
     private async Task GuardarAsync()
     {

@@ -271,5 +271,12 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
         return Task.CompletedTask;
     }
 
+    public async Task<List<MovimientoItem>> ObtenerMovimientosAsync(int obraId, CancellationToken ct = default) =>
+        await db.Movimientos.AsNoTracking()
+            .Where(m => m.ObraId == obraId)
+            .OrderByDescending(m => m.Fecha).ThenByDescending(m => m.Id)
+            .Select(m => new MovimientoItem(m.Fecha, m.Tipo, m.Cantidad, m.ReferenciaId))
+            .ToListAsync(ct);
+
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
 }

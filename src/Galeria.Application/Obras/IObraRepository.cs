@@ -30,6 +30,8 @@ public interface IObraRepository
 
     Task<ObraParaOperacion?> ObtenerParaOperacionAsync(int id, CancellationToken ct = default);
 
+    Task<List<MovimientoItem>> ObtenerMovimientosAsync(int obraId, CancellationToken ct = default);
+
     // El libro de movimientos de stock (ver Domain.Entities.Movimiento) también es responsabilidad
     // de este repositorio: Obra es el agregado dueño de su propio historial de stock.
     Task RegistrarMovimientoAsync(Domain.Entities.Movimiento movimiento, CancellationToken ct = default);

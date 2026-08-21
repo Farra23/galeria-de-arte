@@ -114,6 +114,10 @@ public record ObraFicha(
     EstadoObra Estado,
     DateOnly FechaIngreso);
 
+// Historial de movimientos (requerimiento 3.1, pestaña de la ficha): lee directo del libro de
+// stock que ya alimentan Ventas, Retiros, Alquileres y Devoluciones.
+public record MovimientoItem(DateOnly Fecha, TipoMovimiento Tipo, int Cantidad, int? ReferenciaId);
+
 public record ActualizarObraRequest(
     int Id,
     string Titulo,
