@@ -30,6 +30,38 @@
     </div>
 </div>
 
+@if (seleccionados.Count > 0)
+{
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Avisos pendientes de enviar — @seleccionados.Count seleccionado(s)</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="LimpiarSeleccion">Quitar selección</button>
+        </div>
+        <ul class="list-group list-group-flush">
+            @foreach (var fila in FilasSeleccionadas())
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>@fila.ArtistaNombre — @Formato.Monto(fila.TotalPesos, Moneda.Pesos)  @Formato.Monto(fila.TotalDolares, Moneda.USD)</span>
+                    <span class="text-nowrap">
+                        @if (!string.IsNullOrWhiteSpace(fila.ArtistaCorreo))
+                        {
+                            <a class="btn btn-sm btn-outline-secondary" href="@EnlaceMail(fila)" title="Avisar por mail">✉ Mail</a>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(fila.ArtistaCelular))
+                        {
+                            <a class="btn btn-sm btn-outline-success ms-1" href="@EnlaceWhatsApp(fila)" target="_blank" title="Avisar por WhatsApp">WA</a>
+                        }
+                        @if (string.IsNullOrWhiteSpace(fila.ArtistaCorreo) && string.IsNullOrWhiteSpace(fila.ArtistaCelular))
+                        {
+                            <span class="text-body-secondary">Sin mail ni celular cargado</span>
+                        }
+                    </span>
+                </li>
+            }
+        </ul>
+    </div>
+}
+
 @if (filas is null)
 {
     <p><em>Cargando...</em></p>
@@ -44,6 +76,10 @@ else
         <table class="table table-sm table-striped">
             <thead>
                 <tr>
+                    <th>
+                        <input type="checkbox" class="form-check-input" title="Seleccionar todos los visibles"
+                               checked="@TodosVisiblesSeleccionados()" @onchange="e => SeleccionarTodosVisibles((bool)(e.Value ?? false))" />
+                    </th>
                     <th>Artista</th>
                     <th class="text-end">Piezas del mes</th>
                     <th class="text-end">$ del mes</th>
@@ -62,6 +98,10 @@ else
                 @foreach (var fila in Filas())
                 {
                     <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input" checked="@seleccionados.Contains(fila.ArtistaId)"
+                                   @onchange="e => Seleccionar(fila.ArtistaId, (bool)(e.Value ?? false))" />
+                        </td>
                         <td style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"artistas/{fila.ArtistaId}")'>@fila.ArtistaNombre</td>
                         <td class="text-end">@fila.PiezasDelMes</td>
                         <td class="text-end">@Formato.Monto(fila.PesosDelMes, Moneda.Pesos)</td>
@@ -104,6 +144,7 @@ else
     private List<AgendaFilaItem>? filas;
     private string orden = "nombre";
     private bool soloProximos7Dias;
+    private readonly HashSet<int> seleccionados = [];
     private string plantilla = "Estimado [nombre], usted tiene [monto] para retirar. La fecha pactada sería el [fecha]. Recuerde confirmar al teléfono de la galería.";
     private readonly DateOnly hoy = DateOnly.FromDateTime(DateTime.Now);
 
@@ -140,6 +181,48 @@ else
             _ => query.OrderBy(f => f.ArtistaNombre)
         };
     }
+
+    // Selección múltiple (requerimiento 11.4 "+"): no hay forma de mandar un mail o WhatsApp a
+    // varios destinatarios a la vez sin una integración paga (ver 0.3), así que en vez de eso se
+    // arma una bandeja compacta con los avisos de los seleccionados para ir haciendo clic uno por
+    // uno sin tener que buscarlos de nuevo en la tabla completa.
+    private IEnumerable<AgendaFilaItem> FilasSeleccionadas() =>
+        filas!.Where(f => seleccionados.Contains(f.ArtistaId));
+
+    private void Seleccionar(int artistaId, bool marcado)
+    {
+        if (marcado)
+        {
+            seleccionados.Add(artistaId);
+        }
+        else
+        {
+            seleccionados.Remove(artistaId);
+        }
+    }
+
+    private bool TodosVisiblesSeleccionados()
+    {
+        var visibles = Filas().ToList();
+        return visibles.Count > 0 && visibles.All(f => seleccionados.Contains(f.ArtistaId));
+    }
+
+    private void SeleccionarTodosVisibles(bool marcado)
+    {
+        foreach (var fila in Filas())
+        {
+            if (marcado)
+            {
+                seleccionados.Add(fila.ArtistaId);
+            }
+            else
+            {
+                seleccionados.Remove(fila.ArtistaId);
+            }
+        }
+    }
+
+    private void LimpiarSeleccion() => seleccionados.Clear();
 
     private async Task GuardarAsync(AgendaFilaItem fila, string? comentarios = null, string? fechaPactada = null, string? fechaConfirmada = null)
     {
