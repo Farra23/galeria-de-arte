@@ -1,0 +1,58 @@
+@* Modal de confirmación genérico (requerimiento 0.6): antes de una acción irreversible se llama
+   a Mostrar con el mensaje puntual de qué va a pasar, y la acción real solo se ejecuta si el
+   usuario confirma. Un componente en vez de duplicar el mismo modal Bootstrap en cada pantalla. *@
+@if (visible)
+{
+    <div class="modal d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@titulo</h5>
+                    <button type="button" class="btn-close" @onclick="Cancelar"></button>
+                </div>
+                <div class="modal-body">
+                    <p style="white-space: pre-line">@mensaje</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="Cancelar">Cancelar</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmarAsync">@textoConfirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool visible;
+    private string titulo = "";
+    private string mensaje = "";
+    private string textoConfirmar = "Confirmar";
+    private Func<Task>? accion;
+
+    public void Mostrar(string titulo, string mensaje, Func<Task> accion, string textoConfirmar = "Confirmar")
+    {
+        this.titulo = titulo;
+        this.mensaje = mensaje;
+        this.accion = accion;
+        this.textoConfirmar = textoConfirmar;
+        visible = true;
+        StateHasChanged();
+    }
+
+    private void Cancelar()
+    {
+        visible = false;
+        accion = null;
+    }
+
+    private async Task ConfirmarAsync()
+    {
+        visible = false;
+        var accionActual = accion;
+        accion = null;
+        if (accionActual is not null)
+        {
+            await accionActual();
+        }
+    }
+}

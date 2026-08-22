@@ -97,12 +97,15 @@ else
     </div>
 }
 
+<ConfirmModal @ref="confirmModal" />
+
 @code {
     private string? texto;
     private List<ObraParaOperacion>? resultados;
     private ObraParaOperacion? obra;
     private string? error;
     private InputModel Input { get; set; } = new();
+    private ConfirmModal confirmModal = default!;
 
     private async Task BuscarAsync() => resultados = await RetiroService.BuscarObrasDisponiblesAsync(texto);
 
@@ -118,7 +121,27 @@ else
         error = null;
     }
 
-    private async Task ConfirmarAsync()
+    // El retiro definitivo no tiene botón de "devolver al stock" como el temporal (requerimiento
+    // 0.6: confirmación antes de lo irreversible) — se confirma con un modal antes de registrarlo.
+    private Task ConfirmarAsync()
+    {
+        if (obra is null) return Task.CompletedTask;
+
+        if (Input.Tipo == TipoRetiro.Definitivo)
+        {
+            confirmModal.Mostrar(
+                "Confirmar retiro definitivo",
+                $"\"{obra.Titulo}\" ({obra.CodigoVisible}) va a salir del stock de forma definitiva. " +
+                "A diferencia de un retiro temporal, esta obra no tiene un botón para volver a habilitarla. ¿Confirmás?",
+                RegistrarAsync,
+                "Retirar definitivamente");
+            return Task.CompletedTask;
+        }
+
+        return RegistrarAsync();
+    }
+
+    private async Task RegistrarAsync()
     {
         if (obra is null) return;
         error = null;
@@ -139,6 +162,7 @@ else
         catch (InvalidOperationException ex)
         {
             error = ex.Message;
+            StateHasChanged();
         }
     }
 
