@@ -23,6 +23,7 @@ public class GaleriaDbContext(DbContextOptions<GaleriaDbContext> options) : DbCo
     public DbSet<Auditoria> Auditorias => Set<Auditoria>();
     public DbSet<Certificado> Certificados => Set<Certificado>();
     public DbSet<Parametro> Parametros => Set<Parametro>();
+    public DbSet<AgendaPago> AgendasPago => Set<AgendaPago>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

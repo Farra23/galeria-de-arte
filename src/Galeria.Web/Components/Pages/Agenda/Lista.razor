@@ -1,0 +1,176 @@
+@page "/agenda"
+@attribute [Authorize]
+@using System.Globalization
+@using Galeria.Application.Agenda
+@using Galeria.Application.Parametros
+@using Galeria.Domain.Entities
+@inject AgendaService AgendaService
+@inject IParametroRepository ParametroRepository
+
+<PageTitle>Agenda de pagos</PageTitle>
+<HeadContent>
+    <meta name="description" content="Agenda mensual de artistas con plata pendiente de cobrar." />
+</HeadContent>
+
+<h1>Agenda de pagos</h1>
+<p class="text-body-secondary">Mes actual: <strong>@CultureInfo.GetCultureInfo("es-UY").DateTimeFormat.GetMonthName(hoy.Month) @hoy.Year</strong></p>
+
+<div class="row mb-3 g-2">
+    <div class="col-auto">
+        <select class="form-select" @bind="orden">
+            <option value="nombre">Ordenar por nombre</option>
+            <option value="confirmada">Ordenar por fecha confirmada</option>
+            <option value="pactada">Ordenar por fecha pactada</option>
+            <option value="total">Ordenar por plata total</option>
+        </select>
+    </div>
+    <div class="col-auto form-check pt-2">
+        <input type="checkbox" class="form-check-input" id="proximos7" @bind="soloProximos7Dias" />
+        <label class="form-check-label" for="proximos7">Solo próximos 7 días (fecha pactada)</label>
+    </div>
+</div>
+
+@if (filas is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else if (filas.Count == 0)
+{
+    <p>No hay artistas con plata pendiente de cobrar.</p>
+}
+else
+{
+    <div style="overflow-x:auto">
+        <table class="table table-sm table-striped">
+            <thead>
+                <tr>
+                    <th>Artista</th>
+                    <th class="text-end">Piezas del mes</th>
+                    <th class="text-end">$ del mes</th>
+                    <th class="text-end">U$S del mes</th>
+                    <th class="text-end">$ meses anteriores</th>
+                    <th class="text-end">U$S meses anteriores</th>
+                    <th class="text-end">$ total</th>
+                    <th class="text-end">U$S total</th>
+                    <th>Comentarios</th>
+                    <th>Fecha pactada</th>
+                    <th>Fecha confirmada</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var fila in Filas())
+                {
+                    <tr>
+                        <td style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"artistas/{fila.ArtistaId}")'>@fila.ArtistaNombre</td>
+                        <td class="text-end">@fila.PiezasDelMes</td>
+                        <td class="text-end">@Formato.Monto(fila.PesosDelMes, Moneda.Pesos)</td>
+                        <td class="text-end">@Formato.Monto(fila.DolaresDelMes, Moneda.USD)</td>
+                        <td class="text-end">@Formato.Monto(fila.PesosMesesAnteriores, Moneda.Pesos)</td>
+                        <td class="text-end">@Formato.Monto(fila.DolaresMesesAnteriores, Moneda.USD)</td>
+                        <td class="text-end fw-bold">@Formato.Monto(fila.TotalPesos, Moneda.Pesos)</td>
+                        <td class="text-end fw-bold">@Formato.Monto(fila.TotalDolares, Moneda.USD)</td>
+                        <td style="min-width:160px">
+                            <input class="form-control form-control-sm" value="@fila.Comentarios"
+                                   @onchange="e => GuardarAsync(fila, comentarios: e.Value?.ToString())" />
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm" value="@(fila.FechaPactada?.ToString("yyyy-MM-dd"))"
+                                   @onchange="e => GuardarAsync(fila, fechaPactada: e.Value?.ToString())" />
+                        </td>
+                        <td>
+                            <input type="date" class="form-control form-control-sm" value="@(fila.FechaConfirmada?.ToString("yyyy-MM-dd"))"
+                                   @onchange="e => GuardarAsync(fila, fechaConfirmada: e.Value?.ToString())" />
+                        </td>
+                        <td class="text-nowrap">
+                            @if (!string.IsNullOrWhiteSpace(fila.ArtistaCorreo))
+                            {
+                                <a class="btn btn-sm btn-outline-secondary" href="@EnlaceMail(fila)" title="Avisar por mail">✉</a>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(fila.ArtistaCelular))
+                            {
+                                <a class="btn btn-sm btn-outline-success" href="@EnlaceWhatsApp(fila)" target="_blank" title="Avisar por WhatsApp">WA</a>
+                            }
+                            <a class="btn btn-sm btn-primary" href="@($"liquidaciones/generar?artista={fila.ArtistaId}")">Liquidar</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<AgendaFilaItem>? filas;
+    private string orden = "nombre";
+    private bool soloProximos7Dias;
+    private string plantilla = "Estimado [nombre], usted tiene [monto] para retirar. La fecha pactada sería el [fecha]. Recuerde confirmar al teléfono de la galería.";
+    private readonly DateOnly hoy = DateOnly.FromDateTime(DateTime.Now);
+
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        filas = await AgendaService.ObtenerAsync();
+
+        var plantillaGuardada = await ParametroRepository.ObtenerAsync(Parametro.Claves.PlantillaAviso);
+        if (!string.IsNullOrWhiteSpace(plantillaGuardada))
+        {
+            plantilla = plantillaGuardada;
+        }
+    }
+
+    // Filtro y orden se resuelven en memoria: la lista ya está completa (solo artistas con saldo,
+    // que en la práctica nunca son miles) — no vale la pena otra ida a la base para esto.
+    private IEnumerable<AgendaFilaItem> Filas()
+    {
+        var query = filas!.AsEnumerable();
+
+        if (soloProximos7Dias)
+        {
+            var limite = hoy.AddDays(7);
+            query = query.Where(f => f.FechaPactada is not null && f.FechaPactada >= hoy && f.FechaPactada <= limite);
+        }
+
+        return orden switch
+        {
+            "confirmada" => query.OrderBy(f => f.FechaConfirmada is null).ThenBy(f => f.FechaConfirmada),
+            "pactada" => query.OrderBy(f => f.FechaPactada is null).ThenBy(f => f.FechaPactada),
+            "total" => query.OrderByDescending(f => f.TotalPesos + f.TotalDolares),
+            _ => query.OrderBy(f => f.ArtistaNombre)
+        };
+    }
+
+    private async Task GuardarAsync(AgendaFilaItem fila, string? comentarios = null, string? fechaPactada = null, string? fechaConfirmada = null)
+    {
+        var request = new GuardarAgendaRequest(
+            fila.ArtistaId,
+            fechaPactada is not null ? ParseFecha(fechaPactada) : fila.FechaPactada,
+            fechaConfirmada is not null ? ParseFecha(fechaConfirmada) : fila.FechaConfirmada,
+            comentarios ?? fila.Comentarios);
+
+        await AgendaService.GuardarAsync(request);
+        filas = await AgendaService.ObtenerAsync();
+    }
+
+    private static DateOnly? ParseFecha(string valor) => DateOnly.TryParse(valor, out var f) ? f : null;
+
+    private string ArmarMensaje(AgendaFilaItem fila) => plantilla
+        .Replace("[nombre]", fila.ArtistaNombre)
+        .Replace("[monto]", $"{Formato.Monto(fila.TotalPesos, Moneda.Pesos)} y {Formato.Monto(fila.TotalDolares, Moneda.USD)}")
+        .Replace("[fecha]", fila.FechaPactada?.ToString("dd/MM/yyyy") ?? "a coordinar");
+
+    private string EnlaceMail(AgendaFilaItem fila)
+    {
+        var asunto = Uri.EscapeDataString("Tiene plata para retirar");
+        var cuerpo = Uri.EscapeDataString(ArmarMensaje(fila));
+        return $"mailto:{fila.ArtistaCorreo}?subject={asunto}&body={cuerpo}";
+    }
+
+    private string EnlaceWhatsApp(AgendaFilaItem fila)
+    {
+        var numero = new string(fila.ArtistaCelular!.Where(char.IsDigit).ToArray());
+        var texto = Uri.EscapeDataString(ArmarMensaje(fila));
+        return $"https://wa.me/{numero}?text={texto}";
+    }
+}
