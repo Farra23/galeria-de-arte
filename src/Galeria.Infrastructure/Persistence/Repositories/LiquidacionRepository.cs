@@ -177,7 +177,9 @@ public class LiquidacionRepository(GaleriaDbContext db) : ILiquidacionRepository
             liquidacion.TotalBruto,
             liquidacion.TotalAdelantos,
             liquidacion.TotalDevoluciones,
-            liquidacion.TotalNeto);
+            liquidacion.TotalNeto,
+            liquidacion.Artista.Correo,
+            liquidacion.Artista.Celular);
     }
 
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);

@@ -19,6 +19,14 @@ else
 {
     <div class="mb-3 d-print-none">
         <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
+        @if (!string.IsNullOrWhiteSpace(detalle.ArtistaCorreo))
+        {
+            <a class="btn btn-outline-secondary" href="@EnlaceMail()">Enviar por mail</a>
+        }
+        @if (!string.IsNullOrWhiteSpace(detalle.ArtistaCelular))
+        {
+            <a class="btn btn-outline-success" href="@EnlaceWhatsApp()" target="_blank">Enviar por WhatsApp</a>
+        }
         <a class="btn btn-link" href="liquidaciones">Volver a Liquidaciones</a>
     </div>
 
@@ -85,6 +93,7 @@ else
     private string nombreGaleria = "Galería ACATRAS";
     private string? direccionGaleria;
     private string? telefonoGaleria;
+    private string plantilla = "Estimado [nombre], adjuntamos su liquidación por [monto], emitida el [fecha].";
 
     protected override async Task OnInitializedAsync()
     {
@@ -94,7 +103,8 @@ else
         [
             Parametro.Claves.NombreGaleria,
             Parametro.Claves.DireccionGaleria,
-            Parametro.Claves.TelefonoGaleria
+            Parametro.Claves.TelefonoGaleria,
+            Parametro.Claves.PlantillaLiqui
         ]);
 
         if (valores.TryGetValue(Parametro.Claves.NombreGaleria, out var nombre) && !string.IsNullOrWhiteSpace(nombre))
@@ -104,6 +114,33 @@ else
 
         direccionGaleria = valores.GetValueOrDefault(Parametro.Claves.DireccionGaleria);
         telefonoGaleria = valores.GetValueOrDefault(Parametro.Claves.TelefonoGaleria);
+
+        if (valores.TryGetValue(Parametro.Claves.PlantillaLiqui, out var plantillaGuardada) && !string.IsNullOrWhiteSpace(plantillaGuardada))
+        {
+            plantilla = plantillaGuardada;
+        }
+    }
+
+    // Sin integración de mail/WhatsApp real (requerimiento 0.3, opción recomendada para v1): un
+    // mailto: abre el cliente de correo del usuario ya armado, y un link a wa.me abre WhatsApp
+    // Web con el mensaje escrito — gratis, inmediato, y quien envía revisa antes de mandar.
+    private string ArmarMensaje() => plantilla
+        .Replace("[nombre]", detalle!.ArtistaNombre)
+        .Replace("[monto]", Formato.Monto(detalle.TotalNeto, detalle.Moneda))
+        .Replace("[fecha]", detalle.Fecha.ToString("dd/MM/yyyy"));
+
+    private string EnlaceMail()
+    {
+        var asunto = Uri.EscapeDataString($"Liquidación N.º {detalle!.NumeroCorrelativo:D6}");
+        var cuerpo = Uri.EscapeDataString(ArmarMensaje());
+        return $"mailto:{detalle.ArtistaCorreo}?subject={asunto}&body={cuerpo}";
+    }
+
+    private string EnlaceWhatsApp()
+    {
+        var numero = new string(detalle!.ArtistaCelular!.Where(char.IsDigit).ToArray());
+        var texto = Uri.EscapeDataString(ArmarMensaje());
+        return $"https://wa.me/{numero}?text={texto}";
     }
 
     private static string TipoTexto(TipoLinea tipo) => tipo switch

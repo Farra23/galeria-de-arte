@@ -46,6 +46,8 @@ public record LiquidacionDetalle(
     decimal TotalBruto,
     decimal TotalAdelantos,
     decimal TotalDevoluciones,
-    decimal TotalNeto);
+    decimal TotalNeto,
+    string? ArtistaCorreo,
+    string? ArtistaCelular);
 
 public record LiquidacionFiltro(int? ArtistaId = null, DateOnly? FechaDesde = null, DateOnly? FechaHasta = null);
