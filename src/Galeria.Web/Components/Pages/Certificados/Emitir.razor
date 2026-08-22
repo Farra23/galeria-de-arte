@@ -22,6 +22,7 @@ else
 {
     <div class="mb-3 d-print-none">
         <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
+        <a class="btn btn-outline-primary" href="@($"certificados/{certificadoId}/pdf")" target="_blank">Descargar PDF</a>
         <a class="btn btn-link" href="ventas">Volver a Ventas</a>
     </div>
 
@@ -53,12 +54,14 @@ else
 
     private bool cargando = true;
     private CertificadoDatos? datos;
+    private int certificadoId;
 
     protected override async Task OnInitializedAsync()
     {
         var certificado = await CertificadoService.ObtenerPorVentaAsync(VentaId);
         if (certificado is not null)
         {
+            certificadoId = certificado.Id;
             datos = await CertificadoService.ObtenerDatosAsync(certificado.Id);
         }
 
@@ -67,7 +70,7 @@ else
 
     private async Task EmitirAsync()
     {
-        var certificadoId = await CertificadoService.EmitirAsync(VentaId);
+        certificadoId = await CertificadoService.EmitirAsync(VentaId);
         datos = await CertificadoService.ObtenerDatosAsync(certificadoId);
     }
 

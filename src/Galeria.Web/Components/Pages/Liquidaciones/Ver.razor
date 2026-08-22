@@ -19,6 +19,7 @@ else
 {
     <div class="mb-3 d-print-none">
         <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
+        <a class="btn btn-outline-primary" href="@($"liquidaciones/{detalle.Id}/pdf")" target="_blank">Descargar PDF</a>
         @if (!string.IsNullOrWhiteSpace(detalle.ArtistaCorreo))
         {
             <a class="btn btn-outline-secondary" href="@EnlaceMail()">Enviar por mail</a>

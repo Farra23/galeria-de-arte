@@ -124,6 +124,7 @@
 }
 
 <div class="mb-3 text-end">
+    <a class="btn btn-outline-secondary" href="@EnlaceExportarCsv()" target="_blank">Exportar CSV</a>
     <a class="btn btn-primary" href="obras/nueva">+ Nueva obra</a>
 </div>
 
@@ -329,4 +330,12 @@ else
 
     private static IReadOnlyDictionary<string, object?> Solo(string clave) =>
         new Dictionary<string, object?> { [clave] = null };
+
+    // El endpoint /obras/exportar.csv parsea la misma querystring que esta página — alcanza con
+    // pasarle el filtro que ya está en la URL, sin repetirlo en dos formatos distintos.
+    private string EnlaceExportarCsv()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        return "obras/exportar.csv" + uri.Query;
+    }
 }

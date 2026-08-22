@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -14,6 +15,8 @@ using Galeria.Application.Catalogos;
 using Galeria.Application.Certificados;
 using Galeria.Application.Common;
 using Galeria.Application.Devoluciones;
+using Galeria.Domain.Entities;
+using Galeria.Domain.Enums;
 using Galeria.Application.Liquidaciones;
 using Galeria.Application.Obras;
 using Galeria.Application.Parametros;
@@ -25,6 +28,7 @@ using Galeria.Infrastructure.Persistence.Repositories;
 using Galeria.Web.Components;
 using Galeria.Web.Components.Account;
 using Galeria.Web.Data;
+using Galeria.Web.Pdf;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -134,6 +138,11 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
+// Requerimiento 0.2 (INSISTIDO): PDF real para comprobantes y listas, no solo "imprimir" del
+// navegador. QuestPDF es Community (gratis) para una empresa de este tamaño — sin dependencias
+// externas (no arranca un Chromium como haría un enfoque basado en HTML-a-PDF).
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 var app = builder.Build();
 
 await IdentitySeeder.SeedAdminAsync(app.Services);
@@ -181,4 +190,112 @@ app.MapRazorComponents<App>()
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
 
+// Requerimiento 0.2 (INSISTIDO): PDF real de los comprobantes, no solo "imprimir" del navegador.
+// Endpoints propios (no Razor components) porque generar el PDF es un detalle de infraestructura
+// de Web, no algo que tenga sentido meter en la página que ya renderiza la vista imprimible.
+app.MapGet("/certificados/{certificadoId:int}/pdf", async (int certificadoId, CertificadoService certificados, IParametroRepository parametros) =>
+{
+    var datos = await certificados.ObtenerDatosAsync(certificadoId);
+    if (datos is null)
+    {
+        return Results.NotFound();
+    }
+
+    var nombreGaleria = await parametros.ObtenerAsync(Parametro.Claves.NombreGaleria) is { Length: > 0 } nombre
+        ? nombre
+        : "Galería ACATRAS";
+
+    var pdf = CertificadoPdfGenerator.Generar(datos, nombreGaleria);
+    return Results.File(pdf, "application/pdf", $"certificado-{datos.NumeroCertificado:D6}.pdf");
+}).RequireAuthorization();
+
+app.MapGet("/liquidaciones/{id:int}/pdf", async (int id, LiquidacionService liquidaciones, IParametroRepository parametros) =>
+{
+    var detalle = await liquidaciones.ObtenerDetalleAsync(id);
+    if (detalle is null)
+    {
+        return Results.NotFound();
+    }
+
+    var valores = await parametros.ObtenerVariosAsync(
+    [
+        Parametro.Claves.NombreGaleria,
+        Parametro.Claves.DireccionGaleria,
+        Parametro.Claves.TelefonoGaleria
+    ]);
+
+    var nombreGaleria = valores.GetValueOrDefault(Parametro.Claves.NombreGaleria) is { Length: > 0 } nombre
+        ? nombre
+        : "Galería ACATRAS";
+
+    var pdf = LiquidacionPdfGenerator.Generar(
+        detalle, nombreGaleria,
+        valores.GetValueOrDefault(Parametro.Claves.DireccionGaleria),
+        valores.GetValueOrDefault(Parametro.Claves.TelefonoGaleria));
+
+    return Results.File(pdf, "application/pdf", $"liquidacion-{detalle.NumeroCorrelativo:D6}.pdf");
+}).RequireAuthorization();
+
+// Exportar a Excel/CSV (requerimiento 0.2 "+"): respeta el mismo filtro activo que la Lista de
+// Obras, parseado de la querystring con el mismo criterio que SupplyParameterFromQuery usa en la
+// página — se repite acá porque un endpoint mínimo no tiene ese mecanismo de Blazor disponible.
+app.MapGet("/obras/exportar.csv", async (HttpRequest request, ObraService obras) =>
+{
+    var query = request.Query;
+
+    int? LeerInt(string clave) => int.TryParse(query[clave], out var v) ? v : null;
+    decimal? LeerDecimal(string clave) => decimal.TryParse(query[clave], out var v) ? v : null;
+    DateOnly? LeerFecha(string clave) => DateOnly.TryParse(query[clave], out var v) ? v : null;
+    bool? LeerBool(string clave) => bool.TryParse(query[clave], out var v) ? v : null;
+
+    var filtro = new ObraFiltro(
+        TextoLibre: query["q"],
+        ArtistaId: LeerInt("artista"),
+        RubroId: LeerInt("rubro"),
+        TecnicaId: LeerInt("tecnica"),
+        Moneda: Enum.TryParse<Moneda>(query["moneda"], out var moneda) ? moneda : null,
+        TieneIVA: LeerBool("iva"),
+        SoloConStock: LeerBool("stock"),
+        Estado: Enum.TryParse<EstadoObra>(query["estado"], out var estado) ? estado : null,
+        PrecioMinimo: LeerDecimal("precioMin"),
+        PrecioMaximo: LeerDecimal("precioMax"),
+        FechaDesde: LeerFecha("desde"),
+        FechaHasta: LeerFecha("hasta"));
+
+    var resultado = await obras.BuscarAsync(filtro);
+
+    var csv = new StringBuilder();
+    csv.AppendLine("Codigo;Nombre;Artista;Rubro;Tecnica;Moneda;Costo;PrecioVenta;Stock;Estado;FechaIngreso");
+    foreach (var obra in resultado)
+    {
+        csv.AppendLine(string.Join(';',
+        [
+            obra.CodigoVisible,
+            CsvHelper.Escapar(obra.Titulo),
+            CsvHelper.Escapar(obra.ArtistaNombre),
+            CsvHelper.Escapar(obra.Rubro ?? ""),
+            CsvHelper.Escapar(obra.Tecnica ?? ""),
+            obra.Moneda.ToString(),
+            obra.Costo.ToString(CultureInfo.InvariantCulture),
+            obra.PrecioVenta.ToString(CultureInfo.InvariantCulture),
+            obra.Existencia.ToString(),
+            obra.Estado.ToString(),
+            obra.FechaIngreso.ToString("yyyy-MM-dd")
+        ]));
+    }
+
+    // BOM UTF-8: sin esto, Excel abre las tildes rotas al abrir el CSV directamente.
+    var bytes = new byte[] { 0xEF, 0xBB, 0xBF }.Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
+    return Results.File(bytes, "text/csv", "obras.csv");
+}).RequireAuthorization();
+
 app.Run();
+
+// Encoder mínimo de campos CSV — no hace falta una librería para esto.
+static class CsvHelper
+{
+    public static string Escapar(string valor) =>
+        valor.Contains(';') || valor.Contains('"') || valor.Contains('\n')
+            ? $"\"{valor.Replace("\"", "\"\"")}\""
+            : valor;
+}
