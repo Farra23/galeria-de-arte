@@ -15,6 +15,27 @@ public class RetiroRepository(GaleriaDbContext db) : IRetiroRepository
     public Task<Retiro?> ObtenerEntidadAsync(int id, CancellationToken ct = default) =>
         db.Retiros.FirstOrDefaultAsync(r => r.Id == id, ct);
 
+    public async Task<RetiroListItem?> ObtenerAsync(int id, CancellationToken ct = default)
+    {
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+
+        return await db.Retiros.AsNoTracking()
+            .Include(r => r.Obra).ThenInclude(o => o.Artista)
+            .Where(r => r.Id == id)
+            .Select(r => new RetiroListItem(
+                r.Id,
+                r.Fecha,
+                r.Obra.Artista.Codigo.ToString("D3") + r.Obra.NumeroObra.ToString("D3"),
+                r.Obra.Titulo,
+                r.Obra.Artista.Apellido + ", " + r.Obra.Artista.Nombre,
+                r.Tipo,
+                r.Motivo,
+                r.FechaDevolucion != null,
+                r.FechaEstimadaDevolucion,
+                r.FechaDevolucion == null && r.FechaEstimadaDevolucion != null && r.FechaEstimadaDevolucion < hoy))
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<List<RetiroListItem>> BuscarAsync(RetiroFiltro filtro, CancellationToken ct = default)
     {
         var query = db.Retiros.AsNoTracking()

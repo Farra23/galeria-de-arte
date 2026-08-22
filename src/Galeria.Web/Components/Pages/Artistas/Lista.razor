@@ -17,6 +17,7 @@
                @bind="texto" @bind:event="oninput" @bind:after='() => IrA("q", texto)' />
     </div>
     <div class="col-md-6 text-end">
+        <a class="btn btn-outline-secondary" href="@EnlaceExportarCsv()" target="_blank">Exportar CSV</a>
         <a class="btn btn-primary" href="artistas/nuevo">+ Nuevo artista</a>
     </div>
 </div>
@@ -97,4 +98,6 @@ else
     }
 
     private string Flecha(OrdenArtista campo) => Orden != campo ? "" : (DescActual ? " ▼" : " ▲");
+
+    private string EnlaceExportarCsv() => "artistas/exportar.csv" + new Uri(NavigationManager.Uri).Query;
 }

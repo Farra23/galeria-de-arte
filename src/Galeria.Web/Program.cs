@@ -236,66 +236,185 @@ app.MapGet("/liquidaciones/{id:int}/pdf", async (int id, LiquidacionService liqu
     return Results.File(pdf, "application/pdf", $"liquidacion-{detalle.NumeroCorrelativo:D6}.pdf");
 }).RequireAuthorization();
 
-// Exportar a Excel/CSV (requerimiento 0.2 "+"): respeta el mismo filtro activo que la Lista de
-// Obras, parseado de la querystring con el mismo criterio que SupplyParameterFromQuery usa en la
-// página — se repite acá porque un endpoint mínimo no tiene ese mecanismo de Blazor disponible.
+// Exportar a Excel/CSV (requerimiento 0.2 "+"): cada endpoint respeta el mismo filtro activo que
+// su lista, parseado de la querystring con las mismas claves que SupplyParameterFromQuery usa en
+// la página — se repite acá porque un endpoint mínimo no tiene ese mecanismo de Blazor disponible.
 app.MapGet("/obras/exportar.csv", async (HttpRequest request, ObraService obras) =>
 {
-    var query = request.Query;
-
-    int? LeerInt(string clave) => int.TryParse(query[clave], out var v) ? v : null;
-    decimal? LeerDecimal(string clave) => decimal.TryParse(query[clave], out var v) ? v : null;
-    DateOnly? LeerFecha(string clave) => DateOnly.TryParse(query[clave], out var v) ? v : null;
-    bool? LeerBool(string clave) => bool.TryParse(query[clave], out var v) ? v : null;
-
+    var q = request.Query;
     var filtro = new ObraFiltro(
-        TextoLibre: query["q"],
-        ArtistaId: LeerInt("artista"),
-        RubroId: LeerInt("rubro"),
-        TecnicaId: LeerInt("tecnica"),
-        Moneda: Enum.TryParse<Moneda>(query["moneda"], out var moneda) ? moneda : null,
-        TieneIVA: LeerBool("iva"),
-        SoloConStock: LeerBool("stock"),
-        Estado: Enum.TryParse<EstadoObra>(query["estado"], out var estado) ? estado : null,
-        PrecioMinimo: LeerDecimal("precioMin"),
-        PrecioMaximo: LeerDecimal("precioMax"),
-        FechaDesde: LeerFecha("desde"),
-        FechaHasta: LeerFecha("hasta"));
+        TextoLibre: q["q"],
+        ArtistaId: QueryHelper.Int(q, "artista"),
+        RubroId: QueryHelper.Int(q, "rubro"),
+        TecnicaId: QueryHelper.Int(q, "tecnica"),
+        Moneda: QueryHelper.Enum<Moneda>(q, "moneda"),
+        TieneIVA: QueryHelper.Bool(q, "iva"),
+        SoloConStock: QueryHelper.Bool(q, "stock"),
+        Estado: QueryHelper.Enum<EstadoObra>(q, "estado"),
+        PrecioMinimo: QueryHelper.Decimal(q, "precioMin"),
+        PrecioMaximo: QueryHelper.Decimal(q, "precioMax"),
+        FechaDesde: QueryHelper.Fecha(q, "desde"),
+        FechaHasta: QueryHelper.Fecha(q, "hasta"));
 
     var resultado = await obras.BuscarAsync(filtro);
 
-    var csv = new StringBuilder();
-    csv.AppendLine("Codigo;Nombre;Artista;Rubro;Tecnica;Moneda;Costo;PrecioVenta;Stock;Estado;FechaIngreso");
-    foreach (var obra in resultado)
+    return CsvHelper.Generar("obras.csv",
+        ["Codigo", "Nombre", "Artista", "Rubro", "Tecnica", "Moneda", "Costo", "PrecioVenta", "Stock", "Estado", "FechaIngreso"],
+        resultado.Select(o => new[]
+        {
+            o.CodigoVisible, o.Titulo, o.ArtistaNombre, o.Rubro ?? "", o.Tecnica ?? "", o.Moneda.ToString(),
+            QueryHelper.Num(o.Costo), QueryHelper.Num(o.PrecioVenta), o.Existencia.ToString(), o.Estado.ToString(),
+            o.FechaIngreso.ToString("yyyy-MM-dd")
+        }));
+}).RequireAuthorization();
+
+app.MapGet("/artistas/exportar.csv", async (HttpRequest request, ArtistaService artistas) =>
+{
+    var q = request.Query;
+    var orden = QueryHelper.Enum<OrdenArtista>(q, "orden") ?? OrdenArtista.Nombre;
+    var filtro = new ArtistaFiltro(q["q"], orden, QueryHelper.Bool(q, "desc") ?? false);
+
+    var resultado = await artistas.BuscarAsync(filtro);
+
+    return CsvHelper.Generar("artistas.csv",
+        ["Codigo", "Nombre", "Taller", "Celular", "Correo", "Obras", "ObrasEnStock", "SaldoPesos", "SaldoDolares"],
+        resultado.Select(a => new[]
+        {
+            a.Codigo.ToString("D3"), a.NombreCompleto, a.Taller ?? "", a.Celular ?? "", a.Correo ?? "",
+            a.CantidadObras.ToString(), a.ObrasEnStock.ToString(), QueryHelper.Num(a.SaldoPesos), QueryHelper.Num(a.SaldoDolares)
+        }));
+}).RequireAuthorization();
+
+app.MapGet("/ventas/exportar.csv", async (HttpRequest request, VentaService ventas) =>
+{
+    var q = request.Query;
+    var filtro = new VentaFiltro(q["q"], QueryHelper.Int(q, "artista"), QueryHelper.Enum<Moneda>(q, "moneda"));
+
+    var resultado = await ventas.BuscarAsync(filtro);
+
+    return CsvHelper.Generar("ventas.csv",
+        ["Fecha", "Codigo", "Obra", "Artista", "Cantidad", "Moneda", "Precio"],
+        resultado.Select(v => new[]
+        {
+            v.Fecha.ToString("yyyy-MM-dd"), v.CodigoObra, v.Titulo, v.ArtistaNombre,
+            v.Cantidad.ToString(), v.Moneda.ToString(), QueryHelper.Num(v.PrecioVenta)
+        }));
+}).RequireAuthorization();
+
+app.MapGet("/retiros/exportar.csv", async (HttpRequest request, RetiroService retiros) =>
+{
+    var q = request.Query;
+    var filtro = new RetiroFiltro(q["q"], QueryHelper.Int(q, "artista"), QueryHelper.Enum<TipoRetiro>(q, "tipo"));
+
+    var resultado = await retiros.BuscarAsync(filtro);
+
+    return CsvHelper.Generar("retiros.csv",
+        ["Fecha", "Artista", "Codigo", "Obra", "Tipo", "Motivo", "Devuelto"],
+        resultado.Select(r => new[]
+        {
+            r.Fecha.ToString("yyyy-MM-dd"), r.ArtistaNombre, r.CodigoObra, r.Titulo, r.Tipo.ToString(),
+            r.Motivo ?? "", r.EstaDevuelto ? "si" : "no"
+        }));
+}).RequireAuthorization();
+
+app.MapGet("/alquileres/exportar.csv", async (HttpRequest request, AlquilerService alquileres) =>
+{
+    var q = request.Query;
+    var filtro = new AlquilerFiltro(q["q"], QueryHelper.Int(q, "artista"), QueryHelper.Bool(q, "activos"));
+
+    var resultado = await alquileres.BuscarAsync(filtro);
+
+    return CsvHelper.Generar("alquileres.csv",
+        ["Inicio", "Codigo", "Obra", "Artista", "Cliente", "Moneda", "Monto", "MontoArtista", "Activo"],
+        resultado.Select(a => new[]
+        {
+            a.FechaInicio.ToString("yyyy-MM-dd"), a.CodigoObra, a.Titulo, a.ArtistaNombre, a.Cliente ?? "",
+            a.Moneda.ToString(), QueryHelper.Num(a.MontoAlquiler), QueryHelper.Num(a.MontoArtista), a.EstaActivo ? "si" : "no"
+        }));
+}).RequireAuthorization();
+
+app.MapGet("/adelantos/exportar.csv", async (HttpRequest request, AdelantoService adelantos) =>
+{
+    var q = request.Query;
+    var filtro = new AdelantoFiltro(QueryHelper.Int(q, "artista"), QueryHelper.Fecha(q, "desde"), QueryHelper.Fecha(q, "hasta"));
+
+    var resultado = await adelantos.BuscarAsync(filtro);
+
+    return CsvHelper.Generar("adelantos.csv",
+        ["Fecha", "Artista", "Tipo", "Moneda", "Monto", "Observaciones", "Descontado"],
+        resultado.Select(a => new[]
+        {
+            a.Fecha.ToString("yyyy-MM-dd"), a.ArtistaNombre, a.Tipo.ToString(), a.Moneda.ToString(),
+            QueryHelper.Num(a.Importe), a.Observaciones ?? "", a.FueDescontado ? "si" : "no"
+        }));
+}).RequireAuthorization();
+
+app.MapGet("/liquidaciones/exportar.csv", async (HttpRequest request, LiquidacionService liquidaciones) =>
+{
+    var q = request.Query;
+    var filtro = new LiquidacionFiltro(QueryHelper.Int(q, "artista"));
+
+    var resultado = await liquidaciones.BuscarAsync(filtro);
+
+    return CsvHelper.Generar("liquidaciones.csv",
+        ["Numero", "Fecha", "Artista", "Moneda", "TotalNeto"],
+        resultado.Select(l => new[]
+        {
+            l.NumeroCorrelativo.ToString("D6"), l.Fecha.ToString("yyyy-MM-dd"), l.ArtistaNombre,
+            l.Moneda.ToString(), QueryHelper.Num(l.TotalNeto)
+        }));
+}).RequireAuthorization();
+
+app.MapGet("/retiros/{id:int}/pdf", async (int id, RetiroService retiros, IParametroRepository parametros) =>
+{
+    var retiro = await retiros.ObtenerAsync(id);
+    if (retiro is null)
     {
-        csv.AppendLine(string.Join(';',
-        [
-            obra.CodigoVisible,
-            CsvHelper.Escapar(obra.Titulo),
-            CsvHelper.Escapar(obra.ArtistaNombre),
-            CsvHelper.Escapar(obra.Rubro ?? ""),
-            CsvHelper.Escapar(obra.Tecnica ?? ""),
-            obra.Moneda.ToString(),
-            obra.Costo.ToString(CultureInfo.InvariantCulture),
-            obra.PrecioVenta.ToString(CultureInfo.InvariantCulture),
-            obra.Existencia.ToString(),
-            obra.Estado.ToString(),
-            obra.FechaIngreso.ToString("yyyy-MM-dd")
-        ]));
+        return Results.NotFound();
     }
 
-    // BOM UTF-8: sin esto, Excel abre las tildes rotas al abrir el CSV directamente.
-    var bytes = new byte[] { 0xEF, 0xBB, 0xBF }.Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
-    return Results.File(bytes, "text/csv", "obras.csv");
+    var nombreGaleria = await parametros.ObtenerAsync(Parametro.Claves.NombreGaleria) is { Length: > 0 } nombre
+        ? nombre
+        : "Galería ACATRAS";
+
+    var pdf = RetiroPdfGenerator.Generar(retiro, nombreGaleria);
+    return Results.File(pdf, "application/pdf", $"retiro-{id}.pdf");
 }).RequireAuthorization();
 
 app.Run();
 
-// Encoder mínimo de campos CSV — no hace falta una librería para esto.
+// Encoder mínimo de CSV — no hace falta una librería para esto.
 static class CsvHelper
 {
     public static string Escapar(string valor) =>
         valor.Contains(';') || valor.Contains('"') || valor.Contains('\n')
             ? $"\"{valor.Replace("\"", "\"\"")}\""
             : valor;
+
+    public static IResult Generar(string nombreArchivo, string[] encabezados, IEnumerable<string[]> filas)
+    {
+        var csv = new StringBuilder();
+        csv.AppendLine(string.Join(';', encabezados));
+        foreach (var fila in filas)
+        {
+            csv.AppendLine(string.Join(';', fila.Select(Escapar)));
+        }
+
+        // BOM UTF-8: sin esto, Excel abre las tildes rotas al abrir el CSV directamente.
+        var bytes = new byte[] { 0xEF, 0xBB, 0xBF }.Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
+        return Results.File(bytes, "text/csv", nombreArchivo);
+    }
+}
+
+// Parseo de querystring para los endpoints de exportación — mismo criterio que
+// SupplyParameterFromQuery usa en cada página, pero un Minimal API no tiene ese mecanismo.
+static class QueryHelper
+{
+    public static int? Int(IQueryCollection q, string clave) => int.TryParse(q[clave], out var v) ? v : null;
+    public static decimal? Decimal(IQueryCollection q, string clave) => decimal.TryParse(q[clave], out var v) ? v : null;
+    public static DateOnly? Fecha(IQueryCollection q, string clave) => DateOnly.TryParse(q[clave], out var v) ? v : null;
+    public static bool? Bool(IQueryCollection q, string clave) => bool.TryParse(q[clave], out var v) ? v : null;
+    public static TEnum? Enum<TEnum>(IQueryCollection q, string clave) where TEnum : struct =>
+        System.Enum.TryParse<TEnum>(q[clave], out var v) ? v : null;
+    public static string Num(decimal valor) => valor.ToString(CultureInfo.InvariantCulture);
 }

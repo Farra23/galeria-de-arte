@@ -35,6 +35,7 @@
                @onchange='e => IrA("hasta", ParseFechaOrNull(e.Value))' />
     </div>
     <div class="col-md-4 text-end">
+        <a class="btn btn-outline-secondary" href="@EnlaceExportarCsv()" target="_blank">Exportar CSV</a>
         <a class="btn btn-primary" href="adelantos/nuevo">+ Nuevo adelanto</a>
     </div>
 </div>
@@ -99,4 +100,6 @@ else
 
     private static string? ParseFechaOrNull(object? valor) =>
         DateOnly.TryParse(valor?.ToString(), out var f) ? f.ToString("yyyy-MM-dd") : null;
+
+    private string EnlaceExportarCsv() => "adelantos/exportar.csv" + new Uri(NavigationManager.Uri).Query;
 }

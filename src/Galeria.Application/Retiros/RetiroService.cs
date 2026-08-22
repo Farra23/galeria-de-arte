@@ -16,6 +16,9 @@ public class RetiroService(IRetiroRepository retiros, IObraRepository obras, Aud
     public Task<List<RetiroListItem>> BuscarAsync(RetiroFiltro filtro, CancellationToken ct = default) =>
         retiros.BuscarAsync(filtro, ct);
 
+    public Task<RetiroListItem?> ObtenerAsync(int id, CancellationToken ct = default) =>
+        retiros.ObtenerAsync(id, ct);
+
     public async Task<int> RegistrarAsync(RegistrarRetiroRequest request, CancellationToken ct = default)
     {
         var obra = await obras.ObtenerEntidadAsync(request.ObraId, ct)
