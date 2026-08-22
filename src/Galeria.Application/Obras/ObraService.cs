@@ -10,6 +10,9 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
     public Task<List<ObraListItem>> BuscarAsync(ObraFiltro filtro, CancellationToken ct = default) =>
         obras.BuscarAsync(filtro, ct);
 
+    public Task<List<SerieOpcion>> ListarSeriesAsync(CancellationToken ct = default) =>
+        obras.ListarSeriesAsync(ct);
+
     public Task<ObraCoincidente?> BuscarCoincidenciaAsync(int artistaId, string titulo, CancellationToken ct = default) =>
         string.IsNullOrWhiteSpace(titulo)
             ? Task.FromResult<ObraCoincidente?>(null)

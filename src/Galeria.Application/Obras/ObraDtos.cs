@@ -29,7 +29,13 @@ public record ObraListItem(
     int Existencia,
     EstadoObra Estado,
     DateOnly FechaIngreso,
-    bool PagoContado);
+    bool PagoContado,
+    int? SerieId,
+    string? SerieNombre);
+
+// Para el combo de filtro por Serie en la Lista de Obras (requerimiento 3.3, "agrupar/filtrar por
+// serie") — solo series que tienen al menos una obra tienen sentido para filtrar.
+public record SerieOpcion(int Id, string Nombre, string ArtistaNombre);
 
 public enum OrdenObra
 {
@@ -42,7 +48,8 @@ public enum OrdenObra
     Costo,
     PrecioVenta,
     Existencia,
-    Estado
+    Estado,
+    Serie
 }
 
 // Parameter object (requerimiento 0.1): agrupa todos los criterios de búsqueda de la Lista de
@@ -61,6 +68,7 @@ public record ObraFiltro(
     decimal? PrecioMaximo = null,
     DateOnly? FechaDesde = null,
     DateOnly? FechaHasta = null,
+    int? SerieId = null,
     OrdenObra Orden = OrdenObra.FechaIngreso,
     bool OrdenDescendente = true);
 

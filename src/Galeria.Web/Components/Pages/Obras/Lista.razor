@@ -101,6 +101,18 @@
                    @onchange='e => IrA("hasta", ParseFechaOrNull(e.Value))' />
         </div>
     </div>
+    @if (series.Count > 0)
+    {
+        <div class="col-md-2">
+            <select class="form-select" value="@(SerieId?.ToString() ?? "")" @onchange='e => IrA("serie", ParseIntOrNull(e.Value))'>
+                <option value="">Todas las series</option>
+                @foreach (var serie in series)
+                {
+                    <option value="@serie.Id">@serie.Nombre — @serie.ArtistaNombre</option>
+                }
+            </select>
+        </div>
+    }
 </div>
 
 @{
@@ -151,6 +163,7 @@ else
                 <th role="button" class="text-end" @onclick="() => OrdenarPor(OrdenObra.Existencia)">Stock @Flecha(OrdenObra.Existencia)</th>
                 <th role="button" @onclick="() => OrdenarPor(OrdenObra.Estado)">Estado @Flecha(OrdenObra.Estado)</th>
                 <th role="button" @onclick="() => OrdenarPor(OrdenObra.FechaIngreso)">Ingreso @Flecha(OrdenObra.FechaIngreso)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenObra.Serie)">Serie @Flecha(OrdenObra.Serie)</th>
             </tr>
         </thead>
         <tbody>
@@ -168,6 +181,12 @@ else
                     <td class="text-end">@obra.Existencia</td>
                     <td><span class="badge bg-secondary">@Formato.Estado(obra.Estado)</span></td>
                     <td>@obra.FechaIngreso.ToString("dd/MM/yyyy")</td>
+                    <td>
+                        @if (obra.SerieNombre is not null)
+                        {
+                            <span class="badge bg-light text-dark border">@obra.SerieNombre</span>
+                        }
+                    </td>
                 </tr>
             }
         </tbody>
@@ -187,6 +206,7 @@ else
     [SupplyParameterFromQuery(Name = "precioMax")] public decimal? PrecioMaximo { get; set; }
     [SupplyParameterFromQuery(Name = "desde")] public DateOnly? FechaDesde { get; set; }
     [SupplyParameterFromQuery(Name = "hasta")] public DateOnly? FechaHasta { get; set; }
+    [SupplyParameterFromQuery(Name = "serie")] public int? SerieId { get; set; }
     [SupplyParameterFromQuery(Name = "desc")] public bool? OrdenDescendente { get; set; }
 
     // Los enums propios (Moneda, EstadoObra, OrdenObra) no están soportados directamente por
@@ -207,6 +227,7 @@ else
     private List<ArtistaOpcion>? artistas;
     private List<OpcionCatalogo> rubros = [];
     private List<OpcionCatalogo> tecnicas = [];
+    private List<SerieOpcion> series = [];
     private string? textoLibre;
 
     protected override async Task OnInitializedAsync()
@@ -214,6 +235,7 @@ else
         artistas = await ArtistaService.ListarParaSeleccionAsync();
         rubros = await CatalogoRepository.ListarRubrosAsync();
         tecnicas = await CatalogoRepository.ListarTecnicasAsync();
+        series = await ObraService.ListarSeriesAsync();
         textoLibre = TextoLibre;
     }
 
@@ -234,6 +256,7 @@ else
             PrecioMaximo,
             FechaDesde,
             FechaHasta,
+            SerieId,
             OrdenActual,
             DescActual);
 
@@ -325,6 +348,12 @@ else
             yield return (
                 $"Ingreso: {FechaDesde?.ToString("dd/MM/yyyy") ?? "…"} a {FechaHasta?.ToString("dd/MM/yyyy") ?? "…"}",
                 new Dictionary<string, object?> { ["desde"] = null, ["hasta"] = null });
+        }
+
+        if (SerieId is not null)
+        {
+            var nombre = series.FirstOrDefault(s => s.Id == SerieId)?.Nombre ?? "serie";
+            yield return ($"Serie: {nombre}", Solo("serie"));
         }
     }
 

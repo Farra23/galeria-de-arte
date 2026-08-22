@@ -9,7 +9,7 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
 {
     public async Task<List<ObraListItem>> BuscarAsync(ObraFiltro filtro, CancellationToken ct = default)
     {
-        var query = db.Obras.AsNoTracking().Include(o => o.Artista).AsQueryable();
+        var query = db.Obras.AsNoTracking().Include(o => o.Artista).Include(o => o.Serie).AsQueryable();
 
         if (filtro.ArtistaId is not null)
         {
@@ -79,6 +79,11 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
             query = query.Where(o => o.FechaIngreso <= filtro.FechaHasta);
         }
 
+        if (filtro.SerieId is not null)
+        {
+            query = query.Where(o => o.SerieId == filtro.SerieId);
+        }
+
         var items = await query
             .Select(o => new ObraListItem(
                 o.Id,
@@ -93,11 +98,21 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.Existencia,
                 o.Estado,
                 o.FechaIngreso,
-                o.PagoContado))
+                o.PagoContado,
+                o.SerieId,
+                o.Serie != null ? o.Serie.Nombre : null))
             .ToListAsync(ct);
 
         return Ordenar(items, filtro);
     }
+
+    public async Task<List<SerieOpcion>> ListarSeriesAsync(CancellationToken ct = default) =>
+        await db.Series.AsNoTracking()
+            .Include(s => s.Artista)
+            .Where(s => s.Obras.Any())
+            .OrderBy(s => s.Artista.Apellido).ThenBy(s => s.Nombre)
+            .Select(s => new SerieOpcion(s.Id, s.Nombre, s.Artista.Apellido + ", " + s.Artista.Nombre))
+            .ToListAsync(ct);
 
     // Orden por columna (requerimiento 0.1) resuelto en memoria a propósito: SQLite no soporta
     // ORDER BY sobre columnas decimal (Costo, PrecioVenta) en absoluto — ni siquiera el caso
@@ -119,6 +134,7 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
             OrdenObra.PrecioVenta => Aplicar(o => o.PrecioVenta),
             OrdenObra.Existencia => Aplicar(o => o.Existencia),
             OrdenObra.Estado => Aplicar(o => o.Estado),
+            OrdenObra.Serie => Aplicar(o => o.SerieNombre ?? ""),
             _ => Aplicar(o => o.FechaIngreso)
         };
 
