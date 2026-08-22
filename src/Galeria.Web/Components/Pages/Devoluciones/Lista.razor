@@ -31,6 +31,7 @@
         </select>
     </div>
     <div class="col-md-4 text-end">
+        <a class="btn btn-outline-secondary" href="@EnlaceExportarCsv()" target="_blank">Exportar CSV</a>
         <a class="btn btn-primary" href="devoluciones/nueva">+ Nueva devolución</a>
     </div>
 </div>
@@ -98,4 +99,6 @@ else
         NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
 
     private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
+
+    private string EnlaceExportarCsv() => "devoluciones/exportar.csv" + new Uri(NavigationManager.Uri).Query;
 }

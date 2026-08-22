@@ -365,6 +365,22 @@ app.MapGet("/liquidaciones/exportar.csv", async (HttpRequest request, Liquidacio
         }));
 }).RequireAuthorization();
 
+app.MapGet("/devoluciones/exportar.csv", async (HttpRequest request, DevolucionService devoluciones) =>
+{
+    var q = request.Query;
+    var filtro = new DevolucionFiltro(q["q"], QueryHelper.Int(q, "artista"));
+
+    var resultado = await devoluciones.BuscarAsync(filtro);
+
+    return CsvHelper.Generar("devoluciones.csv",
+        ["Fecha", "Codigo", "Obra", "Artista", "Motivo", "ArtistaYaCobro"],
+        resultado.Select(d => new[]
+        {
+            d.Fecha.ToString("yyyy-MM-dd"), d.CodigoObra, d.Titulo, d.ArtistaNombre, d.Motivo ?? "",
+            d.ArtistaYaCobro ? "si" : "no"
+        }));
+}).RequireAuthorization();
+
 app.MapGet("/retiros/{id:int}/pdf", async (int id, RetiroService retiros, IParametroRepository parametros) =>
 {
     var retiro = await retiros.ObtenerAsync(id);
