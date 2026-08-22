@@ -27,6 +27,17 @@ public record DevolucionListItem(
     string? Motivo,
     bool ArtistaYaCobro);
 
+public enum OrdenDevolucion
+{
+    Fecha,
+    Codigo,
+    Obra,
+    Artista,
+    Motivo
+}
+
 public record DevolucionFiltro(
     string? TextoLibre = null,
-    int? ArtistaId = null);
+    int? ArtistaId = null,
+    OrdenDevolucion Orden = OrdenDevolucion.Fecha,
+    bool OrdenDescendente = true);

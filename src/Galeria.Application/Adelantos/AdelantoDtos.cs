@@ -21,7 +21,17 @@ public record RegistrarAdelantoRequest(
     TipoAdelanto Tipo,
     string? Observaciones);
 
+public enum OrdenAdelanto
+{
+    Fecha,
+    Artista,
+    Tipo,
+    Importe
+}
+
 public record AdelantoFiltro(
     int? ArtistaId = null,
     DateOnly? FechaDesde = null,
-    DateOnly? FechaHasta = null);
+    DateOnly? FechaHasta = null,
+    OrdenAdelanto Orden = OrdenAdelanto.Fecha,
+    bool OrdenDescendente = true);

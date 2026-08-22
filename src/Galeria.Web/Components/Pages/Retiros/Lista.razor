@@ -62,7 +62,13 @@ else
     <table class="table table-striped">
         <thead>
             <tr>
-                <th>Fecha</th><th>Artista</th><th>Código</th><th>Obra</th><th>Tipo</th><th>Motivo</th><th>Estado</th><th></th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenRetiro.Fecha)">Fecha @Flecha(OrdenRetiro.Fecha)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenRetiro.Artista)">Artista @Flecha(OrdenRetiro.Artista)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenRetiro.Codigo)">Código @Flecha(OrdenRetiro.Codigo)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenRetiro.Obra)">Obra @Flecha(OrdenRetiro.Obra)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenRetiro.Tipo)">Tipo @Flecha(OrdenRetiro.Tipo)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenRetiro.Motivo)">Motivo @Flecha(OrdenRetiro.Motivo)</th>
+                <th>Estado</th><th></th>
             </tr>
         </thead>
         <tbody>
@@ -118,8 +124,13 @@ else
     [SupplyParameterFromQuery(Name = "q")] public string? TextoLibre { get; set; }
     [SupplyParameterFromQuery(Name = "artista")] public int? ArtistaId { get; set; }
     [SupplyParameterFromQuery(Name = "tipo")] public string? TipoTexto { get; set; }
+    [SupplyParameterFromQuery(Name = "orden")] public string? OrdenTexto { get; set; }
+    [SupplyParameterFromQuery(Name = "desc")] public bool? OrdenDescendente { get; set; }
 
     private TipoRetiro? TipoFiltro => Enum.TryParse<TipoRetiro>(TipoTexto, out var t) ? t : null;
+    private OrdenRetiro? Orden => Enum.TryParse<OrdenRetiro>(OrdenTexto, out var o) ? o : null;
+    private OrdenRetiro OrdenActual => Orden ?? OrdenRetiro.Fecha;
+    private bool DescActual => OrdenDescendente ?? true;
 
     private List<RetiroListItem>? retiros;
     private List<ArtistaOpcion>? artistas;
@@ -135,8 +146,7 @@ else
     protected override async Task OnParametersSetAsync()
     {
         texto = TextoLibre;
-        var filtro = new RetiroFiltro(TextoLibre, ArtistaId, TipoFiltro);
-        retiros = await RetiroService.BuscarAsync(filtro);
+        retiros = await RetiroService.BuscarAsync(FiltroActual());
     }
 
     private async Task DevolverAsync(int retiroId)
@@ -144,12 +154,25 @@ else
         mensaje = null;
         await RetiroService.DevolverAsync(retiroId);
         mensaje = "La pieza volvió al stock.";
-        var filtro = new RetiroFiltro(TextoLibre, ArtistaId, TipoFiltro);
-        retiros = await RetiroService.BuscarAsync(filtro);
+        retiros = await RetiroService.BuscarAsync(FiltroActual());
     }
+
+    private RetiroFiltro FiltroActual() => new(TextoLibre, ArtistaId, TipoFiltro, Orden: OrdenActual, OrdenDescendente: DescActual);
 
     private void IrA(string clave, object? valor) =>
         NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
+
+    private void OrdenarPor(OrdenRetiro campo)
+    {
+        var descNuevo = OrdenActual == campo ? !DescActual : true;
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["orden"] = campo.ToString(),
+            ["desc"] = descNuevo.ToString().ToLowerInvariant()
+        }), replace: true);
+    }
+
+    private string Flecha(OrdenRetiro campo) => OrdenActual != campo ? "" : (DescActual ? " ▼" : " ▲");
 
     private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
 

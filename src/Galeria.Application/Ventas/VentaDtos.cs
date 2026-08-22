@@ -22,10 +22,22 @@ public record VentaListItem(
     decimal PrecioVenta,
     bool TieneCertificado);
 
+public enum OrdenVenta
+{
+    Fecha,
+    Codigo,
+    Titulo,
+    Artista,
+    Cantidad,
+    Precio
+}
+
 // Parameter object (mismo patrón que ObraFiltro en Obras/ObraDtos.cs).
 public record VentaFiltro(
     string? TextoLibre = null,
     int? ArtistaId = null,
     Moneda? Moneda = null,
     DateOnly? FechaDesde = null,
-    DateOnly? FechaHasta = null);
+    DateOnly? FechaHasta = null,
+    OrdenVenta Orden = OrdenVenta.Fecha,
+    bool OrdenDescendente = true);

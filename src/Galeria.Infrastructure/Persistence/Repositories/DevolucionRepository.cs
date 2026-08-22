@@ -62,8 +62,7 @@ public class DevolucionRepository(GaleriaDbContext db) : IDevolucionRepository
                 EF.Functions.Like(d.Venta.Obra.Artista.Apellido, $"%{texto}%"));
         }
 
-        return await query
-            .OrderByDescending(d => d.Fecha).ThenByDescending(d => d.Id)
+        return await Ordenar(query, filtro)
             .Select(d => new DevolucionListItem(
                 d.Id,
                 d.Fecha,
@@ -76,4 +75,23 @@ public class DevolucionRepository(GaleriaDbContext db) : IDevolucionRepository
     }
 
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
+
+    private static IQueryable<Devolucion> Ordenar(IQueryable<Devolucion> query, DevolucionFiltro filtro) => filtro.Orden switch
+    {
+        OrdenDevolucion.Codigo => filtro.OrdenDescendente
+            ? query.OrderByDescending(d => d.Venta.Obra.Artista.Codigo).ThenByDescending(d => d.Venta.Obra.NumeroObra)
+            : query.OrderBy(d => d.Venta.Obra.Artista.Codigo).ThenBy(d => d.Venta.Obra.NumeroObra),
+        OrdenDevolucion.Obra => filtro.OrdenDescendente
+            ? query.OrderByDescending(d => d.Venta.Obra.Titulo)
+            : query.OrderBy(d => d.Venta.Obra.Titulo),
+        OrdenDevolucion.Artista => filtro.OrdenDescendente
+            ? query.OrderByDescending(d => d.Venta.Obra.Artista.Apellido).ThenByDescending(d => d.Venta.Obra.Artista.Nombre)
+            : query.OrderBy(d => d.Venta.Obra.Artista.Apellido).ThenBy(d => d.Venta.Obra.Artista.Nombre),
+        OrdenDevolucion.Motivo => filtro.OrdenDescendente
+            ? query.OrderByDescending(d => d.Motivo)
+            : query.OrderBy(d => d.Motivo),
+        _ => filtro.OrdenDescendente
+            ? query.OrderByDescending(d => d.Fecha).ThenByDescending(d => d.Id)
+            : query.OrderBy(d => d.Fecha).ThenBy(d => d.Id)
+    };
 }

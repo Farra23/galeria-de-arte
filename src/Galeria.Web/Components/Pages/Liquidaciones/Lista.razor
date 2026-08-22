@@ -43,7 +43,14 @@ else if (liquidaciones.Count == 0)
 else
 {
     <table class="table table-striped">
-        <thead><tr><th>N.º</th><th>Fecha</th><th>Artista</th><th class="text-end">Total</th></tr></thead>
+        <thead>
+            <tr>
+                <th role="button" @onclick="() => OrdenarPor(OrdenLiquidacion.Numero)">N.º @Flecha(OrdenLiquidacion.Numero)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenLiquidacion.Fecha)">Fecha @Flecha(OrdenLiquidacion.Fecha)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenLiquidacion.Artista)">Artista @Flecha(OrdenLiquidacion.Artista)</th>
+                <th role="button" class="text-end" @onclick="() => OrdenarPor(OrdenLiquidacion.Total)">Total @Flecha(OrdenLiquidacion.Total)</th>
+            </tr>
+        </thead>
         <tbody>
             @foreach (var liquidacion in liquidaciones)
             {
@@ -60,6 +67,12 @@ else
 
 @code {
     [SupplyParameterFromQuery(Name = "artista")] public int? ArtistaId { get; set; }
+    [SupplyParameterFromQuery(Name = "orden")] public string? OrdenTexto { get; set; }
+    [SupplyParameterFromQuery(Name = "desc")] public bool? OrdenDescendente { get; set; }
+
+    private OrdenLiquidacion? Orden => Enum.TryParse<OrdenLiquidacion>(OrdenTexto, out var o) ? o : null;
+    private OrdenLiquidacion OrdenActual => Orden ?? OrdenLiquidacion.Numero;
+    private bool DescActual => OrdenDescendente ?? true;
 
     private List<LiquidacionListItem>? liquidaciones;
     private List<ArtistaOpcion>? artistas;
@@ -68,10 +81,22 @@ else
         artistas = await ArtistaService.ListarParaSeleccionAsync();
 
     protected override async Task OnParametersSetAsync() =>
-        liquidaciones = await LiquidacionService.BuscarAsync(new LiquidacionFiltro(ArtistaId));
+        liquidaciones = await LiquidacionService.BuscarAsync(new LiquidacionFiltro(ArtistaId, Orden: OrdenActual, OrdenDescendente: DescActual));
 
     private void IrA(string clave, object? valor) =>
         NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
+
+    private void OrdenarPor(OrdenLiquidacion campo)
+    {
+        var descNuevo = OrdenActual == campo ? !DescActual : true;
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["orden"] = campo.ToString(),
+            ["desc"] = descNuevo.ToString().ToLowerInvariant()
+        }), replace: true);
+    }
+
+    private string Flecha(OrdenLiquidacion campo) => OrdenActual != campo ? "" : (DescActual ? " ▼" : " ▲");
 
     private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
 

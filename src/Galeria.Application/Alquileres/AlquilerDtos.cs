@@ -27,7 +27,20 @@ public record RegistrarAlquilerRequest(
     decimal PorcentajeArtista,
     string? Cliente);
 
+public enum OrdenAlquiler
+{
+    Fecha,
+    Codigo,
+    Obra,
+    Artista,
+    Cliente,
+    Monto,
+    MontoArtista
+}
+
 public record AlquilerFiltro(
     string? TextoLibre = null,
     int? ArtistaId = null,
-    bool? SoloActivos = null);
+    bool? SoloActivos = null,
+    OrdenAlquiler Orden = OrdenAlquiler.Fecha,
+    bool OrdenDescendente = true);

@@ -50,4 +50,17 @@ public record LiquidacionDetalle(
     string? ArtistaCorreo,
     string? ArtistaCelular);
 
-public record LiquidacionFiltro(int? ArtistaId = null, DateOnly? FechaDesde = null, DateOnly? FechaHasta = null);
+public enum OrdenLiquidacion
+{
+    Numero,
+    Fecha,
+    Artista,
+    Total
+}
+
+public record LiquidacionFiltro(
+    int? ArtistaId = null,
+    DateOnly? FechaDesde = null,
+    DateOnly? FechaHasta = null,
+    OrdenLiquidacion Orden = OrdenLiquidacion.Numero,
+    bool OrdenDescendente = true);

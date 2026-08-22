@@ -48,7 +48,14 @@ else
 {
     <table class="table table-striped">
         <thead>
-            <tr><th>Fecha</th><th>Código</th><th>Obra</th><th>Artista</th><th>Motivo</th><th>Artista ya cobró</th></tr>
+            <tr>
+                <th role="button" @onclick="() => OrdenarPor(OrdenDevolucion.Fecha)">Fecha @Flecha(OrdenDevolucion.Fecha)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenDevolucion.Codigo)">Código @Flecha(OrdenDevolucion.Codigo)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenDevolucion.Obra)">Obra @Flecha(OrdenDevolucion.Obra)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenDevolucion.Artista)">Artista @Flecha(OrdenDevolucion.Artista)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenDevolucion.Motivo)">Motivo @Flecha(OrdenDevolucion.Motivo)</th>
+                <th>Artista ya cobró</th>
+            </tr>
         </thead>
         <tbody>
             @foreach (var devolucion in devoluciones)
@@ -78,6 +85,12 @@ else
 @code {
     [SupplyParameterFromQuery(Name = "q")] public string? TextoLibre { get; set; }
     [SupplyParameterFromQuery(Name = "artista")] public int? ArtistaId { get; set; }
+    [SupplyParameterFromQuery(Name = "orden")] public string? OrdenTexto { get; set; }
+    [SupplyParameterFromQuery(Name = "desc")] public bool? OrdenDescendente { get; set; }
+
+    private OrdenDevolucion? Orden => Enum.TryParse<OrdenDevolucion>(OrdenTexto, out var o) ? o : null;
+    private OrdenDevolucion OrdenActual => Orden ?? OrdenDevolucion.Fecha;
+    private bool DescActual => OrdenDescendente ?? true;
 
     private List<DevolucionListItem>? devoluciones;
     private List<ArtistaOpcion>? artistas;
@@ -92,11 +105,23 @@ else
     protected override async Task OnParametersSetAsync()
     {
         texto = TextoLibre;
-        devoluciones = await DevolucionService.BuscarAsync(new DevolucionFiltro(TextoLibre, ArtistaId));
+        devoluciones = await DevolucionService.BuscarAsync(new DevolucionFiltro(TextoLibre, ArtistaId, OrdenActual, DescActual));
     }
 
     private void IrA(string clave, object? valor) =>
         NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
+
+    private void OrdenarPor(OrdenDevolucion campo)
+    {
+        var descNuevo = OrdenActual == campo ? !DescActual : true;
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["orden"] = campo.ToString(),
+            ["desc"] = descNuevo.ToString().ToLowerInvariant()
+        }), replace: true);
+    }
+
+    private string Flecha(OrdenDevolucion campo) => OrdenActual != campo ? "" : (DescActual ? " ▼" : " ▲");
 
     private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
 

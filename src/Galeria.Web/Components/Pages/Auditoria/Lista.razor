@@ -63,11 +63,11 @@ else
     <table class="table table-striped table-sm">
         <thead>
             <tr>
-                <th>Fecha y hora</th>
-                <th>Usuario</th>
-                <th>Pantalla</th>
-                <th>Operación</th>
-                <th>Tabla</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenAuditoria.FechaHora)">Fecha y hora @Flecha(OrdenAuditoria.FechaHora)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenAuditoria.Usuario)">Usuario @Flecha(OrdenAuditoria.Usuario)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenAuditoria.Pantalla)">Pantalla @Flecha(OrdenAuditoria.Pantalla)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenAuditoria.Operacion)">Operación @Flecha(OrdenAuditoria.Operacion)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenAuditoria.Tabla)">Tabla @Flecha(OrdenAuditoria.Tabla)</th>
                 <th>Campo</th>
                 <th>Anterior</th>
                 <th>Nuevo</th>
@@ -104,6 +104,12 @@ else
     [SupplyParameterFromQuery(Name = "tipo")] public string? TipoOperacion { get; set; }
     [SupplyParameterFromQuery(Name = "desde")] public DateOnly? FechaDesde { get; set; }
     [SupplyParameterFromQuery(Name = "hasta")] public DateOnly? FechaHasta { get; set; }
+    [SupplyParameterFromQuery(Name = "orden")] public string? OrdenTexto { get; set; }
+    [SupplyParameterFromQuery(Name = "desc")] public bool? OrdenDescendente { get; set; }
+
+    private OrdenAuditoria? Orden => Enum.TryParse<OrdenAuditoria>(OrdenTexto, out var o) ? o : null;
+    private OrdenAuditoria OrdenActual => Orden ?? OrdenAuditoria.FechaHora;
+    private bool DescActual => OrdenDescendente ?? true;
 
     private List<AuditoriaListItem>? registros;
     private string? usuario;
@@ -122,12 +128,24 @@ else
 
     private async Task CargarAsync()
     {
-        var filtro = new AuditoriaFiltro(FechaDesde, FechaHasta, Usuario, Pantalla, TipoOperacion);
+        var filtro = new AuditoriaFiltro(FechaDesde, FechaHasta, Usuario, Pantalla, TipoOperacion, Orden: OrdenActual, OrdenDescendente: DescActual);
         registros = await AuditoriaService.BuscarAsync(filtro);
     }
 
     private void IrA(string clave, object? valor) =>
         NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
+
+    private void OrdenarPor(OrdenAuditoria campo)
+    {
+        var descNuevo = OrdenActual == campo ? !DescActual : true;
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["orden"] = campo.ToString(),
+            ["desc"] = descNuevo.ToString().ToLowerInvariant()
+        }), replace: true);
+    }
+
+    private string Flecha(OrdenAuditoria campo) => OrdenActual != campo ? "" : (DescActual ? " ▼" : " ▲");
 
     private static string? ParseFechaOrNull(object? valor) =>
         DateOnly.TryParse(valor?.ToString(), out var f) ? f.ToString("yyyy-MM-dd") : null;

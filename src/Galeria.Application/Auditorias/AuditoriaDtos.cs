@@ -14,6 +14,15 @@ public record AuditoriaListItem(
     int? ObraId,
     string? EntidadId);
 
+public enum OrdenAuditoria
+{
+    FechaHora,
+    Usuario,
+    Pantalla,
+    Operacion,
+    Tabla
+}
+
 // Parameter object (mismo patrón que ObraFiltro): agrupa los filtros de la pantalla de Auditoría
 // (requerimiento 13, FILTRABLE en mayúsculas en el pedido original del cliente).
 public record AuditoriaFiltro(
@@ -23,7 +32,9 @@ public record AuditoriaFiltro(
     string? Pantalla = null,
     string? TipoOperacion = null,
     int? ObraId = null,
-    string? Columna = null);
+    string? Columna = null,
+    OrdenAuditoria Orden = OrdenAuditoria.FechaHora,
+    bool OrdenDescendente = true);
 
 public record RegistrarAuditoriaRequest(
     string Pantalla,

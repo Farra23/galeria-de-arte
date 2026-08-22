@@ -43,8 +43,7 @@ public class AlquilerRepository(GaleriaDbContext db) : IAlquilerRepository
 
         var hoy = DateOnly.FromDateTime(DateTime.Now);
 
-        return await query
-            .OrderByDescending(a => a.FechaInicio).ThenByDescending(a => a.Id)
+        var items = await query
             .Select(a => new AlquilerListItem(
                 a.Id,
                 a.FechaInicio,
@@ -59,7 +58,30 @@ public class AlquilerRepository(GaleriaDbContext db) : IAlquilerRepository
                 a.FechaDevolucion == null && a.FechaRecupero != null && a.FechaRecupero < hoy,
                 a.FechaRecupero))
             .ToListAsync(ct);
+
+        return Ordenar(items, filtro);
     }
 
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
+
+    // En memoria a propósito: SQLite no soporta ORDER BY sobre columnas decimal (Monto,
+    // MontoArtista) — ver la misma nota en ObraRepository.Ordenar.
+    private static List<AlquilerListItem> Ordenar(List<AlquilerListItem> items, AlquilerFiltro filtro)
+    {
+        IOrderedEnumerable<AlquilerListItem> Aplicar<TKey>(Func<AlquilerListItem, TKey> selector) =>
+            filtro.OrdenDescendente ? items.OrderByDescending(selector) : items.OrderBy(selector);
+
+        var ordenado = filtro.Orden switch
+        {
+            OrdenAlquiler.Codigo => Aplicar(a => a.CodigoObra),
+            OrdenAlquiler.Obra => Aplicar(a => a.Titulo),
+            OrdenAlquiler.Artista => Aplicar(a => a.ArtistaNombre),
+            OrdenAlquiler.Cliente => Aplicar(a => a.Cliente ?? ""),
+            OrdenAlquiler.Monto => Aplicar(a => a.MontoAlquiler),
+            OrdenAlquiler.MontoArtista => Aplicar(a => a.MontoArtista),
+            _ => Aplicar(a => a.FechaInicio)
+        };
+
+        return ordenado.ThenByDescending(a => a.Id).ToList();
+    }
 }

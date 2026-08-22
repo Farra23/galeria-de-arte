@@ -31,8 +31,7 @@ public class AdelantoRepository(GaleriaDbContext db) : IAdelantoRepository
             query = query.Where(a => a.Fecha <= filtro.FechaHasta);
         }
 
-        return await query
-            .OrderByDescending(a => a.Fecha).ThenByDescending(a => a.Id)
+        var items = await query
             .Select(a => new AdelantoListItem(
                 a.Id,
                 a.Fecha,
@@ -44,7 +43,27 @@ public class AdelantoRepository(GaleriaDbContext db) : IAdelantoRepository
                 a.LiquidacionId != null,
                 a.LiquidacionId))
             .ToListAsync(ct);
+
+        return Ordenar(items, filtro);
     }
 
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
+
+    // En memoria a propósito: SQLite no soporta ORDER BY sobre columnas decimal (Importe) — ver
+    // la misma nota en ObraRepository.Ordenar.
+    private static List<AdelantoListItem> Ordenar(List<AdelantoListItem> items, AdelantoFiltro filtro)
+    {
+        IOrderedEnumerable<AdelantoListItem> Aplicar<TKey>(Func<AdelantoListItem, TKey> selector) =>
+            filtro.OrdenDescendente ? items.OrderByDescending(selector) : items.OrderBy(selector);
+
+        var ordenado = filtro.Orden switch
+        {
+            OrdenAdelanto.Artista => Aplicar(a => a.ArtistaNombre),
+            OrdenAdelanto.Tipo => Aplicar(a => a.Tipo),
+            OrdenAdelanto.Importe => Aplicar(a => a.Importe),
+            _ => Aplicar(a => a.Fecha)
+        };
+
+        return ordenado.ThenByDescending(a => a.Id).ToList();
+    }
 }

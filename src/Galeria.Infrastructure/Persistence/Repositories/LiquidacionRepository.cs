@@ -141,11 +141,12 @@ public class LiquidacionRepository(GaleriaDbContext db) : ILiquidacionRepository
             query = query.Where(l => l.Fecha <= filtro.FechaHasta);
         }
 
-        return await query
-            .OrderByDescending(l => l.NumeroCorrelativo)
+        var items = await query
             .Select(l => new LiquidacionListItem(
                 l.Id, l.NumeroCorrelativo, l.Fecha, l.Artista.Apellido + ", " + l.Artista.Nombre, l.Moneda, l.TotalNeto))
             .ToListAsync(ct);
+
+        return Ordenar(items, filtro);
     }
 
     public async Task<LiquidacionDetalle?> ObtenerDetalleAsync(int id, CancellationToken ct = default)
@@ -185,4 +186,22 @@ public class LiquidacionRepository(GaleriaDbContext db) : ILiquidacionRepository
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
 
     private static string CodigoObra(Obra obra) => obra.Artista.Codigo.ToString("D3") + obra.NumeroObra.ToString("D3");
+
+    // En memoria a propósito: SQLite no soporta ORDER BY sobre columnas decimal (TotalNeto) — ver
+    // la misma nota en ObraRepository.Ordenar.
+    private static List<LiquidacionListItem> Ordenar(List<LiquidacionListItem> items, LiquidacionFiltro filtro)
+    {
+        IOrderedEnumerable<LiquidacionListItem> Aplicar<TKey>(Func<LiquidacionListItem, TKey> selector) =>
+            filtro.OrdenDescendente ? items.OrderByDescending(selector) : items.OrderBy(selector);
+
+        var ordenado = filtro.Orden switch
+        {
+            OrdenLiquidacion.Fecha => Aplicar(l => l.Fecha),
+            OrdenLiquidacion.Artista => Aplicar(l => l.ArtistaNombre),
+            OrdenLiquidacion.Total => Aplicar(l => l.TotalNeto),
+            _ => Aplicar(l => l.NumeroCorrelativo)
+        };
+
+        return ordenado.ThenByDescending(l => l.Id).ToList();
+    }
 }

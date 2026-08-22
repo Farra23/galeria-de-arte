@@ -24,8 +24,20 @@ public record RegistrarRetiroRequest(
     string? Motivo,
     DateOnly? FechaEstimadaDevolucion);
 
+public enum OrdenRetiro
+{
+    Fecha,
+    Artista,
+    Codigo,
+    Obra,
+    Tipo,
+    Motivo
+}
+
 public record RetiroFiltro(
     string? TextoLibre = null,
     int? ArtistaId = null,
     TipoRetiro? Tipo = null,
-    bool? SoloActivos = null);
+    bool? SoloActivos = null,
+    OrdenRetiro Orden = OrdenRetiro.Fecha,
+    bool OrdenDescendente = true);

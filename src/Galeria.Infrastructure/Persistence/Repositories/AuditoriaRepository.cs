@@ -62,10 +62,7 @@ public class AuditoriaRepository(GaleriaDbContext db) : IAuditoriaRepository
             query = query.Where(a => a.Columna == filtro.Columna);
         }
 
-        // SQLite no soporta ORDER BY sobre DateTimeOffset (traducción no soportada por el
-        // proveedor) — se ordena por Id, que al ser autonumérico va en el mismo orden cronológico.
-        return await query
-            .OrderByDescending(a => a.Id)
+        return await Ordenar(query, filtro)
             .Take(500)
             .Select(a => new AuditoriaListItem(
                 a.Id,
@@ -82,4 +79,25 @@ public class AuditoriaRepository(GaleriaDbContext db) : IAuditoriaRepository
                 a.EntidadId))
             .ToListAsync(ct);
     }
+
+    // SQLite no soporta ORDER BY sobre DateTimeOffset (traducción no soportada por el proveedor)
+    // — para "FechaHora" se ordena por Id, que al ser autonumérico va en el mismo orden cronológico.
+    private static IQueryable<Auditoria> Ordenar(IQueryable<Auditoria> query, AuditoriaFiltro filtro) => filtro.Orden switch
+    {
+        OrdenAuditoria.Usuario => filtro.OrdenDescendente
+            ? query.OrderByDescending(a => a.NombreUsuario)
+            : query.OrderBy(a => a.NombreUsuario),
+        OrdenAuditoria.Pantalla => filtro.OrdenDescendente
+            ? query.OrderByDescending(a => a.Pantalla)
+            : query.OrderBy(a => a.Pantalla),
+        OrdenAuditoria.Operacion => filtro.OrdenDescendente
+            ? query.OrderByDescending(a => a.TipoOperacion)
+            : query.OrderBy(a => a.TipoOperacion),
+        OrdenAuditoria.Tabla => filtro.OrdenDescendente
+            ? query.OrderByDescending(a => a.Tabla)
+            : query.OrderBy(a => a.Tabla),
+        _ => filtro.OrdenDescendente
+            ? query.OrderByDescending(a => a.Id)
+            : query.OrderBy(a => a.Id)
+    };
 }

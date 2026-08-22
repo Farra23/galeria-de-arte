@@ -61,8 +61,14 @@ else
     <table class="table table-striped">
         <thead>
             <tr>
-                <th>Inicio</th><th>Código</th><th>Obra</th><th>Artista</th><th>Cliente</th>
-                <th class="text-end">Monto</th><th class="text-end">Artista</th><th>Estado</th><th></th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenAlquiler.Fecha)">Inicio @Flecha(OrdenAlquiler.Fecha)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenAlquiler.Codigo)">Código @Flecha(OrdenAlquiler.Codigo)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenAlquiler.Obra)">Obra @Flecha(OrdenAlquiler.Obra)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenAlquiler.Artista)">Artista @Flecha(OrdenAlquiler.Artista)</th>
+                <th role="button" @onclick="() => OrdenarPor(OrdenAlquiler.Cliente)">Cliente @Flecha(OrdenAlquiler.Cliente)</th>
+                <th role="button" class="text-end" @onclick="() => OrdenarPor(OrdenAlquiler.Monto)">Monto @Flecha(OrdenAlquiler.Monto)</th>
+                <th role="button" class="text-end" @onclick="() => OrdenarPor(OrdenAlquiler.MontoArtista)">Artista @Flecha(OrdenAlquiler.MontoArtista)</th>
+                <th>Estado</th><th></th>
             </tr>
         </thead>
         <tbody>
@@ -106,6 +112,12 @@ else
     [SupplyParameterFromQuery(Name = "q")] public string? TextoLibre { get; set; }
     [SupplyParameterFromQuery(Name = "artista")] public int? ArtistaId { get; set; }
     [SupplyParameterFromQuery(Name = "activos")] public bool? SoloActivos { get; set; }
+    [SupplyParameterFromQuery(Name = "orden")] public string? OrdenTexto { get; set; }
+    [SupplyParameterFromQuery(Name = "desc")] public bool? OrdenDescendente { get; set; }
+
+    private OrdenAlquiler? Orden => Enum.TryParse<OrdenAlquiler>(OrdenTexto, out var o) ? o : null;
+    private OrdenAlquiler OrdenActual => Orden ?? OrdenAlquiler.Fecha;
+    private bool DescActual => OrdenDescendente ?? true;
 
     private List<AlquilerListItem>? alquileres;
     private List<ArtistaOpcion>? artistas;
@@ -121,7 +133,7 @@ else
     protected override async Task OnParametersSetAsync()
     {
         texto = TextoLibre;
-        alquileres = await AlquilerService.BuscarAsync(new AlquilerFiltro(TextoLibre, ArtistaId, SoloActivos));
+        alquileres = await AlquilerService.BuscarAsync(FiltroActual());
     }
 
     private async Task DevolverAsync(int alquilerId)
@@ -129,11 +141,25 @@ else
         mensaje = null;
         await AlquilerService.DevolverAsync(alquilerId);
         mensaje = "La pieza volvió al stock.";
-        alquileres = await AlquilerService.BuscarAsync(new AlquilerFiltro(TextoLibre, ArtistaId, SoloActivos));
+        alquileres = await AlquilerService.BuscarAsync(FiltroActual());
     }
+
+    private AlquilerFiltro FiltroActual() => new(TextoLibre, ArtistaId, SoloActivos, Orden: OrdenActual, OrdenDescendente: DescActual);
 
     private void IrA(string clave, object? valor) =>
         NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);
+
+    private void OrdenarPor(OrdenAlquiler campo)
+    {
+        var descNuevo = OrdenActual == campo ? !DescActual : true;
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["orden"] = campo.ToString(),
+            ["desc"] = descNuevo.ToString().ToLowerInvariant()
+        }), replace: true);
+    }
+
+    private string Flecha(OrdenAlquiler campo) => OrdenActual != campo ? "" : (DescActual ? " ▼" : " ▲");
 
     private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
 

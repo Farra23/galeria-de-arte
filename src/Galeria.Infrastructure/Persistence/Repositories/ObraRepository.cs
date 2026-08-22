@@ -79,8 +79,7 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
             query = query.Where(o => o.FechaIngreso <= filtro.FechaHasta);
         }
 
-        return await Ordenar(query, filtro)
-            .ThenByDescending(o => o.Id)
+        var items = await query
             .Select(o => new ObraListItem(
                 o.Id,
                 o.Artista.Codigo.ToString("D3") + o.NumeroObra.ToString("D3"),
@@ -96,43 +95,35 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.FechaIngreso,
                 o.PagoContado))
             .ToListAsync(ct);
+
+        return Ordenar(items, filtro);
     }
 
-    // Orden por columna (requerimiento 0.1): un solo lugar que traduce el campo elegido a la
-    // expresión LINQ correspondiente, en vez de repetir el switch en cada llamado.
-    private static IOrderedQueryable<Obra> Ordenar(IQueryable<Obra> query, ObraFiltro filtro) => filtro.Orden switch
+    // Orden por columna (requerimiento 0.1) resuelto en memoria a propósito: SQLite no soporta
+    // ORDER BY sobre columnas decimal (Costo, PrecioVenta) en absoluto — ni siquiera el caso
+    // simple, no solo el Sum-en-GroupBy ya documentado — así que se materializa primero y se
+    // ordena en LINQ-to-Objects, mismo patrón que ArtistaRepository.Ordenar.
+    private static List<ObraListItem> Ordenar(List<ObraListItem> items, ObraFiltro filtro)
     {
-        OrdenObra.Codigo => filtro.OrdenDescendente
-            ? query.OrderByDescending(o => o.Artista.Codigo).ThenByDescending(o => o.NumeroObra)
-            : query.OrderBy(o => o.Artista.Codigo).ThenBy(o => o.NumeroObra),
-        OrdenObra.Titulo => filtro.OrdenDescendente
-            ? query.OrderByDescending(o => o.Titulo)
-            : query.OrderBy(o => o.Titulo),
-        OrdenObra.Artista => filtro.OrdenDescendente
-            ? query.OrderByDescending(o => o.Artista.Apellido).ThenByDescending(o => o.Artista.Nombre)
-            : query.OrderBy(o => o.Artista.Apellido).ThenBy(o => o.Artista.Nombre),
-        OrdenObra.Rubro => filtro.OrdenDescendente
-            ? query.OrderByDescending(o => o.Rubro != null ? o.Rubro.Nombre : null)
-            : query.OrderBy(o => o.Rubro != null ? o.Rubro.Nombre : null),
-        OrdenObra.Tecnica => filtro.OrdenDescendente
-            ? query.OrderByDescending(o => o.Tecnica != null ? o.Tecnica.Nombre : null)
-            : query.OrderBy(o => o.Tecnica != null ? o.Tecnica.Nombre : null),
-        OrdenObra.Costo => filtro.OrdenDescendente
-            ? query.OrderByDescending(o => o.Costo)
-            : query.OrderBy(o => o.Costo),
-        OrdenObra.PrecioVenta => filtro.OrdenDescendente
-            ? query.OrderByDescending(o => o.PrecioVenta)
-            : query.OrderBy(o => o.PrecioVenta),
-        OrdenObra.Existencia => filtro.OrdenDescendente
-            ? query.OrderByDescending(o => o.Existencia)
-            : query.OrderBy(o => o.Existencia),
-        OrdenObra.Estado => filtro.OrdenDescendente
-            ? query.OrderByDescending(o => o.Estado)
-            : query.OrderBy(o => o.Estado),
-        _ => filtro.OrdenDescendente
-            ? query.OrderByDescending(o => o.FechaIngreso)
-            : query.OrderBy(o => o.FechaIngreso)
-    };
+        IOrderedEnumerable<ObraListItem> Aplicar<TKey>(Func<ObraListItem, TKey> selector) =>
+            filtro.OrdenDescendente ? items.OrderByDescending(selector) : items.OrderBy(selector);
+
+        var ordenado = filtro.Orden switch
+        {
+            OrdenObra.Codigo => Aplicar(o => o.CodigoVisible),
+            OrdenObra.Titulo => Aplicar(o => o.Titulo),
+            OrdenObra.Artista => Aplicar(o => o.ArtistaNombre),
+            OrdenObra.Rubro => Aplicar(o => o.Rubro ?? ""),
+            OrdenObra.Tecnica => Aplicar(o => o.Tecnica ?? ""),
+            OrdenObra.Costo => Aplicar(o => o.Costo),
+            OrdenObra.PrecioVenta => Aplicar(o => o.PrecioVenta),
+            OrdenObra.Existencia => Aplicar(o => o.Existencia),
+            OrdenObra.Estado => Aplicar(o => o.Estado),
+            _ => Aplicar(o => o.FechaIngreso)
+        };
+
+        return ordenado.ThenByDescending(o => o.Id).ToList();
+    }
 
     public async Task<ObraCoincidente?> BuscarCoincidenciaAsync(int artistaId, string titulo, CancellationToken ct = default)
     {

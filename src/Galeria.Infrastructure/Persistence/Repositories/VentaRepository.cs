@@ -52,8 +52,7 @@ public class VentaRepository(GaleriaDbContext db) : IVentaRepository
                 EF.Functions.Like(v.Obra.Artista.Apellido, $"%{texto}%"));
         }
 
-        return await query
-            .OrderByDescending(v => v.Fecha).ThenByDescending(v => v.Id)
+        var items = await query
             .Select(v => new VentaListItem(
                 v.Id,
                 v.Fecha,
@@ -65,7 +64,29 @@ public class VentaRepository(GaleriaDbContext db) : IVentaRepository
                 v.PrecioVenta,
                 v.Certificado != null))
             .ToListAsync(ct);
+
+        return Ordenar(items, filtro);
     }
 
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
+
+    // En memoria a propósito: SQLite no soporta ORDER BY sobre columnas decimal (Precio) — ver
+    // la misma nota en ObraRepository.Ordenar.
+    private static List<VentaListItem> Ordenar(List<VentaListItem> items, VentaFiltro filtro)
+    {
+        IOrderedEnumerable<VentaListItem> Aplicar<TKey>(Func<VentaListItem, TKey> selector) =>
+            filtro.OrdenDescendente ? items.OrderByDescending(selector) : items.OrderBy(selector);
+
+        var ordenado = filtro.Orden switch
+        {
+            OrdenVenta.Codigo => Aplicar(v => v.CodigoObra),
+            OrdenVenta.Titulo => Aplicar(v => v.Titulo),
+            OrdenVenta.Artista => Aplicar(v => v.ArtistaNombre),
+            OrdenVenta.Cantidad => Aplicar(v => v.Cantidad),
+            OrdenVenta.Precio => Aplicar(v => v.PrecioVenta),
+            _ => Aplicar(v => v.Fecha)
+        };
+
+        return ordenado.ThenByDescending(v => v.Id).ToList();
+    }
 }

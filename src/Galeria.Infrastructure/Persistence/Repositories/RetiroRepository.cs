@@ -70,8 +70,7 @@ public class RetiroRepository(GaleriaDbContext db) : IRetiroRepository
 
         var hoy = DateOnly.FromDateTime(DateTime.Now);
 
-        return await query
-            .OrderByDescending(r => r.Fecha).ThenByDescending(r => r.Id)
+        return await Ordenar(query, filtro)
             .Select(r => new RetiroListItem(
                 r.Id,
                 r.Fecha,
@@ -89,4 +88,26 @@ public class RetiroRepository(GaleriaDbContext db) : IRetiroRepository
     }
 
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
+
+    private static IQueryable<Retiro> Ordenar(IQueryable<Retiro> query, RetiroFiltro filtro) => filtro.Orden switch
+    {
+        OrdenRetiro.Artista => filtro.OrdenDescendente
+            ? query.OrderByDescending(r => r.Obra.Artista.Apellido).ThenByDescending(r => r.Obra.Artista.Nombre)
+            : query.OrderBy(r => r.Obra.Artista.Apellido).ThenBy(r => r.Obra.Artista.Nombre),
+        OrdenRetiro.Codigo => filtro.OrdenDescendente
+            ? query.OrderByDescending(r => r.Obra.Artista.Codigo).ThenByDescending(r => r.Obra.NumeroObra)
+            : query.OrderBy(r => r.Obra.Artista.Codigo).ThenBy(r => r.Obra.NumeroObra),
+        OrdenRetiro.Obra => filtro.OrdenDescendente
+            ? query.OrderByDescending(r => r.Obra.Titulo)
+            : query.OrderBy(r => r.Obra.Titulo),
+        OrdenRetiro.Tipo => filtro.OrdenDescendente
+            ? query.OrderByDescending(r => r.Tipo)
+            : query.OrderBy(r => r.Tipo),
+        OrdenRetiro.Motivo => filtro.OrdenDescendente
+            ? query.OrderByDescending(r => r.Motivo)
+            : query.OrderBy(r => r.Motivo),
+        _ => filtro.OrdenDescendente
+            ? query.OrderByDescending(r => r.Fecha).ThenByDescending(r => r.Id)
+            : query.OrderBy(r => r.Fecha).ThenBy(r => r.Id)
+    };
 }
