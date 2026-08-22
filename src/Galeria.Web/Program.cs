@@ -381,6 +381,23 @@ app.MapGet("/devoluciones/exportar.csv", async (HttpRequest request, DevolucionS
         }));
 }).RequireAuthorization();
 
+app.MapGet("/auditoria/exportar.csv", async (HttpRequest request, AuditoriaService auditoria) =>
+{
+    var q = request.Query;
+    var filtro = new AuditoriaFiltro(QueryHelper.Fecha(q, "desde"), QueryHelper.Fecha(q, "hasta"),
+        q["usuario"], q["pantalla"], q["tipo"]);
+
+    var resultado = await auditoria.BuscarAsync(filtro);
+
+    return CsvHelper.Generar("auditoria.csv",
+        ["FechaHora", "Usuario", "Pantalla", "Operacion", "Tabla", "Campo", "Anterior", "Nuevo"],
+        resultado.Select(r => new[]
+        {
+            r.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm"), r.NombreUsuario, r.Pantalla, r.TipoOperacion,
+            r.Tabla, r.Columna ?? "", r.ValorAnterior ?? "", r.ValorNuevo ?? ""
+        }));
+}).RequireAuthorization();
+
 app.MapGet("/retiros/{id:int}/pdf", async (int id, RetiroService retiros, IParametroRepository parametros) =>
 {
     var retiro = await retiros.ObtenerAsync(id);

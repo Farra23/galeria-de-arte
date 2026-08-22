@@ -46,6 +46,10 @@
     </div>
 </div>
 
+<div class="mb-3">
+    <a class="btn btn-outline-secondary" href="@EnlaceExportarCsv()" target="_blank">Exportar CSV</a>
+</div>
+
 @if (registros is null)
 {
     <p><em>Cargando...</em></p>
@@ -127,4 +131,6 @@ else
 
     private static string? ParseFechaOrNull(object? valor) =>
         DateOnly.TryParse(valor?.ToString(), out var f) ? f.ToString("yyyy-MM-dd") : null;
+
+    private string EnlaceExportarCsv() => "auditoria/exportar.csv" + new Uri(NavigationManager.Uri).Query;
 }

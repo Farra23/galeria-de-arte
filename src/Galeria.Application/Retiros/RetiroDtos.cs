@@ -12,7 +12,9 @@ public record RetiroListItem(
     string? Motivo,
     bool EstaDevuelto,
     DateOnly? FechaEstimadaDevolucion,
-    bool EstaVencido);
+    bool EstaVencido,
+    string? ArtistaCorreo,
+    string? ArtistaCelular);
 
 public record RegistrarRetiroRequest(
     int ObraId,

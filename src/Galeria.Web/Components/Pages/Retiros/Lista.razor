@@ -95,6 +95,14 @@ else
                     </td>
                     <td class="text-nowrap">
                         <a class="btn btn-sm btn-outline-secondary" href="@($"retiros/{retiro.Id}/pdf")" target="_blank">PDF</a>
+                        @if (!string.IsNullOrWhiteSpace(retiro.ArtistaCorreo))
+                        {
+                            <a class="btn btn-sm btn-outline-secondary" href="@EnlaceMail(retiro)" title="Avisar por mail">✉</a>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(retiro.ArtistaCelular))
+                        {
+                            <a class="btn btn-sm btn-outline-success" href="@EnlaceWhatsApp(retiro)" target="_blank" title="Avisar por WhatsApp">WA</a>
+                        }
                         @if (retiro.Tipo == TipoRetiro.Temporal && !retiro.EstaDevuelto)
                         {
                             <button class="btn btn-sm btn-outline-primary" @onclick="() => DevolverAsync(retiro.Id)">Devolver al stock</button>
@@ -146,4 +154,27 @@ else
     private static int? ParseIntOrNull(object? valor) => int.TryParse(valor?.ToString(), out var n) ? n : null;
 
     private string EnlaceExportarCsv() => "retiros/exportar.csv" + new Uri(NavigationManager.Uri).Query;
+
+    private static string ArmarMensaje(RetiroListItem retiro)
+    {
+        var accion = retiro.Tipo == TipoRetiro.Temporal ? "retiró temporalmente" : "retiró definitivamente";
+        var devolucion = retiro.FechaEstimadaDevolucion is not null
+            ? $" Fecha estimada de devolución: {retiro.FechaEstimadaDevolucion:dd/MM/yyyy}."
+            : "";
+        return $"Le informamos que se {accion} la obra \"{retiro.Titulo}\" (código {retiro.CodigoObra}) el {retiro.Fecha:dd/MM/yyyy}.{devolucion}";
+    }
+
+    private static string EnlaceMail(RetiroListItem retiro)
+    {
+        var asunto = Uri.EscapeDataString("Retiro de obra");
+        var cuerpo = Uri.EscapeDataString(ArmarMensaje(retiro));
+        return $"mailto:{retiro.ArtistaCorreo}?subject={asunto}&body={cuerpo}";
+    }
+
+    private static string EnlaceWhatsApp(RetiroListItem retiro)
+    {
+        var numero = new string(retiro.ArtistaCelular!.Where(char.IsDigit).ToArray());
+        var texto = Uri.EscapeDataString(ArmarMensaje(retiro));
+        return $"https://wa.me/{numero}?text={texto}";
+    }
 }

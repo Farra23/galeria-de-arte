@@ -32,7 +32,9 @@ public class RetiroRepository(GaleriaDbContext db) : IRetiroRepository
                 r.Motivo,
                 r.FechaDevolucion != null,
                 r.FechaEstimadaDevolucion,
-                r.FechaDevolucion == null && r.FechaEstimadaDevolucion != null && r.FechaEstimadaDevolucion < hoy))
+                r.FechaDevolucion == null && r.FechaEstimadaDevolucion != null && r.FechaEstimadaDevolucion < hoy,
+                r.Obra.Artista.Correo,
+                r.Obra.Artista.Celular))
             .FirstOrDefaultAsync(ct);
     }
 
@@ -80,7 +82,9 @@ public class RetiroRepository(GaleriaDbContext db) : IRetiroRepository
                 r.Motivo,
                 r.FechaDevolucion != null,
                 r.FechaEstimadaDevolucion,
-                r.FechaDevolucion == null && r.FechaEstimadaDevolucion != null && r.FechaEstimadaDevolucion < hoy))
+                r.FechaDevolucion == null && r.FechaEstimadaDevolucion != null && r.FechaEstimadaDevolucion < hoy,
+                r.Obra.Artista.Correo,
+                r.Obra.Artista.Celular))
             .ToListAsync(ct);
     }
 
