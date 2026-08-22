@@ -6,13 +6,18 @@ namespace Galeria.Infrastructure.Persistence.Repositories;
 
 public class AuditoriaRepository(GaleriaDbContext db) : IAuditoriaRepository
 {
-    // Sin SaveChanges acá a propósito: la auditoría siempre se escribe como parte de una
-    // operación más grande (registrar una venta, un retiro...) que guarda todo junto en una
-    // sola transacción — mismo patrón de unit-of-work que ObraRepository.AgregarAsync.
-    public Task RegistrarAsync(Auditoria entrada, CancellationToken ct = default)
+    // Guarda inmediatamente: a diferencia del resto de los repositorios (donde el llamador
+    // controla cuándo hacer SaveChanges porque hay más entidades tocadas en la misma operación),
+    // Auditoría no puede depender de que "alguna otra parte de la operación guarde" — la pantalla
+    // de Usuarios (ABM de Identity, requerimiento 14) no toca ningún otro repositorio de
+    // GaleriaDbContext, y con el diseño anterior el registro de auditoría se perdía en silencio.
+    // Guardar acá no rompe nada en los flujos que sí acumulan varias entidades: si ya había un
+    // Movimiento u otra entidad pendiente en el mismo DbContext, este SaveChanges los confirma
+    // igual — solo adelanta el punto de guardado, no lo duplica ni lo pisa.
+    public async Task RegistrarAsync(Auditoria entrada, CancellationToken ct = default)
     {
         db.Auditorias.Add(entrada);
-        return Task.CompletedTask;
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task<List<AuditoriaListItem>> BuscarAsync(AuditoriaFiltro filtro, CancellationToken ct = default)

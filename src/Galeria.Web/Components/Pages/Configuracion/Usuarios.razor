@@ -1,0 +1,246 @@
+@page "/configuracion/usuarios"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using Galeria.Application.Auditorias
+@using Galeria.Application.Common
+@using Galeria.Web.Data
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
+@inject AuditoriaService AuditoriaService
+@inject ICurrentUserService CurrentUser
+
+<PageTitle>Usuarios</PageTitle>
+<HeadContent>
+    <meta name="description" content="Alta, baja y modificación de los usuarios que pueden entrar al sistema." />
+</HeadContent>
+
+<h1>Usuarios</h1>
+<p class="text-body-secondary">
+    Todos los usuarios ven todo — v1 no distingue permisos por rol. "Baja" bloquea el acceso, nunca borra la cuenta.
+</p>
+
+@if (mensaje is not null)
+{
+    <div class="alert alert-success">@mensaje</div>
+}
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<h2 class="h5">Nuevo usuario</h2>
+<EditForm Model="nuevoInput" OnValidSubmit="CrearAsync" class="col-md-6 mb-4">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger" role="alert" />
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Usuario</label>
+            <InputText class="form-control" @bind-Value="nuevoInput.UserName" />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Contraseña</label>
+            <InputText type="password" class="form-control" @bind-Value="nuevoInput.Password" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">+ Crear usuario</button>
+</EditForm>
+
+<h2 class="h5">Usuarios existentes</h2>
+
+@if (usuarios is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    <table class="table table-sm table-striped">
+        <thead><tr><th>Usuario</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var usuario in usuarios)
+            {
+                <tr>
+                    <td>@usuario.UserName</td>
+                    <td>
+                        @if (usuario.Bloqueado)
+                        {
+                            <span class="badge bg-danger">Bloqueado</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Activo</span>
+                        }
+                        @if (usuario.EsUsuarioActual)
+                        {
+                            <span class="badge bg-light text-dark border ms-1">vos</span>
+                        }
+                    </td>
+                    <td class="text-nowrap">
+                        @if (restableciendoId == usuario.Id)
+                        {
+                            <input type="password" class="form-control form-control-sm d-inline-block" style="width:10rem"
+                                   placeholder="Nueva contraseña" @bind="nuevaPassword" />
+                            <button class="btn btn-sm btn-primary" @onclick="() => ConfirmarRestablecerAsync(usuario.Id)">Guardar</button>
+                            <button class="btn btn-sm btn-link" @onclick="() => restableciendoId = null">Cancelar</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => restableciendoId = usuario.Id">Restablecer contraseña</button>
+                            @if (!usuario.EsUsuarioActual)
+                            {
+                                @if (usuario.Bloqueado)
+                                {
+                                    <button class="btn btn-sm btn-outline-success" @onclick="() => DesbloquearAsync(usuario.Id)">Desbloquear</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => BloquearAsync(usuario.Id)">Bloquear</button>
+                                }
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private sealed record UsuarioItem(string Id, string UserName, bool Bloqueado, bool EsUsuarioActual);
+
+    private List<UsuarioItem>? usuarios;
+    private NuevoUsuarioInput nuevoInput = new();
+    private string? mensaje;
+    private string? error;
+    private string? restableciendoId;
+    private string nuevaPassword = "";
+
+    protected override async Task OnInitializedAsync() => await CargarAsync();
+
+    private async Task CargarAsync()
+    {
+        var usuarioActualId = await CurrentUser.ObtenerUsuarioIdAsync();
+
+        var lista = new List<UsuarioItem>();
+        foreach (var usuario in UserManager.Users.OrderBy(u => u.UserName).ToList())
+        {
+            var bloqueado = await UserManager.IsLockedOutAsync(usuario);
+            lista.Add(new UsuarioItem(usuario.Id, usuario.UserName ?? "", bloqueado, usuario.Id == usuarioActualId));
+        }
+
+        usuarios = lista;
+    }
+
+    private async Task CrearAsync()
+    {
+        mensaje = null;
+        error = null;
+
+        var nuevoUsuario = new ApplicationUser { UserName = nuevoInput.UserName.Trim() };
+        var resultado = await UserManager.CreateAsync(nuevoUsuario, nuevoInput.Password);
+
+        if (!resultado.Succeeded)
+        {
+            error = string.Join(" ", resultado.Errors.Select(e => e.Description));
+            return;
+        }
+
+        await AuditoriaService.RegistrarAsync(new RegistrarAuditoriaRequest(
+            Pantalla: "Configuración", TipoOperacion: "Alta", Tabla: "Usuario",
+            EntidadId: nuevoUsuario.Id, ValorNuevo: nuevoUsuario.UserName));
+
+        mensaje = $"Usuario \"{nuevoUsuario.UserName}\" creado.";
+        nuevoInput = new NuevoUsuarioInput();
+        await CargarAsync();
+    }
+
+    private async Task ConfirmarRestablecerAsync(string usuarioId)
+    {
+        mensaje = null;
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(nuevaPassword))
+        {
+            error = "Ingresá la nueva contraseña.";
+            return;
+        }
+
+        var usuario = await UserManager.FindByIdAsync(usuarioId);
+        if (usuario is null) return;
+
+        await UserManager.RemovePasswordAsync(usuario);
+        var resultado = await UserManager.AddPasswordAsync(usuario, nuevaPassword);
+
+        if (!resultado.Succeeded)
+        {
+            error = string.Join(" ", resultado.Errors.Select(e => e.Description));
+            return;
+        }
+
+        await AuditoriaService.RegistrarAsync(new RegistrarAuditoriaRequest(
+            Pantalla: "Configuración", TipoOperacion: "Modificacion", Tabla: "Usuario",
+            Columna: "Contraseña", EntidadId: usuario.Id, ValorNuevo: usuario.UserName));
+
+        mensaje = $"Contraseña de \"{usuario.UserName}\" actualizada.";
+        restableciendoId = null;
+        nuevaPassword = "";
+    }
+
+    // Nunca se borra un usuario (misma regla que el resto del sistema, decisión #9): "baja" es
+    // bloquear el acceso con un lockout indefinido, no DeleteAsync.
+    private async Task BloquearAsync(string usuarioId)
+    {
+        mensaje = null;
+        error = null;
+
+        if (usuarios!.Count(u => !u.Bloqueado) <= 1)
+        {
+            error = "No podés bloquear al único usuario activo que queda.";
+            return;
+        }
+
+        var usuario = await UserManager.FindByIdAsync(usuarioId);
+        if (usuario is null) return;
+
+        await UserManager.SetLockoutEnabledAsync(usuario, true);
+        await UserManager.SetLockoutEndDateAsync(usuario, DateTimeOffset.MaxValue);
+
+        await AuditoriaService.RegistrarAsync(new RegistrarAuditoriaRequest(
+            Pantalla: "Configuración", TipoOperacion: "Baja", Tabla: "Usuario",
+            EntidadId: usuario.Id, ValorNuevo: usuario.UserName));
+
+        mensaje = $"Usuario \"{usuario.UserName}\" bloqueado.";
+        await CargarAsync();
+    }
+
+    private async Task DesbloquearAsync(string usuarioId)
+    {
+        mensaje = null;
+        error = null;
+
+        var usuario = await UserManager.FindByIdAsync(usuarioId);
+        if (usuario is null) return;
+
+        await UserManager.SetLockoutEndDateAsync(usuario, null);
+        await UserManager.ResetAccessFailedCountAsync(usuario);
+
+        await AuditoriaService.RegistrarAsync(new RegistrarAuditoriaRequest(
+            Pantalla: "Configuración", TipoOperacion: "Modificacion", Tabla: "Usuario",
+            Columna: "Bloqueado", ValorAnterior: "true", ValorNuevo: "false", EntidadId: usuario.Id));
+
+        mensaje = $"Usuario \"{usuario.UserName}\" desbloqueado.";
+        await CargarAsync();
+    }
+
+    private sealed class NuevoUsuarioInput
+    {
+        [Required(ErrorMessage = "Ingresá el nombre de usuario.")]
+        [MaxLength(50)]
+        public string UserName { get; set; } = "";
+
+        [Required(ErrorMessage = "Ingresá una contraseña.")]
+        [MinLength(8, ErrorMessage = "Al menos 8 caracteres.")]
+        public string Password { get; set; } = "";
+    }
+}
