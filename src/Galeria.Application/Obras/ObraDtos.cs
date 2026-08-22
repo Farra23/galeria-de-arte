@@ -31,7 +31,8 @@ public record ObraListItem(
     DateOnly FechaIngreso,
     bool PagoContado,
     int? SerieId,
-    string? SerieNombre);
+    string? SerieNombre,
+    string? ImagenUrl);
 
 // Para el combo de filtro por Serie en la Lista de Obras (requerimiento 3.3, "agrupar/filtrar por
 // serie") — solo series que tienen al menos una obra tienen sentido para filtrar.
@@ -124,7 +125,8 @@ public record ObraFicha(
     DateOnly FechaIngreso,
     string? SerieNombre,
     int? SeriePosicion,
-    int? SerieTotal);
+    int? SerieTotal,
+    string? ImagenUrl);
 
 // Historial de movimientos (requerimiento 3.1, pestaña de la ficha): lee directo del libro de
 // stock que ya alimentan Ventas, Retiros, Alquileres y Devoluciones.

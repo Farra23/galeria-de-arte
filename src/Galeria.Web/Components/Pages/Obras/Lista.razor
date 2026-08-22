@@ -153,6 +153,7 @@ else
     <table class="table table-striped">
         <thead>
             <tr>
+                <th></th>
                 <th role="button" @onclick="() => OrdenarPor(OrdenObra.Codigo)">Código @Flecha(OrdenObra.Codigo)</th>
                 <th role="button" @onclick="() => OrdenarPor(OrdenObra.Titulo)">Nombre @Flecha(OrdenObra.Titulo)</th>
                 <th role="button" @onclick="() => OrdenarPor(OrdenObra.Artista)">Artista @Flecha(OrdenObra.Artista)</th>
@@ -171,6 +172,12 @@ else
             {
                 <tr class="@(obra.Existencia == 0 || obra.Estado != EstadoObra.Disponible ? "text-body-secondary" : "")"
                     style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"obras/{obra.Id}")'>
+                    <td>
+                        @if (obra.ImagenUrl is not null)
+                        {
+                            <img src="@obra.ImagenUrl" alt="@obra.Titulo" style="width:40px;height:40px;object-fit:cover" class="rounded" />
+                        }
+                    </td>
                     <td>@obra.CodigoVisible</td>
                     <td>@obra.Titulo</td>
                     <td>@obra.ArtistaNombre</td>

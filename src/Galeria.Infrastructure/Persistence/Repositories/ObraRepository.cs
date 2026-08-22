@@ -100,7 +100,8 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.FechaIngreso,
                 o.PagoContado,
                 o.SerieId,
-                o.Serie != null ? o.Serie.Nombre : null))
+                o.Serie != null ? o.Serie.Nombre : null,
+                o.ImagenPrincipalPath))
             .ToListAsync(ct);
 
         return Ordenar(items, filtro);
@@ -209,7 +210,8 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.FechaIngreso,
                 o.Serie != null ? o.Serie.Nombre : null,
                 o.Serie != null ? o.Serie.Obras.Count(x => x.NumeroObra <= o.NumeroObra) : (int?)null,
-                o.Serie != null ? o.Serie.Obras.Count() : (int?)null))
+                o.Serie != null ? o.Serie.Obras.Count() : (int?)null,
+                o.ImagenPrincipalPath))
             .FirstOrDefaultAsync(ct);
 
     // Moneda y Existencia quedan afuera a propósito (ver ObraDtos.cs): no se tocan desde acá.
@@ -234,6 +236,12 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
     {
         var obra = await db.Obras.FirstAsync(o => o.Id == obraId, ct);
         obra.PrecioVenta = nuevoPrecio;
+    }
+
+    public async Task ActualizarImagenAsync(int obraId, string? rutaRelativa, CancellationToken ct = default)
+    {
+        var obra = await db.Obras.FirstAsync(o => o.Id == obraId, ct);
+        obra.ImagenPrincipalPath = rutaRelativa;
     }
 
     public Task<Obra?> ObtenerEntidadAsync(int id, CancellationToken ct = default) =>

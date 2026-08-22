@@ -9,6 +9,7 @@
 @inject ArtistaService ArtistaService
 @inject ICatalogoRepository CatalogoRepository
 @inject NavigationManager NavigationManager
+@inject IWebHostEnvironment WebHostEnvironment
 
 <PageTitle>Nueva obra</PageTitle>
 <HeadContent>
@@ -185,6 +186,22 @@ else
             <InputTextArea class="form-control" @bind-Value="Input.Observaciones" rows="2" />
         </div>
 
+        @if (Input.CantidadEnSerie == 1)
+        {
+            <div class="mb-3">
+                <label class="form-label">Imagen (opcional — también se puede subir más tarde desde la ficha)</label>
+                <InputFile class="form-control" OnChange="SeleccionarImagen" accept=".jpg,.jpeg,.png,.webp" />
+                @if (imagenError is not null)
+                {
+                    <div class="text-danger">@imagenError</div>
+                }
+                @if (imagenSeleccionada is not null && imagenError is null)
+                {
+                    <div class="form-text">@imagenSeleccionada.Name (@((imagenSeleccionada.Size / 1024.0).ToString("N0")) KB)</div>
+                }
+            </div>
+        }
+
         <button type="submit" class="btn btn-primary">Guardar</button>
         <a href="obras" class="btn btn-link">Cancelar</a>
     </EditForm>
@@ -200,6 +217,8 @@ else
     private ObraCoincidente? coincidencia;
     private int cantidadAAgregar = 1;
     private bool precioEditadoManualmente;
+    private IBrowserFile? imagenSeleccionada;
+    private string? imagenError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -235,6 +254,12 @@ else
     }
 
     private void MarcarPrecioEditado() => precioEditadoManualmente = true;
+
+    private void SeleccionarImagen(InputFileChangeEventArgs e)
+    {
+        imagenSeleccionada = e.File;
+        ImagenObraHelper.EsValida(e.File, out imagenError);
+    }
 
     private async Task AgregarExistenciaAsync()
     {
@@ -272,7 +297,13 @@ else
         }
         else
         {
-            await ObraService.CrearAsync(request);
+            var obraId = await ObraService.CrearAsync(request);
+
+            if (imagenSeleccionada is not null && imagenError is null)
+            {
+                var ruta = await ImagenObraHelper.GuardarAsync(imagenSeleccionada, obraId, WebHostEnvironment.WebRootPath);
+                await ObraService.ActualizarImagenAsync(obraId, ruta);
+            }
         }
 
         NavigationManager.NavigateTo("obras");

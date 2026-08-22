@@ -144,6 +144,30 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
             EntidadId: obraId.ToString()), ct);
     }
 
+    // Requerimiento 3.2: "se puede subir al cargar la obra o más tarde" — el Web ya guardó el
+    // archivo en wwwroot antes de llamar acá, este método solo actualiza la referencia y audita.
+    public async Task ActualizarImagenAsync(int obraId, string? rutaRelativa, CancellationToken ct = default)
+    {
+        var ficha = await obras.ObtenerFichaAsync(obraId, ct);
+
+        await obras.ActualizarImagenAsync(obraId, rutaRelativa, ct);
+        await obras.GuardarCambiosAsync(ct);
+
+        if (ficha is not null)
+        {
+            await auditoria.RegistrarAsync(new RegistrarAuditoriaRequest(
+                Pantalla: "Obras",
+                TipoOperacion: "Modificacion",
+                Tabla: "Obra",
+                Columna: "Imagen",
+                ValorAnterior: ficha.ImagenUrl,
+                ValorNuevo: rutaRelativa,
+                ArtistaId: ficha.ArtistaId,
+                ObraId: obraId,
+                EntidadId: obraId.ToString()), ct);
+        }
+    }
+
     public Task<List<MovimientoItem>> ObtenerMovimientosAsync(int obraId, CancellationToken ct = default) =>
         obras.ObtenerMovimientosAsync(obraId, ct);
 

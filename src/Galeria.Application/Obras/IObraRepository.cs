@@ -31,6 +31,11 @@ public interface IObraRepository
     // cada una).
     Task ActualizarPrecioAsync(int obraId, decimal nuevoPrecio, CancellationToken ct = default);
 
+    // Ruta relativa dentro de wwwroot (ej. "uploads/obras/42.jpg") o null para borrar la imagen.
+    // Requerimiento 3.2: "se puede subir al cargar la obra o más tarde" — un solo método sirve
+    // para los dos casos, la diferencia es solo cuándo se lo llama.
+    Task ActualizarImagenAsync(int obraId, string? rutaRelativa, CancellationToken ct = default);
+
     // Entidad rastreada (no DTO): la usan otros módulos (Ventas, Retiros, Alquileres, Devoluciones)
     // que necesitan mutar Existencia/Estado como parte de su propia operación. Obra sigue siendo
     // dueña de su propia persistencia — los demás módulos no tocan la tabla Obras directamente.

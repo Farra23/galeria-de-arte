@@ -5,6 +5,10 @@ Datos/
 *.db-shm
 *.db-wal
 
+# Imágenes de obras subidas en tiempo de ejecución (requerimiento 3.2) — contenido del usuario,
+# no código fuente. La carpeta se crea sola la primera vez que alguien sube una imagen.
+src/Galeria.Web/wwwroot/uploads/
+
 # .NET
 bin/
 obj/

@@ -8,6 +8,7 @@
 @inject ObraService ObraService
 @inject ICatalogoRepository CatalogoRepository
 @inject NavigationManager NavigationManager
+@inject IWebHostEnvironment WebHostEnvironment
 
 <PageTitle>@(ficha is null ? "Obra" : ficha.Titulo)</PageTitle>
 <HeadContent>
@@ -44,6 +45,26 @@ else
             <dd class="col-sm-4">Pieza @ficha.SeriePosicion de @ficha.SerieTotal · @ficha.SerieNombre</dd>
         }
     </dl>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            @if (ficha.ImagenUrl is not null)
+            {
+                <img src="@ficha.ImagenUrl" alt="@ficha.Titulo" class="img-thumbnail mb-2" style="max-height:220px" />
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="QuitarImagenAsync">Quitar imagen</button>
+                </div>
+            }
+            else
+            {
+                <InputFile OnChange="SubirImagenAsync" accept=".jpg,.jpeg,.png,.webp" />
+                @if (imagenError is not null)
+                {
+                    <div class="text-danger">@imagenError</div>
+                }
+            }
+        </div>
+    </div>
 
     <ul class="nav nav-tabs mb-3">
         <li class="nav-item">
@@ -220,6 +241,7 @@ else
     private string pestania = "datos";
     private List<AuditoriaListItem>? historialPrecios;
     private List<MovimientoItem>? movimientos;
+    private string? imagenError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -265,6 +287,29 @@ else
     }
 
     private void MarcarPrecioEditado() => precioEditadoManualmente = true;
+
+    // Sube o quita la imagen al toque, sin pasar por el botón "Guardar" del resto de la ficha —
+    // es una acción independiente del formulario de datos (requerimiento 3.2, "o más tarde").
+    private async Task SubirImagenAsync(InputFileChangeEventArgs e)
+    {
+        imagenError = null;
+
+        if (!ImagenObraHelper.EsValida(e.File, out imagenError))
+        {
+            return;
+        }
+
+        var ruta = await ImagenObraHelper.GuardarAsync(e.File, Id, WebHostEnvironment.WebRootPath);
+        await ObraService.ActualizarImagenAsync(Id, ruta);
+        ficha = ficha! with { ImagenUrl = ruta };
+    }
+
+    private async Task QuitarImagenAsync()
+    {
+        await ObraService.ActualizarImagenAsync(Id, null);
+        ImagenObraHelper.Eliminar(Id, WebHostEnvironment.WebRootPath);
+        ficha = ficha! with { ImagenUrl = null };
+    }
 
     // Cada pestaña carga sus datos recién la primera vez que se abre — evita dos consultas de
     // más (precios/movimientos) en el caso más común, que es solo mirar/editar los Datos.
