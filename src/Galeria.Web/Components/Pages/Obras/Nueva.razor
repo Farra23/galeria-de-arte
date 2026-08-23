@@ -251,6 +251,7 @@ else
 
         var redondeo = parametros.RedondeoPara(Input.Moneda);
         Input.PrecioVenta = Obra.CalcularPrecioVenta(Input.Costo, Input.Utilidad, Input.TieneIVA, parametros.IvaPorcentaje, redondeo);
+        StateHasChanged();
     }
 
     private void MarcarPrecioEditado() => precioEditadoManualmente = true;

@@ -267,14 +267,15 @@ else
                 PagoContado = ficha.PagoContado,
                 Observaciones = ficha.Observaciones
             };
-
-            // Precio editado a mano no se recalcula solo al entrar — recién si tocan costo/utilidad/IVA.
-            precioEditadoManualmente = true;
         }
 
         cargando = false;
     }
 
+    // precioEditadoManualmente arranca en false a propósito: al entrar no se llama a
+    // RecalcularPrecio (Input ya se inicializó con ficha.PrecioVenta arriba), así que el precio
+    // guardado no se pisa solo por abrir la ficha. Recién se recalcula si tocan Costo/Utilidad/IVA
+    // — y si el usuario edita Precio de venta a mano, MarcarPrecioEditado corta el auto-cálculo.
     private void RecalcularPrecio()
     {
         if (parametros is null || ficha is null || precioEditadoManualmente)
@@ -284,6 +285,7 @@ else
 
         var redondeo = parametros.RedondeoPara(ficha.Moneda);
         Input.PrecioVenta = Obra.CalcularPrecioVenta(Input.Costo, Input.Utilidad, Input.TieneIVA, parametros.IvaPorcentaje, redondeo);
+        StateHasChanged();
     }
 
     private void MarcarPrecioEditado() => precioEditadoManualmente = true;
