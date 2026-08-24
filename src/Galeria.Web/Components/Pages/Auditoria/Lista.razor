@@ -60,6 +60,7 @@ else if (registros.Count == 0)
 }
 else
 {
+    <div class="table-responsive">
     <table class="table table-striped table-sm">
         <thead>
             <tr>
@@ -89,6 +90,7 @@ else
             }
         </tbody>
     </table>
+    </div>
     @if (registros.Count == 500)
     {
         <p class="text-body-secondary">Mostrando los 500 registros más recientes que coinciden con el filtro — acotá la búsqueda para ver más precisión.</p>

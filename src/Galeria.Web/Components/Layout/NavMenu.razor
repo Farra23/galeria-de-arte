@@ -2,18 +2,43 @@
 
 @inject NavigationManager NavigationManager
 
-<div class="top-row navbar navbar-dark">
-    <button type="button" class="navbar-toggler" @onclick="Alternar" aria-label="Abrir o cerrar el menú" title="Menú"></button>
-    <a class="navbar-brand ps-2" href="">Galeria.Web</a>
+@* Barra superior fija, blanca, una sola vez por página: hamburguesa a la izquierda (despliega el
+   panel de navegación) y usuario a la derecha (despliega Logout). Sin marca/color de fondo — el
+   azul marino solo aparece en el panel de navegación cuando está desplegado. *@
+<div class="topbar">
+    <button type="button" class="hamburger-btn" @onclick="AlternarNav" aria-label="Abrir o cerrar el menú" title="Menú">
+        <span class="hamburger-icon"></span>
+    </button>
+
+    <AuthorizeView>
+        <Authorized>
+            <div class="user-menu">
+                <button type="button" class="user-menu-toggle" @onclick="AlternarUsuario">
+                    @context.User.Identity?.Name
+                </button>
+                @* Igual que el panel de navegación: el formulario de Logout tiene que estar
+                   siempre en el DOM (nunca detrás de un @if) para que su <AntiforgeryToken />
+                   salga del render estático inicial y no del circuito interactivo — si no, el
+                   token es inválido y el POST falla. Ver commit 327e7f4. *@
+                <div class="user-menu-dropdown @(usuarioAbierto ? "" : "user-menu-dropdown-oculto")">
+                    <form action="Account/Logout" method="post">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                        <button type="submit" class="user-menu-logout">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </Authorized>
+        <NotAuthorized>
+            <NavLink class="user-menu-toggle" href="Account/Login">Login</NavLink>
+        </NotAuthorized>
+    </AuthorizeView>
 </div>
 
-@* Siempre renderizado (nunca detrás de un @if): el formulario de Logout necesita su
-   <AntiforgeryToken /> generado en el render estático inicial (con HttpContext disponible). Si
-   este bloque se crea recién más tarde, cuando el usuario despliega el menú, el token sale
-   inválido porque en ese momento ya se está renderizando puramente por el circuito interactivo,
-   sin HttpContext — el POST a Logout falla con AntiforgeryValidationException. Por eso el
-   colapsar/desplegar es solo visual, con una clase CSS, no un @if. *@
-<div class="nav-scrollable @(abierto ? "" : "nav-scrollable-colapsado")">
+@* Mismo motivo que el formulario de Logout: siempre en el DOM, el colapsar/desplegar es solo
+   una clase CSS (ver commit 327e7f4). Panel superpuesto (no empuja el contenido) para no
+   restarle ancho a la pantalla cuando está cerrado. *@
+<div class="nav-panel @(navAbierto ? "nav-panel-abierto" : "")">
     <nav class="flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
@@ -29,40 +54,19 @@
                 </NavLink>
             </div>
         }
-
-        <AuthorizeView>
-            <Authorized>
-                <div class="nav-item px-3 nav-usuario">
-                    <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
-                </div>
-                <div class="nav-item px-3">
-                    <form action="Account/Logout" method="post">
-                        <AntiforgeryToken />
-                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                        <button type="submit" class="nav-link">
-                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
-                        </button>
-                    </form>
-                </div>
-            </Authorized>
-            <NotAuthorized>
-                @* Registro público deshabilitado: v1 tiene un solo usuario, precargado por seed (ver IdentitySeeder). *@
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Login">
-                        <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
-                    </NavLink>
-                </div>
-            </NotAuthorized>
-        </AuthorizeView>
     </nav>
 </div>
+
+@if (navAbierto)
+{
+    <div class="nav-backdrop" @onclick="CerrarNav"></div>
+}
 
 @code {
     private string? currentUrl;
 
     // Menú unificado en una sola lista, sin secciones (CATÁLOGO/OPERACIÓN/...) — se sacaron a
-    // pedido del usuario, no aportaban. Colapsado por default; las 3 rayas arriba a la izquierda
-    // lo despliegan completo. Estado de presentación puro, se resuelve acá sin JS.
+    // pedido del usuario, no aportaban.
     private sealed record ItemMenu(string Texto, string Href);
 
     private static readonly ItemMenu[] Items =
@@ -83,9 +87,22 @@
         new("Usuarios", "configuracion/usuarios")
     ];
 
-    private bool abierto;
+    private bool navAbierto;
+    private bool usuarioAbierto;
 
-    private void Alternar() => abierto = !abierto;
+    private void AlternarNav()
+    {
+        navAbierto = !navAbierto;
+        usuarioAbierto = false;
+    }
+
+    private void CerrarNav() => navAbierto = false;
+
+    private void AlternarUsuario()
+    {
+        usuarioAbierto = !usuarioAbierto;
+        navAbierto = false;
+    }
 
     protected override void OnInitialized()
     {
@@ -96,6 +113,7 @@
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        navAbierto = false;
         StateHasChanged();
     }
 

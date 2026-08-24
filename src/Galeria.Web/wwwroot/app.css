@@ -1,19 +1,35 @@
+:root {
+    /* Azul marino: color único de acento para toda la aplicación (botones, links, nav, foco). */
+    --color-navy: #0a2540;
+    --color-navy-dark: #071a2e;
+    --color-navy-light: #14335c;
+}
+
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 a, .btn-link {
-    color: #006bb7;
+    color: var(--color-navy);
 }
 
 .btn-primary {
     color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    background-color: var(--color-navy);
+    border-color: var(--color-navy);
 }
 
+    .btn-primary:hover, .btn-primary:active {
+        background-color: var(--color-navy-light) !important;
+        border-color: var(--color-navy-light) !important;
+    }
+
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem var(--color-navy-light);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--color-navy-light);
 }
 
 .content {
