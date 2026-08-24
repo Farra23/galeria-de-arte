@@ -1,15 +1,24 @@
-﻿@inherits LayoutComponentBase
-@layout Galeria.Web.Components.Layout.MainLayout
+@inherits LayoutComponentBase
 @inject NavigationManager NavigationManager
 
+@* Layout propio, sin MainLayout: las pantallas de cuenta (login, etc.) se ven solas,
+   sin el nav de la aplicación — no tiene sentido mostrar el menú antes de iniciar sesión. *@
 @if (HttpContext is null)
 {
     <p>Loading...</p>
 }
 else
 {
-    @Body
+    <div class="account-page px-4 py-4">
+        @Body
+    </div>
 }
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
 
 @code {
     [CascadingParameter]

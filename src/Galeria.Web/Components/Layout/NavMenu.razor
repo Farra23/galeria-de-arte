@@ -2,48 +2,38 @@
 
 @inject NavigationManager NavigationManager
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Galeria.Web</a>
-    </div>
+<div class="top-row navbar navbar-dark">
+    <button type="button" class="navbar-toggler" @onclick="Alternar" aria-label="Abrir o cerrar el menú" title="Menú"></button>
+    <a class="navbar-brand ps-2" href="">Galeria.Web</a>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
-
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+@* Siempre renderizado (nunca detrás de un @if): el formulario de Logout necesita su
+   <AntiforgeryToken /> generado en el render estático inicial (con HttpContext disponible). Si
+   este bloque se crea recién más tarde, cuando el usuario despliega el menú, el token sale
+   inválido porque en ese momento ya se está renderizando puramente por el circuito interactivo,
+   sin HttpContext — el POST a Logout falla con AntiforgeryValidationException. Por eso el
+   colapsar/desplegar es solo visual, con una clase CSS, no un @if. *@
+<div class="nav-scrollable @(abierto ? "" : "nav-scrollable-colapsado")">
     <nav class="flex-column">
-        @* Resumen y Login quedan fuera de los grupos a propósito (requerimiento 15). *@
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Resumen
             </NavLink>
         </div>
 
-        @foreach (var grupo in Grupos)
+        @foreach (var item in Items)
         {
-            <div class="nav-group-header px-3" @onclick="() => Alternar(grupo.Titulo)">
-                <span class="nav-group-flecha">@(EstaAbierto(grupo.Titulo) ? "▾" : "▸")</span> @grupo.Titulo
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="@item.Href">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> @item.Texto
+                </NavLink>
             </div>
-
-            if (EstaAbierto(grupo.Titulo))
-            {
-                @foreach (var item in grupo.Items)
-                {
-                    <div class="nav-item px-3 ps-4">
-                        <NavLink class="nav-link" href="@item.Href">
-                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> @item.Texto
-                        </NavLink>
-                    </div>
-                }
-            }
         }
 
         <AuthorizeView>
             <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Manage">
-                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
-                    </NavLink>
+                <div class="nav-item px-3 nav-usuario">
+                    <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
                 </div>
                 <div class="nav-item px-3">
                     <form action="Account/Logout" method="post">
@@ -70,32 +60,32 @@
 @code {
     private string? currentUrl;
 
-    // Agrupación colapsable propuesta por el requerimiento 15. Colapsar/expandir es estado de
-    // presentación puro — se resuelve en el propio componente en vez de sumar una dependencia de
-    // JS (Bootstrap Collapse) que este layout todavía no carga.
+    // Menú unificado en una sola lista, sin secciones (CATÁLOGO/OPERACIÓN/...) — se sacaron a
+    // pedido del usuario, no aportaban. Colapsado por default; las 3 rayas arriba a la izquierda
+    // lo despliegan completo. Estado de presentación puro, se resuelve acá sin JS.
     private sealed record ItemMenu(string Texto, string Href);
-    private sealed record GrupoMenu(string Titulo, ItemMenu[] Items);
 
-    private static readonly GrupoMenu[] Grupos =
+    private static readonly ItemMenu[] Items =
     [
-        new("CATÁLOGO", [new("Obras", "obras"), new("Artistas", "artistas")]),
-        new("OPERACIÓN", [new("Ventas", "ventas"), new("Retiros", "retiros"), new("Alquileres", "alquileres"), new("Devoluciones", "devoluciones")]),
-        new("PAGOS", [new("Adelantos", "adelantos"), new("Liquidaciones", "liquidaciones"), new("Agenda de pagos", "agenda")]),
-        new("CONTROL", [new("Cambio de precios", "precios/cambio-global"), new("Auditoría", "auditoria")]),
-        new("SISTEMA", [new("Rubros y técnicas", "configuracion/catalogos"), new("Datos de la galería", "configuracion/galeria"), new("Usuarios", "configuracion/usuarios")])
+        new("Obras", "obras"),
+        new("Artistas", "artistas"),
+        new("Ventas", "ventas"),
+        new("Retiros", "retiros"),
+        new("Alquileres", "alquileres"),
+        new("Devoluciones", "devoluciones"),
+        new("Adelantos", "adelantos"),
+        new("Liquidaciones", "liquidaciones"),
+        new("Agenda de pagos", "agenda"),
+        new("Cambio de precios", "precios/cambio-global"),
+        new("Auditoría", "auditoria"),
+        new("Rubros y técnicas", "configuracion/catalogos"),
+        new("Datos de la galería", "configuracion/galeria"),
+        new("Usuarios", "configuracion/usuarios")
     ];
 
-    private readonly HashSet<string> gruposCerrados = [];
+    private bool abierto;
 
-    private bool EstaAbierto(string titulo) => !gruposCerrados.Contains(titulo);
-
-    private void Alternar(string titulo)
-    {
-        if (!gruposCerrados.Add(titulo))
-        {
-            gruposCerrados.Remove(titulo);
-        }
-    }
+    private void Alternar() => abierto = !abierto;
 
     protected override void OnInitialized()
     {
