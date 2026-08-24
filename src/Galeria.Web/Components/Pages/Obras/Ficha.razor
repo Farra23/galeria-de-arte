@@ -185,7 +185,7 @@ else
 
         <div class="row">
             <div class="col-md-4 mb-3 form-check pt-4 mt-2">
-                <InputCheckbox class="form-check-input" id="tieneIva" @bind-Value="Input.TieneIVA" @bind:after="RecalcularPrecio" />
+                <InputCheckbox TValue="bool" class="form-check-input" id="tieneIva" Value="Input.TieneIVA" ValueChanged="OnTieneIvaChanged" ValueExpression="() => Input.TieneIVA" />
                 <label class="form-check-label" for="tieneIva">Tiene IVA</label>
             </div>
         </div>
@@ -193,16 +193,16 @@ else
         <div class="row">
             <div class="col-md-4 mb-3">
                 <label class="form-label">Costo (lo que cobra el artista)</label>
-                <InputNumber class="form-control" @bind-Value="Input.Costo" @bind:after="RecalcularPrecio" />
+                <InputNumber TValue="decimal" class="form-control" Value="Input.Costo" ValueChanged="OnCostoChanged" ValueExpression="() => Input.Costo" />
                 <ValidationMessage For="() => Input.Costo" class="text-danger" />
             </div>
             <div class="col-md-4 mb-3">
                 <label class="form-label">Utilidad (%)</label>
-                <InputNumber class="form-control" @bind-Value="Input.Utilidad" @bind:after="RecalcularPrecio" />
+                <InputNumber TValue="decimal" class="form-control" Value="Input.Utilidad" ValueChanged="OnUtilidadChanged" ValueExpression="() => Input.Utilidad" />
             </div>
             <div class="col-md-4 mb-3">
                 <label class="form-label">Precio de venta</label>
-                <InputNumber class="form-control fw-bold" @bind-Value="Input.PrecioVenta" @bind:after="MarcarPrecioEditado" />
+                <InputNumber TValue="decimal" class="form-control fw-bold" Value="Input.PrecioVenta" ValueChanged="OnPrecioVentaChanged" ValueExpression="() => Input.PrecioVenta" />
                 <div class="form-text">Calculado automático — se puede ajustar a mano.</div>
             </div>
         </div>
@@ -289,6 +289,30 @@ else
     }
 
     private void MarcarPrecioEditado() => precioEditadoManualmente = true;
+
+    private void OnTieneIvaChanged(bool valor)
+    {
+        Input.TieneIVA = valor;
+        RecalcularPrecio();
+    }
+
+    private void OnCostoChanged(decimal valor)
+    {
+        Input.Costo = valor;
+        RecalcularPrecio();
+    }
+
+    private void OnUtilidadChanged(decimal valor)
+    {
+        Input.Utilidad = valor;
+        RecalcularPrecio();
+    }
+
+    private void OnPrecioVentaChanged(decimal valor)
+    {
+        Input.PrecioVenta = valor;
+        MarcarPrecioEditado();
+    }
 
     // Sube o quita la imagen al toque, sin pasar por el botón "Guardar" del resto de la ficha —
     // es una acción independiente del formulario de datos (requerimiento 3.2, "o más tarde").

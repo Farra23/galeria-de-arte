@@ -32,7 +32,7 @@ else
             <div class="col-md-8 mb-3">
                 <label class="form-label">Artista</label>
                 <div class="input-group">
-                    <InputSelect class="form-select" @bind-Value="Input.ArtistaId" @bind:after="VerificarCoincidenciaAsync">
+                    <InputSelect TValue="int?" class="form-select" Value="Input.ArtistaId" ValueChanged="OnArtistaIdChanged" ValueExpression="() => Input.ArtistaId">
                         <option value="">Seleccioná un artista...</option>
                         @foreach (var artista in artistas)
                         {
@@ -50,7 +50,7 @@ else
 
         <div class="mb-3">
             <label class="form-label">Nombre de la obra</label>
-            <InputText class="form-control" @bind-Value="Input.Titulo" @bind:after="VerificarCoincidenciaAsync" />
+            <InputText class="form-control" Value="@Input.Titulo" ValueChanged="OnTituloChanged" ValueExpression="() => Input.Titulo" />
             <ValidationMessage For="() => Input.Titulo" class="text-danger" />
         </div>
 
@@ -128,13 +128,13 @@ else
             </div>
             <div class="col-md-4 mb-3">
                 <label class="form-label">Moneda</label>
-                <InputSelect class="form-select" @bind-Value="Input.Moneda" @bind:after="RecalcularPrecio">
+                <InputSelect TValue="Moneda" class="form-select" Value="Input.Moneda" ValueChanged="OnMonedaChanged" ValueExpression="() => Input.Moneda">
                     <option value="@Moneda.Pesos">Pesos ($)</option>
                     <option value="@Moneda.USD">Dólares (U$S)</option>
                 </InputSelect>
             </div>
             <div class="col-md-4 mb-3 form-check pt-4 mt-2">
-                <InputCheckbox class="form-check-input" id="tieneIva" @bind-Value="Input.TieneIVA" @bind:after="RecalcularPrecio" />
+                <InputCheckbox TValue="bool" class="form-check-input" id="tieneIva" Value="Input.TieneIVA" ValueChanged="OnTieneIvaChanged" ValueExpression="() => Input.TieneIVA" />
                 <label class="form-check-label" for="tieneIva">Tiene IVA</label>
             </div>
         </div>
@@ -160,16 +160,16 @@ else
         <div class="row">
             <div class="col-md-4 mb-3">
                 <label class="form-label">Costo (lo que cobra el artista)</label>
-                <InputNumber class="form-control" @bind-Value="Input.Costo" @bind:after="RecalcularPrecio" />
+                <InputNumber TValue="decimal" class="form-control" Value="Input.Costo" ValueChanged="OnCostoChanged" ValueExpression="() => Input.Costo" />
                 <ValidationMessage For="() => Input.Costo" class="text-danger" />
             </div>
             <div class="col-md-4 mb-3">
                 <label class="form-label">Utilidad (%)</label>
-                <InputNumber class="form-control" @bind-Value="Input.Utilidad" @bind:after="RecalcularPrecio" />
+                <InputNumber TValue="decimal" class="form-control" Value="Input.Utilidad" ValueChanged="OnUtilidadChanged" ValueExpression="() => Input.Utilidad" />
             </div>
             <div class="col-md-4 mb-3">
                 <label class="form-label">Precio de venta</label>
-                <InputNumber class="form-control fw-bold" @bind-Value="Input.PrecioVenta" @bind:after="MarcarPrecioEditado" />
+                <InputNumber TValue="decimal" class="form-control fw-bold" Value="Input.PrecioVenta" ValueChanged="OnPrecioVentaChanged" ValueExpression="() => Input.PrecioVenta" />
                 <div class="form-text">Calculado automático — se puede ajustar a mano.</div>
             </div>
         </div>
@@ -242,6 +242,18 @@ else
             : await ObraService.BuscarCoincidenciaAsync(Input.ArtistaId.Value, Input.Titulo);
     }
 
+    private async Task OnArtistaIdChanged(int? valor)
+    {
+        Input.ArtistaId = valor;
+        await VerificarCoincidenciaAsync();
+    }
+
+    private async Task OnTituloChanged(string valor)
+    {
+        Input.Titulo = valor;
+        await VerificarCoincidenciaAsync();
+    }
+
     private void RecalcularPrecio()
     {
         if (parametros is null || precioEditadoManualmente)
@@ -255,6 +267,36 @@ else
     }
 
     private void MarcarPrecioEditado() => precioEditadoManualmente = true;
+
+    private void OnMonedaChanged(Moneda valor)
+    {
+        Input.Moneda = valor;
+        RecalcularPrecio();
+    }
+
+    private void OnTieneIvaChanged(bool valor)
+    {
+        Input.TieneIVA = valor;
+        RecalcularPrecio();
+    }
+
+    private void OnCostoChanged(decimal valor)
+    {
+        Input.Costo = valor;
+        RecalcularPrecio();
+    }
+
+    private void OnUtilidadChanged(decimal valor)
+    {
+        Input.Utilidad = valor;
+        RecalcularPrecio();
+    }
+
+    private void OnPrecioVentaChanged(decimal valor)
+    {
+        Input.PrecioVenta = valor;
+        MarcarPrecioEditado();
+    }
 
     private void SeleccionarImagen(InputFileChangeEventArgs e)
     {

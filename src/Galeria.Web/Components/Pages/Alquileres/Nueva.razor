@@ -73,11 +73,11 @@ else
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">% de alquiler (sobre precio de venta)</label>
-                    <InputNumber class="form-control" @bind-Value="Input.PorcentajeAlquiler" @bind:after="StateHasChanged" />
+                    <InputNumber TValue="decimal" class="form-control" Value="Input.PorcentajeAlquiler" ValueChanged="OnPorcentajeAlquilerChanged" ValueExpression="() => Input.PorcentajeAlquiler" />
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">% que le toca al artista</label>
-                    <InputNumber class="form-control" @bind-Value="Input.PorcentajeArtista" @bind:after="StateHasChanged" />
+                    <InputNumber TValue="decimal" class="form-control" Value="Input.PorcentajeArtista" ValueChanged="OnPorcentajeArtistaChanged" ValueExpression="() => Input.PorcentajeArtista" />
                 </div>
             </div>
 
@@ -109,6 +109,18 @@ else
         obra is null ? (0, 0, 0) : AlquilerService.CalcularReparto(obra.PrecioVenta, Input.PorcentajeAlquiler, Input.PorcentajeArtista);
 
     private async Task BuscarAsync() => resultados = await AlquilerService.BuscarObrasDisponiblesAsync(texto);
+
+    private void OnPorcentajeAlquilerChanged(decimal valor)
+    {
+        Input.PorcentajeAlquiler = valor;
+        StateHasChanged();
+    }
+
+    private void OnPorcentajeArtistaChanged(decimal valor)
+    {
+        Input.PorcentajeArtista = valor;
+        StateHasChanged();
+    }
 
     private void Seleccionar(ObraParaOperacion item)
     {
