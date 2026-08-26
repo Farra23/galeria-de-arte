@@ -1,6 +1,6 @@
 ﻿@if (!string.IsNullOrEmpty(DisplayMessage))
 {
-    var statusMessageClass = DisplayMessage.StartsWith("Error") ? "danger" : "success";
+    var statusMessageClass = EsError ? "danger" : "success";
     <div class="alert alert-@statusMessageClass" role="alert">
         @DisplayMessage
     </div>
@@ -11,6 +11,16 @@
 
     [Parameter]
     public string? Message { get; set; }
+
+    // Los mensajes que vienen de las páginas de Identity sin traducir (Manage/*, no se usan
+    // en la app real) siguen la convención scaffoldeada de empezar con "Error" en inglés — se
+    // mantiene esa detección como respaldo. Pero para mensajes propios en español (como el de
+    // Login), hay que decir explícitamente si es error: "Usuario o contraseña incorrectos" no
+    // arranca con "Error" y terminaba mostrándose en verde como si fuera un éxito.
+    [Parameter]
+    public bool? IsError { get; set; }
+
+    private bool EsError => IsError ?? (DisplayMessage?.StartsWith("Error") ?? false);
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;

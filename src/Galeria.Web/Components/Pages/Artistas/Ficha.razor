@@ -62,57 +62,59 @@ else
 
     @if (pestania == "datos")
     {
-        <EditForm Model="Input" OnValidSubmit="GuardarAsync" class="col-md-6">
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert" />
+        <div class="page-narrow">
+            <EditForm Model="Input" OnValidSubmit="GuardarAsync">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" role="alert" />
 
-            <div class="mb-3">
-                <label class="form-label">Apellido</label>
-                <InputText class="form-control" @bind-Value="Input.Apellido" />
-                <ValidationMessage For="() => Input.Apellido" class="text-danger" />
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Nombre</label>
-                <InputText class="form-control" @bind-Value="Input.Nombre" />
-                <ValidationMessage For="() => Input.Nombre" class="text-danger" />
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Taller</label>
-                <InputText class="form-control" @bind-Value="Input.Taller" />
-            </div>
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Celular</label>
-                    <InputText class="form-control" @bind-Value="Input.Celular" />
+                <div class="mb-3">
+                    <label class="form-label">Apellido</label>
+                    <InputText class="form-control" @bind-Value="Input.Apellido" />
+                    <ValidationMessage For="() => Input.Apellido" class="text-danger" />
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Teléfono fijo</label>
-                    <InputText class="form-control" @bind-Value="Input.TelFijo" />
+
+                <div class="mb-3">
+                    <label class="form-label">Nombre</label>
+                    <InputText class="form-control" @bind-Value="Input.Nombre" />
+                    <ValidationMessage For="() => Input.Nombre" class="text-danger" />
                 </div>
-            </div>
 
-            <div class="mb-3">
-                <label class="form-label">Dirección</label>
-                <InputText class="form-control" @bind-Value="Input.Direccion" />
-            </div>
+                <div class="mb-3">
+                    <label class="form-label">Taller</label>
+                    <InputText class="form-control" @bind-Value="Input.Taller" />
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Correo</label>
-                <InputText class="form-control" @bind-Value="Input.Correo" />
-                <ValidationMessage For="() => Input.Correo" class="text-danger" />
-            </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Celular</label>
+                        <InputText class="form-control" @bind-Value="Input.Celular" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Teléfono fijo</label>
+                        <InputText class="form-control" @bind-Value="Input.TelFijo" />
+                    </div>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Perfil / notas</label>
-                <InputTextArea class="form-control" @bind-Value="Input.Perfil" rows="3" />
-            </div>
+                <div class="mb-3">
+                    <label class="form-label">Dirección</label>
+                    <InputText class="form-control" @bind-Value="Input.Direccion" />
+                </div>
 
-            <button type="submit" class="btn btn-primary">Guardar</button>
-            <a href="artistas" class="btn btn-link">Cancelar</a>
-        </EditForm>
+                <div class="mb-3">
+                    <label class="form-label">Correo</label>
+                    <InputText class="form-control" @bind-Value="Input.Correo" />
+                    <ValidationMessage For="() => Input.Correo" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Perfil / notas</label>
+                    <InputTextArea class="form-control" @bind-Value="Input.Perfil" rows="3" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <a href="artistas" class="btn btn-link text-danger">Cancelar</a>
+            </EditForm>
+        </div>
     }
     else if (pestania == "obras")
     {

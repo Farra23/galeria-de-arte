@@ -15,7 +15,7 @@
     <h1 class="login-card-title">Galería ACATRAS</h1>
     <p class="login-card-subtitle">Iniciar sesión</p>
     <section>
-        <StatusMessage Message="@errorMessage" />
+        <StatusMessage Message="@errorMessage" IsError="true" />
         <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />

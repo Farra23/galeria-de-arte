@@ -11,6 +11,7 @@
     <meta name="description" content="Generar la liquidación de un artista: vista previa antes de confirmar." />
 </HeadContent>
 
+<div class="page-form">
 <h1>Generar liquidación</h1>
 
 @if (error is not null)
@@ -60,6 +61,7 @@
         }
         else
         {
+            <div class="table-responsive">
             <table class="table table-sm table-striped">
                 <thead>
                     <tr><th>Fecha</th><th>Tipo</th><th>Código</th><th>Obra</th><th class="text-end">Cant.</th><th class="text-end">Monto</th><th>Detalle</th></tr>
@@ -79,6 +81,7 @@
                     }
                 </tbody>
             </table>
+            </div>
 
             <dl class="row">
                 <dt class="col-sm-3">Total bruto</dt><dd class="col-sm-9">@Formato.Monto(vista.TotalBruto, vista.Moneda)</dd>
@@ -90,6 +93,7 @@
         }
     </div>
 }
+</div>
 
 @code {
 [SupplyParameterFromQuery(Name = "artista")] public int? ArtistaPreseleccionado { get; set; }

@@ -26,6 +26,7 @@ else if (ficha is null)
 }
 else
 {
+    <div class="page-form">
     <h1>@ficha.CodigoVisible — @ficha.Titulo</h1>
 
     <dl class="row mb-4">
@@ -90,7 +91,7 @@ else
         }
         else
         {
-            <table class="table table-sm table-striped col-md-8">
+            <table class="table table-sm table-striped">
                 <thead><tr><th>Fecha</th><th>Usuario</th><th class="text-end">Precio anterior</th><th class="text-end">Precio nuevo</th></tr></thead>
                 <tbody>
                     @foreach (var cambio in historialPrecios)
@@ -118,7 +119,7 @@ else
         }
         else
         {
-            <table class="table table-sm table-striped col-md-8">
+            <table class="table table-sm table-striped">
                 <thead><tr><th>Fecha</th><th>Tipo</th><th class="text-end">Cantidad</th></tr></thead>
                 <tbody>
                     @foreach (var movimiento in movimientos)
@@ -135,7 +136,7 @@ else
     }
     else
     {
-    <EditForm Model="Input" OnValidSubmit="GuardarAsync" class="col-md-8">
+    <EditForm Model="Input" OnValidSubmit="GuardarAsync">
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
@@ -220,9 +221,10 @@ else
         </div>
 
         <button type="submit" class="btn btn-primary">Guardar</button>
-        <a href="obras" class="btn btn-link">Cancelar</a>
+        <a href="obras" class="btn btn-link text-danger">Cancelar</a>
     </EditForm>
     }
+    </div>
 }
 
 @code {

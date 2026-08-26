@@ -10,6 +10,7 @@
     <meta name="description" content="Registrar la devolución de una pieza vendida." />
 </HeadContent>
 
+<div class="page-form">
 <h1>Nueva devolución</h1>
 
 @if (error is not null)
@@ -19,7 +20,7 @@
 
 @if (venta is null)
 {
-    <div class="col-md-6">
+    <div class="mb-3">
         <label class="form-label">Buscar venta por código, nombre de obra o artista</label>
         <input class="form-control" @bind="texto" @bind:event="oninput" @bind:after="BuscarAsync" autofocus />
     </div>
@@ -32,6 +33,7 @@
         }
         else
         {
+            <div class="table-responsive">
             <table class="table table-striped mt-3">
                 <thead><tr><th>Fecha</th><th>Código</th><th>Nombre</th><th>Artista</th><th class="text-end">Precio</th></tr></thead>
                 <tbody>
@@ -47,12 +49,13 @@
                     }
                 </tbody>
             </table>
+            </div>
         }
     }
 }
 else
 {
-    <div class="col-md-8">
+    <div>
         <h2 class="h5">@venta.CodigoObra — @venta.Titulo</h2>
         <p class="text-body-secondary mb-3">
             Artista: @venta.ArtistaNombre — vendida el @venta.Fecha.ToString("dd/MM/yyyy") a @Formato.Monto(venta.PrecioVenta, venta.Moneda)
@@ -80,10 +83,11 @@ else
             </div>
 
             <button type="submit" class="btn btn-primary">Confirmar devolución</button>
-            <button type="button" class="btn btn-link" @onclick="Cancelar">Cancelar</button>
+            <button type="button" class="btn btn-link text-danger" @onclick="Cancelar">Cancelar</button>
         </EditForm>
     </div>
 }
+</div>
 
 @code {
     private string? texto;

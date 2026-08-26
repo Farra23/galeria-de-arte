@@ -11,6 +11,7 @@
     <meta name="description" content="Registrar el alquiler de una obra con el reparto entre galería y artista." />
 </HeadContent>
 
+<div class="page-form">
 <h1>Nuevo alquiler</h1>
 
 @if (error is not null)
@@ -20,7 +21,7 @@
 
 @if (obra is null)
 {
-    <div class="col-md-6">
+    <div class="mb-3">
         <label class="form-label">Buscar obra por código, nombre o artista</label>
         <input class="form-control" @bind="texto" @bind:event="oninput" @bind:after="BuscarAsync" autofocus />
     </div>
@@ -33,6 +34,7 @@
         }
         else
         {
+            <div class="table-responsive">
             <table class="table table-striped mt-3">
                 <thead><tr><th>Código</th><th>Nombre</th><th>Artista</th><th class="text-end">Precio</th></tr></thead>
                 <tbody>
@@ -47,12 +49,13 @@
                     }
                 </tbody>
             </table>
+            </div>
         }
     }
 }
 else
 {
-    <div class="col-md-8">
+    <div>
         <h2 class="h5">@obra.CodigoVisible — @obra.Titulo</h2>
         <p class="text-body-secondary mb-3">
             Artista: @obra.ArtistaNombre — precio de venta: @Formato.Monto(obra.PrecioVenta, obra.Moneda)
@@ -93,10 +96,11 @@ else
             </div>
 
             <button type="submit" class="btn btn-primary">Confirmar alquiler</button>
-            <button type="button" class="btn btn-link" @onclick="Cancelar">Cancelar</button>
+            <button type="button" class="btn btn-link text-danger" @onclick="Cancelar">Cancelar</button>
         </EditForm>
     </div>
 }
+</div>
 
 @code {
     private string? texto;

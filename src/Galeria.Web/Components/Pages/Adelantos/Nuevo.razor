@@ -13,65 +13,67 @@
     <meta name="description" content="Registrar un adelanto o ajuste a favor para un artista." />
 </HeadContent>
 
-<h1>Nuevo adelanto</h1>
+<div class="page-narrow">
+    <h1>Nuevo adelanto</h1>
 
-@if (error is not null)
-{
-    <div class="alert alert-danger">@error</div>
-}
+    @if (error is not null)
+    {
+        <div class="alert alert-danger">@error</div>
+    }
 
-<EditForm Model="Input" OnValidSubmit="ConfirmarAsync" class="col-md-6">
-    <DataAnnotationsValidator />
-    <ValidationSummary class="text-danger" role="alert" />
+    <EditForm Model="Input" OnValidSubmit="ConfirmarAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" role="alert" />
 
-    <div class="mb-3">
-        <label class="form-label">Artista</label>
-        <InputSelect class="form-select" @bind-Value="Input.ArtistaId">
-            <option value="0">Seleccioná un artista...</option>
-            @if (artistas is not null)
-            {
-                @foreach (var artista in artistas)
+        <div class="mb-3">
+            <label class="form-label">Artista</label>
+            <InputSelect class="form-select" @bind-Value="Input.ArtistaId">
+                <option value="0">Seleccioná un artista...</option>
+                @if (artistas is not null)
                 {
-                    <option value="@artista.Id">@artista.NombreCompleto</option>
+                    @foreach (var artista in artistas)
+                    {
+                        <option value="@artista.Id">@artista.NombreCompleto</option>
+                    }
                 }
-            }
-        </InputSelect>
-    </div>
-
-    <div class="row">
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Tipo</label>
-            <InputSelect class="form-select" @bind-Value="Input.Tipo">
-                <option value="@TipoAdelanto.Adelanto">Adelanto (resta en la liquidación)</option>
-                <option value="@TipoAdelanto.AjusteAFavor">Ajuste a favor (suma en la liquidación)</option>
             </InputSelect>
         </div>
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Moneda</label>
-            <InputSelect class="form-select" @bind-Value="Input.Moneda">
-                <option value="@Moneda.Pesos">Pesos ($)</option>
-                <option value="@Moneda.USD">Dólares (U$S)</option>
-            </InputSelect>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Tipo</label>
+                <InputSelect class="form-select" @bind-Value="Input.Tipo">
+                    <option value="@TipoAdelanto.Adelanto">Adelanto (resta en la liquidación)</option>
+                    <option value="@TipoAdelanto.AjusteAFavor">Ajuste a favor (suma en la liquidación)</option>
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Moneda</label>
+                <InputSelect class="form-select" @bind-Value="Input.Moneda">
+                    <option value="@Moneda.Pesos">Pesos ($)</option>
+                    <option value="@Moneda.USD">Dólares (U$S)</option>
+                </InputSelect>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Monto</label>
+                <InputNumber class="form-control" @bind-Value="Input.Importe" />
+            </div>
         </div>
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Monto</label>
-            <InputNumber class="form-control" @bind-Value="Input.Importe" />
+
+        <div class="mb-3">
+            <label class="form-label">Fecha</label>
+            <InputDate class="form-control" @bind-Value="Input.Fecha" />
         </div>
-    </div>
 
-    <div class="mb-3">
-        <label class="form-label">Fecha</label>
-        <InputDate class="form-control" @bind-Value="Input.Fecha" />
-    </div>
+        <div class="mb-3">
+            <label class="form-label">Motivo / observaciones</label>
+            <InputTextArea class="form-control" @bind-Value="Input.Observaciones" rows="2" />
+        </div>
 
-    <div class="mb-3">
-        <label class="form-label">Motivo / observaciones</label>
-        <InputTextArea class="form-control" @bind-Value="Input.Observaciones" rows="2" />
-    </div>
-
-    <button type="submit" class="btn btn-primary">Guardar</button>
-    <a href="adelantos" class="btn btn-link">Cancelar</a>
-</EditForm>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <a href="adelantos" class="btn btn-link text-danger">Cancelar</a>
+    </EditForm>
+</div>
 
 @code {
     private List<ArtistaOpcion>? artistas;

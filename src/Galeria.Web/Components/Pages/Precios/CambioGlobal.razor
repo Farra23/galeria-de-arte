@@ -10,80 +10,84 @@
     <meta name="description" content="Cambiar el precio de varias obras de un artista a la vez, por porcentaje o precio a precio." />
 </HeadContent>
 
-<h1>Cambio de precios global</h1>
-<p class="text-body-secondary">
-    El cambio unitario ya se hace desde la ficha de cada obra (Obras → click en la fila → Editar).
-    Esta pantalla es para tocar varias obras del mismo artista de una sola vez.
-</p>
+<div class="page-wide">
+    <h1>Cambio de precios global</h1>
+    <p class="text-body-secondary">
+        El cambio unitario ya se hace desde la ficha de cada obra (Obras → click en la fila → Editar).
+        Esta pantalla es para tocar varias obras del mismo artista de una sola vez.
+    </p>
 
-@if (mensaje is not null)
-{
-    <div class="alert alert-success">@mensaje</div>
-}
-
-<div class="row g-2 mb-3">
-    <div class="col-md-5">
-        <label class="form-label">Artista</label>
-        <select class="form-select" value="@artistaId" @onchange="CambiarArtistaAsync">
-            <option value="0">Seleccioná un artista...</option>
-            @if (artistas is not null)
-            {
-                @foreach (var artista in artistas)
-                {
-                    <option value="@artista.Id">@artista.Codigo.ToString("D3") — @artista.NombreCompleto</option>
-                }
-            }
-        </select>
-    </div>
-</div>
-
-@if (filas is not null)
-{
-    @if (filas.Count == 0)
+    @if (mensaje is not null)
     {
-        <p>Este artista no tiene obras cargadas.</p>
+        <div class="alert alert-success">@mensaje</div>
     }
-    else
-    {
-        <div class="row g-2 mb-3 align-items-end">
-            <div class="col-auto">
-                <label class="form-label">Aplicar % a las obras tildadas</label>
-                <input type="number" class="form-control" @bind="porcentaje" style="width:120px" />
-            </div>
-            <div class="col-auto">
-                <button type="button" class="btn btn-outline-primary" @onclick="AplicarPorcentajeAsync">Aplicar</button>
-            </div>
-            <div class="col-auto">
-                <button type="button" class="btn btn-link" @onclick="() => MarcarTodas(true)">Tildar todas</button>
-            </div>
-            <div class="col-auto">
-                <button type="button" class="btn btn-link" @onclick="() => MarcarTodas(false)">Destildar todas</button>
-            </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-md-5">
+            <label class="form-label">Artista</label>
+            <select class="form-select" value="@artistaId" @onchange="CambiarArtistaAsync">
+                <option value="0">Seleccioná un artista...</option>
+                @if (artistas is not null)
+                {
+                    @foreach (var artista in artistas)
+                    {
+                        <option value="@artista.Id">@artista.Codigo.ToString("D3") — @artista.NombreCompleto</option>
+                    }
+                }
+            </select>
         </div>
+    </div>
 
-        <table class="table table-sm table-striped">
-            <thead>
-                <tr><th></th><th>Código</th><th>Obra</th><th class="text-end">Precio actual</th><th class="text-end">Precio nuevo</th></tr>
-            </thead>
-            <tbody>
-                @foreach (var fila in filas)
-                {
-                    <tr>
-                        <td><input type="checkbox" class="form-check-input" @bind="fila.Seleccionada" /></td>
-                        <td>@fila.CodigoVisible</td>
-                        <td>@fila.Titulo</td>
-                        <td class="text-end">@Formato.Monto(fila.PrecioActual, fila.Moneda)</td>
-                        <td class="text-end" style="max-width:140px">
-                            <input type="number" class="form-control form-control-sm text-end" @bind="fila.PrecioNuevo" />
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+    @if (filas is not null)
+    {
+        @if (filas.Count == 0)
+        {
+            <p>Este artista no tiene obras cargadas.</p>
+        }
+        else
+        {
+            <div class="row g-2 mb-3 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label">Aplicar % a las obras tildadas</label>
+                    <input type="number" class="form-control" @bind="porcentaje" style="width:120px" />
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-outline-primary" @onclick="AplicarPorcentajeAsync">Aplicar</button>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-link" @onclick="() => MarcarTodas(true)">Tildar todas</button>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-link" @onclick="() => MarcarTodas(false)">Destildar todas</button>
+                </div>
+            </div>
 
-        <button type="button" class="btn btn-primary" @onclick="ConfirmarAsync">Confirmar cambios</button>
+            <div class="table-responsive">
+            <table class="table table-sm table-striped">
+                <thead>
+                    <tr><th></th><th>Código</th><th>Obra</th><th class="text-end">Precio actual</th><th class="text-end">Precio nuevo</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var fila in filas)
+                    {
+                        <tr>
+                            <td><input type="checkbox" class="form-check-input" @bind="fila.Seleccionada" /></td>
+                            <td>@fila.CodigoVisible</td>
+                            <td>@fila.Titulo</td>
+                            <td class="text-end">@Formato.Monto(fila.PrecioActual, fila.Moneda)</td>
+                            <td class="text-end" style="max-width:140px">
+                                <input type="number" class="form-control form-control-sm text-end" @bind="fila.PrecioNuevo" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+
+            <button type="button" class="btn btn-primary" @onclick="ConfirmarAsync">Confirmar cambios</button>
+        }
     }
-}
+</div>
 
 @code {
     private List<ArtistaOpcion>? artistas;

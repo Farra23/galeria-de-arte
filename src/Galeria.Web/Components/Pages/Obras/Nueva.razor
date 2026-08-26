@@ -16,6 +16,7 @@
     <meta name="description" content="Alta de una nueva obra en el stock de la galería." />
 </HeadContent>
 
+<div class="page-form">
 <h1>Nueva obra</h1>
 
 @if (parametros is null || artistas is null)
@@ -24,7 +25,7 @@
 }
 else
 {
-    <EditForm Model="Input" OnValidSubmit="GuardarAsync" class="col-md-8">
+    <EditForm Model="Input" OnValidSubmit="GuardarAsync">
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
@@ -203,9 +204,10 @@ else
         }
 
         <button type="submit" class="btn btn-primary">Guardar</button>
-        <a href="obras" class="btn btn-link">Cancelar</a>
+        <a href="obras" class="btn btn-link text-danger">Cancelar</a>
     </EditForm>
 }
+</div>
 
 @code {
     private InputModel Input { get; set; } = new();

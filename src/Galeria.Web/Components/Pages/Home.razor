@@ -10,6 +10,7 @@
     <meta name="description" content="Panel de entrada: ventas del mes, plata adeudada a artistas y avisos operativos." />
 </HeadContent>
 
+<div class="page-wide">
 <h1>Resumen</h1>
 
 @if (resumen is null)
@@ -113,6 +114,7 @@ else
         </div>
     </div>
 }
+</div>
 
 @code {
     private ResumenDashboard? resumen;

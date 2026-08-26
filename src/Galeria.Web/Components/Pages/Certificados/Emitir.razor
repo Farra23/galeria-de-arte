@@ -14,37 +14,41 @@
 }
 else if (datos is null)
 {
-    <h1>Emitir certificado</h1>
-    <p>Todavía no se emitió el certificado de esta venta.</p>
-    <button class="btn btn-primary" @onclick="EmitirAsync">Emitir certificado</button>
+    <div class="page-narrow">
+        <h1>Emitir certificado</h1>
+        <p>Todavía no se emitió el certificado de esta venta.</p>
+        <button class="btn btn-primary" @onclick="EmitirAsync">Emitir certificado</button>
+    </div>
 }
 else
 {
-    <div class="mb-3 d-print-none">
-        <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
-        <a class="btn btn-outline-primary" href="@($"certificados/{certificadoId}/pdf")" target="_blank">Descargar PDF</a>
-        <a class="btn btn-link" href="ventas">Volver a Ventas</a>
-    </div>
+    <div class="page-narrow">
+        <div class="mb-3 d-print-none">
+            <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
+            <a class="btn btn-outline-primary" href="@($"certificados/{certificadoId}/pdf")" target="_blank">Descargar PDF</a>
+            <a class="btn btn-link" href="ventas">Volver a Ventas</a>
+        </div>
 
-    <div class="border rounded p-4" style="max-width: 700px;">
-        <h1 class="h3">Certificado de autenticidad</h1>
-        <p class="text-body-secondary">N.º @datos.NumeroCertificado.ToString("D6") — emitido el @datos.FechaEmision.ToString("dd/MM/yyyy")</p>
-        <hr />
-        <dl class="row">
-            <dt class="col-sm-4">Código</dt><dd class="col-sm-8">@datos.CodigoObra</dd>
-            <dt class="col-sm-4">Obra</dt><dd class="col-sm-8">@datos.Titulo</dd>
-            <dt class="col-sm-4">Artista</dt><dd class="col-sm-8">@datos.ArtistaNombre</dd>
-            <dt class="col-sm-4">Técnica</dt><dd class="col-sm-8">@(datos.Tecnica ?? "—")</dd>
-            <dt class="col-sm-4">Rubro</dt><dd class="col-sm-8">@(datos.Rubro ?? "—")</dd>
-            <dt class="col-sm-4">Medidas</dt>
-            <dd class="col-sm-8">@MedidasTexto()</dd>
-            <dt class="col-sm-4">Año</dt><dd class="col-sm-8">@datos.AnioIngreso</dd>
-        </dl>
-        <hr />
-        <p class="fst-italic">
-            La galería certifica que la obra descripta en este documento es una pieza original,
-            y garantiza la autenticidad de los datos consignados.
-        </p>
+        <div class="border rounded p-4">
+            <h1 class="h3">Certificado de autenticidad</h1>
+            <p class="text-body-secondary">N.º @datos.NumeroCertificado.ToString("D6") — emitido el @datos.FechaEmision.ToString("dd/MM/yyyy")</p>
+            <hr />
+            <dl class="row">
+                <dt class="col-sm-4">Código</dt><dd class="col-sm-8">@datos.CodigoObra</dd>
+                <dt class="col-sm-4">Obra</dt><dd class="col-sm-8">@datos.Titulo</dd>
+                <dt class="col-sm-4">Artista</dt><dd class="col-sm-8">@datos.ArtistaNombre</dd>
+                <dt class="col-sm-4">Técnica</dt><dd class="col-sm-8">@(datos.Tecnica ?? "—")</dd>
+                <dt class="col-sm-4">Rubro</dt><dd class="col-sm-8">@(datos.Rubro ?? "—")</dd>
+                <dt class="col-sm-4">Medidas</dt>
+                <dd class="col-sm-8">@MedidasTexto()</dd>
+                <dt class="col-sm-4">Año</dt><dd class="col-sm-8">@datos.AnioIngreso</dd>
+            </dl>
+            <hr />
+            <p class="fst-italic">
+                La galería certifica que la obra descripta en este documento es una pieza original,
+                y garantiza la autenticidad de los datos consignados.
+            </p>
+        </div>
     </div>
 }
 

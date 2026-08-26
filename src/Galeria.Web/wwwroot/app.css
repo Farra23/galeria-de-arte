@@ -55,6 +55,20 @@ a, .btn-link {
     margin: 0 auto;
 }
 
+/* Variante más ancha para formularios con filas de varias columnas adentro (alto/ancho/largo,
+   costo/utilidad/precio, etc.) que quedarían muy apretadas en .page-narrow. */
+.page-form {
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+/* Pantallas de lista (tablas anchas): no se centran en una columna angosta como los
+   formularios, pero tampoco se estiran al infinito en monitores muy anchos. */
+.page-wide {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
 .content {
     padding-top: 1.1rem;
 }
