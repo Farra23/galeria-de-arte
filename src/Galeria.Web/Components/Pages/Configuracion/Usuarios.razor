@@ -14,97 +14,101 @@
     <meta name="description" content="Alta, baja y modificación de los usuarios que pueden entrar al sistema." />
 </HeadContent>
 
-<h1>Usuarios</h1>
-<p class="text-body-secondary">
-    Todos los usuarios ven todo — v1 no distingue permisos por rol. "Baja" bloquea el acceso, nunca borra la cuenta.
-</p>
+<div class="page-narrow">
+    <h1>Usuarios</h1>
+    <p class="text-body-secondary">
+        Todos los usuarios ven todo — v1 no distingue permisos por rol. "Baja" bloquea el acceso, nunca borra la cuenta.
+    </p>
 
-@if (mensaje is not null)
-{
-    <div class="alert alert-success">@mensaje</div>
-}
-@if (error is not null)
-{
-    <div class="alert alert-danger">@error</div>
-}
+    @if (mensaje is not null)
+    {
+        <div class="alert alert-success">@mensaje</div>
+    }
+    @if (error is not null)
+    {
+        <div class="alert alert-danger">@error</div>
+    }
 
-<h2 class="h5">Nuevo usuario</h2>
-<EditForm Model="nuevoInput" OnValidSubmit="CrearAsync" class="col-md-6 mb-4">
-    <DataAnnotationsValidator />
-    <ValidationSummary class="text-danger" role="alert" />
+    <h2 class="h5">Nuevo usuario</h2>
+    <EditForm Model="nuevoInput" OnValidSubmit="CrearAsync" class="mb-4">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" role="alert" />
 
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <label class="form-label">Usuario</label>
-            <InputText class="form-control" @bind-Value="nuevoInput.UserName" />
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Usuario</label>
+                <InputText class="form-control" @bind-Value="nuevoInput.UserName" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Contraseña</label>
+                <InputText type="password" class="form-control" @bind-Value="nuevoInput.Password" />
+            </div>
         </div>
-        <div class="col-md-6 mb-3">
-            <label class="form-label">Contraseña</label>
-            <InputText type="password" class="form-control" @bind-Value="nuevoInput.Password" />
-        </div>
-    </div>
 
-    <button type="submit" class="btn btn-primary">+ Crear usuario</button>
-</EditForm>
+        <button type="submit" class="btn btn-primary">+ Crear usuario</button>
+    </EditForm>
 
-<h2 class="h5">Usuarios existentes</h2>
+    <h2 class="h5">Usuarios existentes</h2>
 
-@if (usuarios is null)
-{
-    <p><em>Cargando...</em></p>
-}
-else
-{
-    <table class="table table-sm table-striped">
-        <thead><tr><th>Usuario</th><th>Estado</th><th></th></tr></thead>
-        <tbody>
-            @foreach (var usuario in usuarios)
-            {
-                <tr>
-                    <td>@usuario.UserName</td>
-                    <td>
-                        @if (usuario.Bloqueado)
-                        {
-                            <span class="badge bg-danger">Bloqueado</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary">Activo</span>
-                        }
-                        @if (usuario.EsUsuarioActual)
-                        {
-                            <span class="badge bg-light text-dark border ms-1">vos</span>
-                        }
-                    </td>
-                    <td class="text-nowrap">
-                        @if (restableciendoId == usuario.Id)
-                        {
-                            <input type="password" class="form-control form-control-sm d-inline-block" style="width:10rem"
-                                   placeholder="Nueva contraseña" @bind="nuevaPassword" />
-                            <button class="btn btn-sm btn-primary" @onclick="() => ConfirmarRestablecerAsync(usuario.Id)">Guardar</button>
-                            <button class="btn btn-sm btn-link" @onclick="() => restableciendoId = null">Cancelar</button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => restableciendoId = usuario.Id">Restablecer contraseña</button>
-                            @if (!usuario.EsUsuarioActual)
+    @if (usuarios is null)
+    {
+        <p><em>Cargando...</em></p>
+    }
+    else
+    {
+        <div class="table-responsive">
+        <table class="table table-sm table-striped">
+            <thead><tr><th>Usuario</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var usuario in usuarios)
+                {
+                    <tr>
+                        <td>@usuario.UserName</td>
+                        <td>
+                            @if (usuario.Bloqueado)
                             {
-                                @if (usuario.Bloqueado)
+                                <span class="badge bg-danger">Bloqueado</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Activo</span>
+                            }
+                            @if (usuario.EsUsuarioActual)
+                            {
+                                <span class="badge bg-light text-dark border ms-1">vos</span>
+                            }
+                        </td>
+                        <td class="text-nowrap">
+                            @if (restableciendoId == usuario.Id)
+                            {
+                                <input type="password" class="form-control form-control-sm d-inline-block" style="width:10rem"
+                                       placeholder="Nueva contraseña" @bind="nuevaPassword" />
+                                <button class="btn btn-sm btn-primary" @onclick="() => ConfirmarRestablecerAsync(usuario.Id)">Guardar</button>
+                                <button class="btn btn-sm btn-link" @onclick="() => restableciendoId = null">Cancelar</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => restableciendoId = usuario.Id">Restablecer contraseña</button>
+                                @if (!usuario.EsUsuarioActual)
                                 {
-                                    <button class="btn btn-sm btn-outline-success" @onclick="() => DesbloquearAsync(usuario.Id)">Desbloquear</button>
-                                }
-                                else
-                                {
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => BloquearAsync(usuario.Id)">Bloquear</button>
+                                    @if (usuario.Bloqueado)
+                                    {
+                                        <button class="btn btn-sm btn-outline-success" @onclick="() => DesbloquearAsync(usuario.Id)">Desbloquear</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => BloquearAsync(usuario.Id)">Bloquear</button>
+                                    }
                                 }
                             }
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        </div>
+    }
+</div>
 
 @code {
     private sealed record UsuarioItem(string Id, string UserName, bool Bloqueado, bool EsUsuarioActual);

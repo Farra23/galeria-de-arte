@@ -13,6 +13,20 @@ a, .btn-link {
     color: var(--color-navy);
 }
 
+/* Hover simple y consistente en todos los botones: apenas se levantan y transicionan de
+   color en vez de cambiar de golpe. */
+.btn {
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .btn:active {
+        transform: translateY(0);
+    }
+
 .btn-primary {
     color: #fff;
     background-color: var(--color-navy);
@@ -22,6 +36,7 @@ a, .btn-link {
     .btn-primary:hover, .btn-primary:active {
         background-color: var(--color-navy-light) !important;
         border-color: var(--color-navy-light) !important;
+        box-shadow: 0 4px 10px rgba(10, 37, 64, 0.25);
     }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
@@ -30,6 +45,14 @@ a, .btn-link {
 
 .form-control:focus, .form-select:focus {
     border-color: var(--color-navy-light);
+}
+
+/* Contenedor angosto y centrado para pantallas de configuración/formulario que se ven
+   descolgadas pegadas al borde izquierdo en pantallas anchas (el nav ya no reserva una
+   columna fija). El título de la página queda afuera, a ancho completo. */
+.page-narrow {
+    max-width: 800px;
+    margin: 0 auto;
 }
 
 .content {

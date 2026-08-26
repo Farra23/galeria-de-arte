@@ -7,7 +7,7 @@
    azul marino solo aparece en el panel de navegación cuando está desplegado. *@
 <div class="topbar">
     <button type="button" class="hamburger-btn" @onclick="AlternarNav" aria-label="Abrir o cerrar el menú" title="Menú">
-        <span class="hamburger-icon"></span>
+        <span class="hamburger-icon @(navAbierto ? "hamburger-icon-abierto" : "")"></span>
     </button>
 
     <AuthorizeView>
@@ -49,9 +49,7 @@
         @foreach (var item in Items)
         {
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="@item.Href">
-                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> @item.Texto
-                </NavLink>
+                <NavLink class="nav-link" href="@item.Href">@item.Texto</NavLink>
             </div>
         }
     </nav>

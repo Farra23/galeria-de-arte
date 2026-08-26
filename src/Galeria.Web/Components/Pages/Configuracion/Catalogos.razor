@@ -8,70 +8,72 @@
     <meta name="description" content="ABM de rubros y técnicas usados en la ficha de obra." />
 </HeadContent>
 
-<h1>Rubros y técnicas</h1>
-<p class="text-body-secondary">Nunca se borran: una baja los oculta de los desplegables pero conserva el historial de las obras que ya los usan.</p>
+<div class="page-narrow">
+    <h1>Rubros y técnicas</h1>
+    <p class="text-body-secondary">Nunca se borran: una baja los oculta de los desplegables pero conserva el historial de las obras que ya los usan.</p>
 
-<div class="row">
-    <div class="col-md-6">
-        <h2 class="h4">Rubros</h2>
-        <EditForm Model="nuevoRubro" OnValidSubmit="CrearRubroAsync" class="d-flex gap-2 mb-3">
-            <DataAnnotationsValidator />
-            <InputText class="form-control" @bind-Value="nuevoRubro.Nombre" placeholder="Nuevo rubro..." />
-            <button type="submit" class="btn btn-primary text-nowrap">+ Agregar</button>
-        </EditForm>
+    <div class="row">
+        <div class="col-md-6">
+            <h2 class="h4">Rubros</h2>
+            <EditForm Model="nuevoRubro" OnValidSubmit="CrearRubroAsync" class="d-flex gap-2 mb-3">
+                <DataAnnotationsValidator />
+                <InputText class="form-control" @bind-Value="nuevoRubro.Nombre" placeholder="Nuevo rubro..." />
+                <button type="submit" class="btn btn-primary text-nowrap">+ Agregar</button>
+            </EditForm>
 
-        @if (rubros is not null)
-        {
-            <table class="table table-sm table-striped align-middle">
-                <thead><tr><th>Nombre</th><th class="text-end">Activo</th></tr></thead>
-                <tbody>
-                    @foreach (var rubro in rubros)
-                    {
-                        <tr>
-                            <td>
-                                <input class="form-control form-control-sm" value="@rubro.Nombre"
-                                       @onchange='e => RenombrarRubroAsync(rubro, e.Value?.ToString())' />
-                            </td>
-                            <td class="text-end">
-                                <input type="checkbox" class="form-check-input" checked="@rubro.Activo"
-                                       @onchange='e => ActivarRubroAsync(rubro, (bool)(e.Value ?? false))' />
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
-    </div>
+            @if (rubros is not null)
+            {
+                <table class="table table-sm table-striped align-middle">
+                    <thead><tr><th>Nombre</th><th class="text-end">Activo</th></tr></thead>
+                    <tbody>
+                        @foreach (var rubro in rubros)
+                        {
+                            <tr>
+                                <td>
+                                    <input class="form-control form-control-sm" value="@rubro.Nombre"
+                                           @onchange='e => RenombrarRubroAsync(rubro, e.Value?.ToString())' />
+                                </td>
+                                <td class="text-end">
+                                    <input type="checkbox" class="form-check-input" checked="@rubro.Activo"
+                                           @onchange='e => ActivarRubroAsync(rubro, (bool)(e.Value ?? false))' />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
 
-    <div class="col-md-6">
-        <h2 class="h4">Técnicas</h2>
-        <EditForm Model="nuevaTecnica" OnValidSubmit="CrearTecnicaAsync" class="d-flex gap-2 mb-3">
-            <DataAnnotationsValidator />
-            <InputText class="form-control" @bind-Value="nuevaTecnica.Nombre" placeholder="Nueva técnica..." />
-            <button type="submit" class="btn btn-primary text-nowrap">+ Agregar</button>
-        </EditForm>
+        <div class="col-md-6">
+            <h2 class="h4">Técnicas</h2>
+            <EditForm Model="nuevaTecnica" OnValidSubmit="CrearTecnicaAsync" class="d-flex gap-2 mb-3">
+                <DataAnnotationsValidator />
+                <InputText class="form-control" @bind-Value="nuevaTecnica.Nombre" placeholder="Nueva técnica..." />
+                <button type="submit" class="btn btn-primary text-nowrap">+ Agregar</button>
+            </EditForm>
 
-        @if (tecnicas is not null)
-        {
-            <table class="table table-sm table-striped align-middle">
-                <thead><tr><th>Nombre</th><th class="text-end">Activo</th></tr></thead>
-                <tbody>
-                    @foreach (var tecnica in tecnicas)
-                    {
-                        <tr>
-                            <td>
-                                <input class="form-control form-control-sm" value="@tecnica.Nombre"
-                                       @onchange='e => RenombrarTecnicaAsync(tecnica, e.Value?.ToString())' />
-                            </td>
-                            <td class="text-end">
-                                <input type="checkbox" class="form-check-input" checked="@tecnica.Activo"
-                                       @onchange='e => ActivarTecnicaAsync(tecnica, (bool)(e.Value ?? false))' />
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
+            @if (tecnicas is not null)
+            {
+                <table class="table table-sm table-striped align-middle">
+                    <thead><tr><th>Nombre</th><th class="text-end">Activo</th></tr></thead>
+                    <tbody>
+                        @foreach (var tecnica in tecnicas)
+                        {
+                            <tr>
+                                <td>
+                                    <input class="form-control form-control-sm" value="@tecnica.Nombre"
+                                           @onchange='e => RenombrarTecnicaAsync(tecnica, e.Value?.ToString())' />
+                                </td>
+                                <td class="text-end">
+                                    <input type="checkbox" class="form-check-input" checked="@tecnica.Activo"
+                                           @onchange='e => ActivarTecnicaAsync(tecnica, (bool)(e.Value ?? false))' />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
     </div>
 </div>
 

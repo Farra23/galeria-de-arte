@@ -9,42 +9,42 @@
     <meta name="description" content="Nombre, dirección y teléfono de la galería para los comprobantes, y plantillas de los mails." />
 </HeadContent>
 
-<h1>Datos de la galería</h1>
-<p class="text-body-secondary">Aparecen en el encabezado de los comprobantes (Liquidación, Certificado).</p>
+<div class="page-narrow">
+    <h1>Datos de la galería</h1>
+    <p class="text-body-secondary">Aparecen en el encabezado de los comprobantes (Liquidación, Certificado).</p>
 
-@if (mensaje is not null)
-{
-    <div class="alert alert-success">@mensaje</div>
-}
+    @if (mensaje is not null)
+    {
+        <div class="alert alert-success">@mensaje</div>
+    }
 
-@if (cargando)
-{
-    <p><em>Cargando...</em></p>
-}
-else
-{
-    <div class="col-md-6 mb-4">
-        <div class="mb-3">
-            <label class="form-label">Nombre</label>
-            <input class="form-control" @bind="nombre" @bind:event="oninput" />
+    @if (cargando)
+    {
+        <p><em>Cargando...</em></p>
+    }
+    else
+    {
+        <div class="mb-4">
+            <div class="mb-3">
+                <label class="form-label">Nombre</label>
+                <input class="form-control" @bind="nombre" @bind:event="oninput" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Dirección</label>
+                <input class="form-control" @bind="direccion" @bind:event="oninput" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Teléfono</label>
+                <input class="form-control" @bind="telefono" @bind:event="oninput" />
+            </div>
+            <button type="button" class="btn btn-primary" @onclick="GuardarDatosAsync">Guardar</button>
         </div>
-        <div class="mb-3">
-            <label class="form-label">Dirección</label>
-            <input class="form-control" @bind="direccion" @bind:event="oninput" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Teléfono</label>
-            <input class="form-control" @bind="telefono" @bind:event="oninput" />
-        </div>
-        <button type="button" class="btn btn-primary" @onclick="GuardarDatosAsync">Guardar</button>
-    </div>
 
-    <h2 class="h5">Plantillas de mail</h2>
-    <p class="text-body-secondary">
-        Podés usar <code>[nombre]</code>, <code>[monto]</code> y <code>[fecha]</code> — se reemplazan al enviar.
-    </p>
+        <h2 class="h5">Plantillas de mail</h2>
+        <p class="text-body-secondary">
+            Podés usar <code>[nombre]</code>, <code>[monto]</code> y <code>[fecha]</code> — se reemplazan al enviar.
+        </p>
 
-    <div class="col-md-8">
         <div class="mb-3">
             <label class="form-label">Aviso de Agenda de pagos</label>
             <textarea class="form-control" rows="3" @bind="plantillaAviso" @bind:event="oninput"></textarea>
@@ -58,8 +58,8 @@ else
             <textarea class="form-control" rows="3" @bind="plantillaCertificado" @bind:event="oninput"></textarea>
         </div>
         <button type="button" class="btn btn-primary" @onclick="GuardarPlantillasAsync">Guardar plantillas</button>
-    </div>
-}
+    }
+</div>
 
 @code {
     private bool cargando = true;
