@@ -42,8 +42,7 @@ else
                     </InputSelect>
                     <button type="button" class="btn btn-outline-secondary" @onclick="RecargarArtistasAsync" title="Releer la lista de artistas">↻</button>
                 </div>
-                <ValidationMessage For="() => Input.ArtistaId" class="text-danger" />
-                <div class="form-text">
+<div class="form-text">
                     ¿El artista es nuevo? <a href="artistas/nuevo" target="_blank">Crealo acá</a> y después apretá ↻.
                 </div>
             </div>
@@ -52,8 +51,7 @@ else
         <div class="mb-3">
             <label class="form-label">Nombre de la obra</label>
             <InputText class="form-control" Value="@Input.Titulo" ValueChanged="OnTituloChanged" ValueExpression="() => Input.Titulo" />
-            <ValidationMessage For="() => Input.Titulo" class="text-danger" />
-        </div>
+</div>
 
         @if (coincidencia is not null)
         {
@@ -124,8 +122,7 @@ else
             <div class="col-md-4 mb-3">
                 <label class="form-label">Existencia</label>
                 <InputNumber class="form-control" @bind-Value="Input.Existencia" />
-                <ValidationMessage For="() => Input.Existencia" class="text-danger" />
-                <div class="form-text">Piezas iguales bajo un mismo código (ej. 10 caravanas idénticas → existencia 10).</div>
+<div class="form-text">Piezas iguales bajo un mismo código (ej. 10 caravanas idénticas → existencia 10).</div>
             </div>
             <div class="col-md-4 mb-3">
                 <label class="form-label">Moneda</label>
@@ -153,8 +150,7 @@ else
                 <div class="col-md-8 mb-3">
                     <label class="form-label">Nombre de la serie</label>
                     <InputText class="form-control" @bind-Value="Input.NombreSerie" />
-                    <ValidationMessage For="() => Input.NombreSerie" class="text-danger" />
-                </div>
+</div>
             }
         </div>
 
@@ -162,8 +158,7 @@ else
             <div class="col-md-4 mb-3">
                 <label class="form-label">Costo (lo que cobra el artista)</label>
                 <InputNumber TValue="decimal" class="form-control" Value="Input.Costo" ValueChanged="OnCostoChanged" ValueExpression="() => Input.Costo" />
-                <ValidationMessage For="() => Input.Costo" class="text-danger" />
-            </div>
+</div>
             <div class="col-md-4 mb-3">
                 <label class="form-label">Utilidad (%)</label>
                 <InputNumber TValue="decimal" class="form-control" Value="Input.Utilidad" ValueChanged="OnUtilidadChanged" ValueExpression="() => Input.Utilidad" />

@@ -143,8 +143,7 @@ else
         <div class="mb-3">
             <label class="form-label">Nombre de la obra</label>
             <InputText class="form-control" @bind-Value="Input.Titulo" />
-            <ValidationMessage For="() => Input.Titulo" class="text-danger" />
-        </div>
+</div>
 
         <div class="row">
             <div class="col-md-6 mb-3">
@@ -195,8 +194,7 @@ else
             <div class="col-md-4 mb-3">
                 <label class="form-label">Costo (lo que cobra el artista)</label>
                 <InputNumber TValue="decimal" class="form-control" Value="Input.Costo" ValueChanged="OnCostoChanged" ValueExpression="() => Input.Costo" />
-                <ValidationMessage For="() => Input.Costo" class="text-danger" />
-            </div>
+</div>
             <div class="col-md-4 mb-3">
                 <label class="form-label">Utilidad (%)</label>
                 <InputNumber TValue="decimal" class="form-control" Value="Input.Utilidad" ValueChanged="OnUtilidadChanged" ValueExpression="() => Input.Utilidad" />
