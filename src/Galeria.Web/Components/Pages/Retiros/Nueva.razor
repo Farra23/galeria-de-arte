@@ -17,7 +17,7 @@
 
 @if (error is not null)
 {
-    <div class="alert alert-danger">@error</div>
+    <ul class="text-danger" role="alert"><li>@error</li></ul>
 }
 
 @if (obra is null)
@@ -60,7 +60,7 @@ else
         <h2 class="h5">@obra.CodigoVisible — @obra.Titulo</h2>
         <p class="text-body-secondary mb-3">Artista: @obra.ArtistaNombre — stock: @obra.Existencia</p>
 
-        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync">
+        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nuevo-retiro">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
 

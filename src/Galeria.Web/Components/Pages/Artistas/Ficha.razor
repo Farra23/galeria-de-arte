@@ -63,7 +63,7 @@ else
     @if (pestania == "datos")
     {
         <div class="page-narrow">
-            <EditForm Model="Input" OnValidSubmit="GuardarAsync">
+            <EditForm Model="Input" OnValidSubmit="GuardarAsync" FormName="artista-ficha">
                 <DataAnnotationsValidator />
                 <ValidationSummary class="text-danger" role="alert" />
 

@@ -26,11 +26,11 @@
     }
     @if (error is not null)
     {
-        <div class="alert alert-danger">@error</div>
+        <ul class="text-danger" role="alert"><li>@error</li></ul>
     }
 
     <h2 class="h5">Nuevo usuario</h2>
-    <EditForm Model="nuevoInput" OnValidSubmit="CrearAsync" class="mb-4">
+    <EditForm Model="nuevoInput" OnValidSubmit="CrearAsync" FormName="nuevo-usuario" class="mb-4">
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 

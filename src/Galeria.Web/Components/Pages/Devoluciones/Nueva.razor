@@ -15,7 +15,7 @@
 
 @if (error is not null)
 {
-    <div class="alert alert-danger">@error</div>
+    <ul class="text-danger" role="alert"><li>@error</li></ul>
 }
 
 @if (venta is null)
@@ -61,7 +61,7 @@ else
             Artista: @venta.ArtistaNombre — vendida el @venta.Fecha.ToString("dd/MM/yyyy") a @Formato.Monto(venta.PrecioVenta, venta.Moneda)
         </p>
 
-        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync">
+        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nueva-devolucion">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
 
