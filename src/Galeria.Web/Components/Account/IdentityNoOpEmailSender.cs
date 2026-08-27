@@ -4,17 +4,19 @@ using Galeria.Web.Data;
 
 namespace Galeria.Web.Components.Account;
 
-// Remove the "else if (EmailSender is IdentityNoOpEmailSender)" block from RegisterConfirmation.razor after updating with a real implementation.
+// Implementación requerida por AddIdentityCore<ApplicationUser>. No hay registro público ni
+// recuperación de contraseña por mail en este sistema (los da de alta un administrador desde
+// Configuración > Usuarios), así que estos métodos no se invocan en la práctica.
 internal sealed class IdentityNoOpEmailSender : IEmailSender<ApplicationUser>
 {
     private readonly IEmailSender emailSender = new NoOpEmailSender();
 
     public Task SendConfirmationLinkAsync(ApplicationUser user, string email, string confirmationLink) =>
-        emailSender.SendEmailAsync(email, "Confirm your email", $"Please confirm your account by <a href='{confirmationLink}'>clicking here</a>.");
- 
+        emailSender.SendEmailAsync(email, "Confirmá tu correo", $"Confirmá tu cuenta haciendo <a href='{confirmationLink}'>clic acá</a>.");
+
     public Task SendPasswordResetLinkAsync(ApplicationUser user, string email, string resetLink) =>
-        emailSender.SendEmailAsync(email, "Reset your password", $"Please reset your password by <a href='{resetLink}'>clicking here</a>.");
- 
+        emailSender.SendEmailAsync(email, "Restablecé tu contraseña", $"Restablecé tu contraseña haciendo <a href='{resetLink}'>clic acá</a>.");
+
     public Task SendPasswordResetCodeAsync(ApplicationUser user, string email, string resetCode) =>
-        emailSender.SendEmailAsync(email, "Reset your password", $"Please reset your password using the following code: {resetCode}");
+        emailSender.SendEmailAsync(email, "Restablecé tu contraseña", $"Restablecé tu contraseña usando el siguiente código: {resetCode}");
 }
