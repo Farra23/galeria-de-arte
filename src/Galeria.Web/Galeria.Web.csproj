@@ -8,7 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Update="Datos\app.db" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <!-- Solo en Debug: comodidad para que `dotnet run`/build local tengan la base de pruebas a mano.
+         Nunca en Release — `dotnet publish -c Release` no debe llevar datos de desarrollo (ni el
+         usuario admin de pruebas) a la PC del cliente. -->
+    <None Update="Datos\app.db" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,6 +23,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.25" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.25" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
     <PackageReference Include="QuestPDF" Version="2026.7.3" />
   </ItemGroup>
 

@@ -32,6 +32,11 @@ using Galeria.Web.Pdf;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Permite que la app corra como Servicio de Windows en la PC de la galería (arranque automático,
+// sobrevive a un reinicio). Es un no-op cuando NO corre como servicio (ej. `dotnet run` en
+// desarrollo), así que no cambia nada del flujo normal de trabajo.
+builder.Host.UseWindowsService();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -155,8 +160,6 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
 }
 
 // Todo en español rioplatense (requerimiento 0.7): fechas dd/MM/aaaa, miles con punto,
@@ -169,7 +172,10 @@ app.UseRequestLocalization(new RequestLocalizationOptions
     SupportedUICultures = culturaFija
 });
 
-app.UseHttpsRedirection();
+// Sin HTTPS a propósito: se instala en una sola PC de la galería (o a lo sumo su red local),
+// sin certificado ni exposición a internet — forzar el redirect acá solo generaría una advertencia
+// en cada arranque (no hay puerto https configurado) sin aportar seguridad real en ese escenario.
+// Si el día de mañana esto se expone fuera de la red local, es lo primero que hay que revertir.
 
 // Cabeceras de seguridad básicas en toda respuesta.
 app.Use(async (context, next) =>
