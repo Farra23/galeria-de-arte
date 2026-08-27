@@ -9,14 +9,14 @@
 @inject IdentityRedirectManager RedirectManager
 @inject ILogger<LoginWithRecoveryCode> Logger
 
-<PageTitle>Recovery code verification</PageTitle>
+<PageTitle>Verificación con código de recuperación</PageTitle>
 
-<h1>Recovery code verification</h1>
+<h1>Verificación con código de recuperación</h1>
 <hr />
 <StatusMessage Message="@message" />
 <p>
-    You have requested to log in with a recovery code. This login will not be remembered until you provide
-    an authenticator app code at log in or disable 2FA and log in again.
+    Pediste iniciar sesión con un código de recuperación. Este inicio de sesión no se va a recordar
+    hasta que ingreses un código de tu app autenticadora o desactives la autenticación en dos pasos.
 </p>
 <div class="row">
     <div class="col-md-4">
@@ -24,11 +24,11 @@
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
             <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.RecoveryCode" class="form-control" autocomplete="off" placeholder="RecoveryCode" />
-                <label for="recovery-code" class="form-label">Recovery Code</label>
+                <InputText @bind-Value="Input.RecoveryCode" class="form-control" autocomplete="off" placeholder="Código de recuperación" />
+                <label for="recovery-code" class="form-label">Código de recuperación</label>
                 <ValidationMessage For="() => Input.RecoveryCode" class="text-danger" />
             </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
+            <button type="submit" class="w-100 btn btn-lg btn-primary">Iniciar sesión</button>
         </EditForm>
     </div>
 </div>
@@ -71,7 +71,7 @@
         else
         {
             Logger.LogWarning("Invalid recovery code entered for user with ID '{UserId}' ", userId);
-            message = "Error: Invalid recovery code entered.";
+            message = "Error: código de recuperación inválido.";
         }
     }
 
@@ -79,7 +79,7 @@
     {
         [Required]
         [DataType(DataType.Text)]
-        [Display(Name = "Recovery Code")]
+        [Display(Name = "Código de recuperación")]
         public string RecoveryCode { get; set; } = "";
     }
 }
