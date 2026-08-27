@@ -16,15 +16,6 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
             query = query.Where(o => o.ArtistaId == filtro.ArtistaId);
         }
 
-        if (!string.IsNullOrWhiteSpace(filtro.TextoLibre))
-        {
-            var texto = filtro.TextoLibre.Trim();
-            query = query.Where(o =>
-                EF.Functions.Like(o.Titulo, $"%{texto}%") ||
-                EF.Functions.Like(o.Artista.Nombre, $"%{texto}%") ||
-                EF.Functions.Like(o.Artista.Apellido, $"%{texto}%"));
-        }
-
         if (filtro.RubroId is not null)
         {
             query = query.Where(o => o.RubroId == filtro.RubroId);
@@ -103,6 +94,20 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.Serie != null ? o.Serie.Nombre : null,
                 o.ImagenPrincipalPath))
             .ToListAsync(ct);
+
+        // El texto libre compara contra el código visible (Artista.Codigo + NumeroObra, ej.
+        // "001002") además de título y artista — ese código es un valor calculado que la
+        // traducción a SQL de EF Core/SQLite no soporta (ToString("D3") no se traduce), así que
+        // se filtra en memoria después de traer los resultados de los demás filtros.
+        if (!string.IsNullOrWhiteSpace(filtro.TextoLibre))
+        {
+            var texto = filtro.TextoLibre.Trim();
+            items = items.Where(o =>
+                o.CodigoVisible.Contains(texto, StringComparison.OrdinalIgnoreCase) ||
+                o.Titulo.Contains(texto, StringComparison.OrdinalIgnoreCase) ||
+                o.ArtistaNombre.Contains(texto, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
 
         return Ordenar(items, filtro);
     }
@@ -249,22 +254,9 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
 
     public async Task<List<ObraParaOperacion>> BuscarDisponiblesAsync(string? texto, CancellationToken ct = default)
     {
-        var query = db.Obras.AsNoTracking()
+        var disponibles = await db.Obras.AsNoTracking()
             .Include(o => o.Artista)
-            .Where(o => o.Estado == EstadoObra.Disponible && o.Existencia > 0);
-
-        if (!string.IsNullOrWhiteSpace(texto))
-        {
-            var valor = texto.Trim();
-            query = query.Where(o =>
-                EF.Functions.Like(o.Titulo, $"%{valor}%") ||
-                EF.Functions.Like(o.Artista.Nombre, $"%{valor}%") ||
-                EF.Functions.Like(o.Artista.Apellido, $"%{valor}%"));
-        }
-
-        return await query
-            .OrderBy(o => o.Titulo)
-            .Take(15)
+            .Where(o => o.Estado == EstadoObra.Disponible && o.Existencia > 0)
             .Select(o => new ObraParaOperacion(
                 o.Id,
                 o.Artista.Codigo.ToString("D3") + o.NumeroObra.ToString("D3"),
@@ -277,6 +269,21 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.PrecioVenta,
                 o.TieneIVA))
             .ToListAsync(ct);
+
+        // El texto compara también contra el código visible (Artista.Codigo + NumeroObra), que es
+        // un valor calculado — la traducción a SQL de EF Core/SQLite no soporta ToString("D3"), así
+        // que se filtra en memoria (mismo motivo que en ObraRepository.BuscarAsync).
+        IEnumerable<ObraParaOperacion> resultado = disponibles;
+        if (!string.IsNullOrWhiteSpace(texto))
+        {
+            var valor = texto.Trim();
+            resultado = resultado.Where(o =>
+                o.CodigoVisible.Contains(valor, StringComparison.OrdinalIgnoreCase) ||
+                o.Titulo.Contains(valor, StringComparison.OrdinalIgnoreCase) ||
+                o.ArtistaNombre.Contains(valor, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return resultado.OrderBy(o => o.Titulo).Take(15).ToList();
     }
 
     public async Task<ObraParaOperacion?> ObtenerParaOperacionAsync(int id, CancellationToken ct = default) =>

@@ -8,22 +8,9 @@ public class DevolucionRepository(GaleriaDbContext db) : IDevolucionRepository
 {
     public async Task<List<VentaParaDevolucion>> BuscarVentasAsync(string? texto, CancellationToken ct = default)
     {
-        var query = db.Ventas.AsNoTracking()
+        var candidatas = await db.Ventas.AsNoTracking()
             .Include(v => v.Obra).ThenInclude(o => o.Artista)
-            .Where(v => v.Devolucion == null);
-
-        if (!string.IsNullOrWhiteSpace(texto))
-        {
-            var valor = texto.Trim();
-            query = query.Where(v =>
-                EF.Functions.Like(v.Obra.Titulo, $"%{valor}%") ||
-                EF.Functions.Like(v.Obra.Artista.Nombre, $"%{valor}%") ||
-                EF.Functions.Like(v.Obra.Artista.Apellido, $"%{valor}%"));
-        }
-
-        return await query
-            .OrderByDescending(v => v.Fecha).ThenByDescending(v => v.Id)
-            .Take(15)
+            .Where(v => v.Devolucion == null)
             .Select(v => new VentaParaDevolucion(
                 v.Id,
                 v.Fecha,
@@ -34,6 +21,20 @@ public class DevolucionRepository(GaleriaDbContext db) : IDevolucionRepository
                 v.Moneda,
                 v.PrecioVenta))
             .ToListAsync(ct);
+
+        // El texto compara también contra el código visible — ver el mismo comentario en
+        // ObraRepository.BuscarDisponiblesAsync (ToString("D3") no se traduce a SQL).
+        IEnumerable<VentaParaDevolucion> resultado = candidatas;
+        if (!string.IsNullOrWhiteSpace(texto))
+        {
+            var valor = texto.Trim();
+            resultado = resultado.Where(v =>
+                v.CodigoObra.Contains(valor, StringComparison.OrdinalIgnoreCase) ||
+                v.Titulo.Contains(valor, StringComparison.OrdinalIgnoreCase) ||
+                v.ArtistaNombre.Contains(valor, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return resultado.OrderByDescending(v => v.Fecha).ThenByDescending(v => v.VentaId).Take(15).ToList();
     }
 
     public Task AgregarAsync(Devolucion devolucion, CancellationToken ct = default)
