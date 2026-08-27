@@ -25,7 +25,7 @@
 }
 else
 {
-    <EditForm Model="Input" OnValidSubmit="GuardarAsync" FormName="obra-nueva">
+    <EditForm Model="Input" OnValidSubmit="GuardarAsync" FormName="obra-nueva" data-enhance="false">
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
@@ -216,7 +216,8 @@ else
     private bool precioEditadoManualmente;
     private IBrowserFile? imagenSeleccionada;
     private string? imagenError;
-    private bool guardando;
+    private int guardandoFlag;
+    private bool guardando => guardandoFlag != 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -315,8 +316,7 @@ else
 
     private async Task GuardarAsync()
     {
-        if (guardando) return;
-        guardando = true;
+        if (Interlocked.CompareExchange(ref guardandoFlag, 1, 0) != 0) return;
 
         try
         {
@@ -356,7 +356,7 @@ else
         }
         finally
         {
-            guardando = false;
+            guardandoFlag = 0;
         }
     }
 

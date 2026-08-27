@@ -21,7 +21,7 @@
         <ul class="text-danger" role="alert"><li>@error</li></ul>
     }
 
-    <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nuevo-adelanto">
+    <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nuevo-adelanto" data-enhance="false">
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
@@ -75,18 +75,21 @@
     </EditForm>
 </div>
 
+<ConfirmModal @ref="confirmModal" />
+
 @code {
     private List<ArtistaOpcion>? artistas;
     private string? error;
-    private bool guardando;
+    private int guardandoFlag;
+    private bool guardando => guardandoFlag != 0;
     private InputModel Input { get; set; } = new();
+    private ConfirmModal confirmModal = default!;
 
     protected override async Task OnInitializedAsync() =>
         artistas = await ArtistaService.ListarParaSeleccionAsync();
 
-    private async Task ConfirmarAsync()
+    private void ConfirmarAsync()
     {
-        if (guardando) return;
         error = null;
 
         if (Input.ArtistaId == 0)
@@ -95,7 +98,17 @@
             return;
         }
 
-        guardando = true;
+        var artista = artistas?.FirstOrDefault(a => a.Id == Input.ArtistaId);
+        var tipoTexto = Input.Tipo == TipoAdelanto.Adelanto ? "adelanto" : "ajuste a favor";
+        confirmModal.Mostrar(
+            "Confirmar adelanto",
+            $"¿Confirmás el {tipoTexto} de {Formato.Monto(Input.Importe, Input.Moneda)} para {artista?.NombreCompleto}?",
+            GuardarAsync);
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (Interlocked.CompareExchange(ref guardandoFlag, 1, 0) != 0) return;
 
         try
         {
@@ -116,7 +129,8 @@
         }
         finally
         {
-            guardando = false;
+            guardandoFlag = 0;
+            StateHasChanged();
         }
     }
 

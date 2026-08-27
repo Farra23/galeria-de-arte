@@ -61,7 +61,7 @@ else
             Artista: @venta.ArtistaNombre — vendida el @venta.Fecha.ToString("dd/MM/yyyy") a @Formato.Monto(venta.PrecioVenta, venta.Moneda)
         </p>
 
-        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nueva-devolucion">
+        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nueva-devolucion" data-enhance="false">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
 
@@ -89,13 +89,17 @@ else
 }
 </div>
 
+<ConfirmModal @ref="confirmModal" />
+
 @code {
     private string? texto;
     private List<VentaParaDevolucion>? resultados;
     private VentaParaDevolucion? venta;
     private string? error;
-    private bool guardando;
+    private int guardandoFlag;
+    private bool guardando => guardandoFlag != 0;
     private InputModel Input { get; set; } = new();
+    private ConfirmModal confirmModal = default!;
 
     private async Task BuscarAsync() => resultados = await DevolucionService.BuscarVentasAsync(texto);
 
@@ -111,11 +115,24 @@ else
         error = null;
     }
 
-    private async Task ConfirmarAsync()
+    private void ConfirmarAsync()
     {
-        if (venta is null || guardando) return;
+        if (venta is null) return;
         error = null;
-        guardando = true;
+
+        var mensaje = $"¿Confirmás la devolución de \"{venta.Titulo}\" ({venta.CodigoObra})?";
+        if (Input.ArtistaYaCobro)
+        {
+            mensaje += " El artista ya cobró esta pieza, así que se va a generar automáticamente un adelanto a descontar de la próxima liquidación.";
+        }
+
+        confirmModal.Mostrar("Confirmar devolución", mensaje, RegistrarAsync, "Confirmar devolución");
+    }
+
+    private async Task RegistrarAsync()
+    {
+        if (venta is null) return;
+        if (Interlocked.CompareExchange(ref guardandoFlag, 1, 0) != 0) return;
 
         try
         {
@@ -134,7 +151,8 @@ else
         }
         finally
         {
-            guardando = false;
+            guardandoFlag = 0;
+            StateHasChanged();
         }
     }
 

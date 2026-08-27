@@ -13,7 +13,7 @@
 <div class="page-narrow">
     <h1>Nuevo artista</h1>
 
-    <EditForm Model="Input" OnValidSubmit="GuardarAsync" FormName="nuevo-artista">
+    <EditForm Model="Input" OnValidSubmit="GuardarAsync" FormName="nuevo-artista" data-enhance="false">
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
@@ -67,12 +67,12 @@
     [SupplyParameterFromForm]
     private InputModel Input { get; set; } = new();
 
-    private bool guardando;
+    private int guardandoFlag;
+    private bool guardando => guardandoFlag != 0;
 
     private async Task GuardarAsync()
     {
-        if (guardando) return;
-        guardando = true;
+        if (Interlocked.CompareExchange(ref guardandoFlag, 1, 0) != 0) return;
 
         try
         {
@@ -92,7 +92,7 @@
         }
         finally
         {
-            guardando = false;
+            guardandoFlag = 0;
         }
     }
 

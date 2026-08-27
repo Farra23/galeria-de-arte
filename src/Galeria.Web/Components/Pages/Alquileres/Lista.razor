@@ -126,6 +126,7 @@ else
     private string? texto;
     private string? mensaje;
     private int? procesandoId;
+    private int procesandoFlag;
 
     protected override async Task OnInitializedAsync()
     {
@@ -141,7 +142,7 @@ else
 
     private async Task DevolverAsync(int alquilerId)
     {
-        if (procesandoId is not null) return;
+        if (Interlocked.CompareExchange(ref procesandoFlag, 1, 0) != 0) return;
         procesandoId = alquilerId;
         mensaje = null;
 
@@ -154,6 +155,7 @@ else
         finally
         {
             procesandoId = null;
+            procesandoFlag = 0;
         }
     }
 

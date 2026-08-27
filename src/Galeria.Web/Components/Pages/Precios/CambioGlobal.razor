@@ -100,7 +100,8 @@
     private decimal porcentaje = 10;
     private string? mensaje;
     private string? error;
-    private bool guardando;
+    private int guardandoFlag;
+    private bool guardando => guardandoFlag != 0;
     private ParametrosCalculoPrecio? parametros;
 
     protected override async Task OnInitializedAsync()
@@ -156,10 +157,10 @@
 
     private async Task ConfirmarAsync()
     {
-        if (filas is null || guardando) return;
+        if (filas is null) return;
+        if (Interlocked.CompareExchange(ref guardandoFlag, 1, 0) != 0) return;
         mensaje = null;
         error = null;
-        guardando = true;
 
         try
         {
@@ -180,7 +181,7 @@
         }
         finally
         {
-            guardando = false;
+            guardandoFlag = 0;
         }
     }
 

@@ -60,7 +60,7 @@ else
         <h2 class="h5">@obra.CodigoVisible — @obra.Titulo</h2>
         <p class="text-body-secondary mb-3">Artista: @obra.ArtistaNombre — stock: @obra.Existencia</p>
 
-        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nuevo-retiro">
+        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nuevo-retiro" data-enhance="false">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
 
@@ -108,7 +108,8 @@ else
     private List<ObraParaOperacion>? resultados;
     private ObraParaOperacion? obra;
     private string? error;
-    private bool guardando;
+    private int guardandoFlag;
+    private bool guardando => guardandoFlag != 0;
     private InputModel Input { get; set; } = new();
     private ConfirmModal confirmModal = default!;
 
@@ -127,10 +128,12 @@ else
     }
 
     // El retiro definitivo no tiene botón de "devolver al stock" como el temporal (requerimiento
-    // 0.6: confirmación antes de lo irreversible) — se confirma con un modal antes de registrarlo.
-    private Task ConfirmarAsync()
+    // 0.6: confirmación antes de lo irreversible) — ambos tipos pasan por el modal antes de
+    // registrarse, con un mensaje distinto según si hay vuelta atrás o no.
+    private void ConfirmarAsync()
     {
-        if (obra is null || guardando) return Task.CompletedTask;
+        if (obra is null) return;
+        error = null;
 
         if (Input.Tipo == TipoRetiro.Definitivo)
         {
@@ -140,17 +143,20 @@ else
                 "A diferencia de un retiro temporal, esta obra no tiene un botón para volver a habilitarla. ¿Confirmás?",
                 RegistrarAsync,
                 "Retirar definitivamente");
-            return Task.CompletedTask;
+            return;
         }
 
-        return RegistrarAsync();
+        confirmModal.Mostrar(
+            "Confirmar retiro temporal",
+            $"¿Confirmás el retiro temporal de \"{obra.Titulo}\" ({obra.CodigoVisible})?",
+            RegistrarAsync,
+            "Confirmar retiro");
     }
 
     private async Task RegistrarAsync()
     {
-        if (obra is null || guardando) return;
-        error = null;
-        guardando = true;
+        if (obra is null) return;
+        if (Interlocked.CompareExchange(ref guardandoFlag, 1, 0) != 0) return;
 
         try
         {
@@ -171,7 +177,7 @@ else
         }
         finally
         {
-            guardando = false;
+            guardandoFlag = 0;
             StateHasChanged();
         }
     }

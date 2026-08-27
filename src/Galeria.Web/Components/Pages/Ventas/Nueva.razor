@@ -68,7 +68,7 @@ else
             <div class="alert alert-warning fw-bold">¡ÚLTIMA PIEZA!</div>
         }
 
-        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nueva-venta">
+        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nueva-venta" data-enhance="false">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
 
@@ -114,14 +114,18 @@ else
 }
 </div>
 
+<ConfirmModal @ref="confirmModal" />
+
 @code {
     private string? texto;
     private List<ObraParaOperacion>? resultados;
     private ObraParaOperacion? obra;
     private bool mostrarCosto;
     private string? error;
-    private bool guardando;
+    private int guardandoFlag;
+    private bool guardando => guardandoFlag != 0;
     private InputModel Input { get; set; } = new();
+    private ConfirmModal confirmModal = default!;
 
     private async Task BuscarAsync() => resultados = await VentaService.BuscarObrasDisponiblesAsync(texto);
 
@@ -145,11 +149,22 @@ else
         error = null;
     }
 
-    private async Task ConfirmarAsync()
+    private void ConfirmarAsync()
     {
-        if (obra is null || guardando) return;
+        if (obra is null) return;
         error = null;
-        guardando = true;
+
+        confirmModal.Mostrar(
+            "Confirmar venta",
+            $"¿Confirmás la venta de \"{obra.Titulo}\" ({obra.CodigoVisible}) por {Formato.Monto(Input.PrecioVenta, obra.Moneda)}?",
+            RegistrarAsync,
+            "Confirmar venta");
+    }
+
+    private async Task RegistrarAsync()
+    {
+        if (obra is null) return;
+        if (Interlocked.CompareExchange(ref guardandoFlag, 1, 0) != 0) return;
 
         try
         {
@@ -171,7 +186,8 @@ else
         }
         finally
         {
-            guardando = false;
+            guardandoFlag = 0;
+            StateHasChanged();
         }
     }
 

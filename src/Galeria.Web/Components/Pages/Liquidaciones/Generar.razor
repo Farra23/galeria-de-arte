@@ -103,7 +103,8 @@
     private Moneda moneda = Moneda.Pesos;
     private VistaPreviaLiquidacion? vista;
     private string? error;
-    private bool confirmando;
+    private int confirmandoFlag;
+    private bool confirmando => confirmandoFlag != 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -132,9 +133,8 @@
 
     private async Task ConfirmarAsync()
     {
-        if (confirmando) return;
+        if (Interlocked.CompareExchange(ref confirmandoFlag, 1, 0) != 0) return;
         error = null;
-        confirmando = true;
 
         try
         {
@@ -147,7 +147,7 @@
         }
         finally
         {
-            confirmando = false;
+            confirmandoFlag = 0;
         }
     }
 

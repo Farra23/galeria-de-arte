@@ -30,7 +30,7 @@
     }
 
     <h2 class="h5">Nuevo usuario</h2>
-    <EditForm Model="nuevoInput" OnValidSubmit="CrearAsync" FormName="nuevo-usuario" class="mb-4">
+    <EditForm Model="nuevoInput" OnValidSubmit="CrearAsync" FormName="nuevo-usuario" data-enhance="false" class="mb-4">
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
@@ -119,7 +119,8 @@
     private string? error;
     private string? restableciendoId;
     private string nuevaPassword = "";
-    private bool guardando;
+    private int guardandoFlag;
+    private bool guardando => guardandoFlag != 0;
 
     protected override async Task OnInitializedAsync() => await CargarAsync();
 
@@ -139,8 +140,7 @@
 
     private async Task CrearAsync()
     {
-        if (guardando) return;
-        guardando = true;
+        if (Interlocked.CompareExchange(ref guardandoFlag, 1, 0) != 0) return;
         mensaje = null;
         error = null;
 
@@ -165,7 +165,7 @@
         }
         finally
         {
-            guardando = false;
+            guardandoFlag = 0;
         }
     }
 

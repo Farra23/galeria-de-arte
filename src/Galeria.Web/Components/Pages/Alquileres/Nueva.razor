@@ -61,7 +61,7 @@ else
             Artista: @obra.ArtistaNombre — precio de venta: @Formato.Monto(obra.PrecioVenta, obra.Moneda)
         </p>
 
-        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nuevo-alquiler">
+        <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nuevo-alquiler" data-enhance="false">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
 
@@ -102,13 +102,17 @@ else
 }
 </div>
 
+<ConfirmModal @ref="confirmModal" />
+
 @code {
     private string? texto;
     private List<ObraParaOperacion>? resultados;
     private ObraParaOperacion? obra;
     private string? error;
-    private bool guardando;
+    private int guardandoFlag;
+    private bool guardando => guardandoFlag != 0;
     private InputModel Input { get; set; } = new();
+    private ConfirmModal confirmModal = default!;
 
     private (decimal MontoAlquiler, decimal MontoArtista, decimal MontoGaleria) reparto =>
         obra is null ? (0, 0, 0) : AlquilerService.CalcularReparto(obra.PrecioVenta, Input.PorcentajeAlquiler, Input.PorcentajeArtista);
@@ -139,11 +143,22 @@ else
         error = null;
     }
 
-    private async Task ConfirmarAsync()
+    private void ConfirmarAsync()
     {
-        if (obra is null || guardando) return;
+        if (obra is null) return;
         error = null;
-        guardando = true;
+
+        confirmModal.Mostrar(
+            "Confirmar alquiler",
+            $"¿Confirmás el alquiler de \"{obra.Titulo}\" ({obra.CodigoVisible}) por {Formato.Monto(reparto.MontoAlquiler, obra.Moneda)} mensuales?",
+            RegistrarAsync,
+            "Confirmar alquiler");
+    }
+
+    private async Task RegistrarAsync()
+    {
+        if (obra is null) return;
+        if (Interlocked.CompareExchange(ref guardandoFlag, 1, 0) != 0) return;
 
         try
         {
@@ -164,7 +179,8 @@ else
         }
         finally
         {
-            guardando = false;
+            guardandoFlag = 0;
+            StateHasChanged();
         }
     }
 

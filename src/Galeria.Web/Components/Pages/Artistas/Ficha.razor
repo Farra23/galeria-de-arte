@@ -63,7 +63,7 @@ else
     @if (pestania == "datos")
     {
         <div class="page-narrow">
-            <EditForm Model="Input" OnValidSubmit="GuardarAsync" FormName="artista-ficha">
+            <EditForm Model="Input" OnValidSubmit="GuardarAsync" FormName="artista-ficha" data-enhance="false">
                 <DataAnnotationsValidator />
                 <ValidationSummary class="text-danger" role="alert" />
 
@@ -391,12 +391,12 @@ else
         }
     }
 
-    private bool guardando;
+    private int guardandoFlag;
+    private bool guardando => guardandoFlag != 0;
 
     private async Task GuardarAsync()
     {
-        if (guardando) return;
-        guardando = true;
+        if (Interlocked.CompareExchange(ref guardandoFlag, 1, 0) != 0) return;
 
         try
         {
@@ -417,7 +417,7 @@ else
         }
         finally
         {
-            guardando = false;
+            guardandoFlag = 0;
         }
     }
 
