@@ -218,7 +218,7 @@ else
             <InputTextArea class="form-control" @bind-Value="Input.Observaciones" rows="2" />
         </div>
 
-        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "Guardar")</button>
         <a href="obras" class="btn btn-link text-danger">Cancelar</a>
     </EditForm>
     }
@@ -242,6 +242,7 @@ else
     private List<AuditoriaListItem>? historialPrecios;
     private List<MovimientoItem>? movimientos;
     private string? imagenError;
+    private bool guardando;
 
     protected override async Task OnInitializedAsync()
     {
@@ -370,24 +371,34 @@ else
 
     private async Task GuardarAsync()
     {
-        var request = new ActualizarObraRequest(
-            Id,
-            Input.Titulo.Trim(),
-            Input.RubroId,
-            Input.TecnicaId,
-            Input.AltoCm,
-            Input.AnchoCm,
-            Input.LargoCm,
-            Input.Costo,
-            Input.Utilidad,
-            Input.TieneIVA,
-            Input.PrecioVenta,
-            Input.PagoContado,
-            Input.Observaciones);
+        if (guardando) return;
+        guardando = true;
 
-        await ObraService.ActualizarAsync(request);
+        try
+        {
+            var request = new ActualizarObraRequest(
+                Id,
+                Input.Titulo.Trim(),
+                Input.RubroId,
+                Input.TecnicaId,
+                Input.AltoCm,
+                Input.AnchoCm,
+                Input.LargoCm,
+                Input.Costo,
+                Input.Utilidad,
+                Input.TieneIVA,
+                Input.PrecioVenta,
+                Input.PagoContado,
+                Input.Observaciones);
 
-        NavigationManager.NavigateTo("obras");
+            await ObraService.ActualizarAsync(request);
+
+            NavigationManager.NavigateTo("obras");
+        }
+        finally
+        {
+            guardando = false;
+        }
     }
 
     private sealed class InputModel

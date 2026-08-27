@@ -89,7 +89,7 @@
                 <dt class="col-sm-3 fw-bold">Total neto a pagar</dt><dd class="col-sm-9 fw-bold fs-5">@Formato.Monto(vista.TotalNeto, vista.Moneda)</dd>
             </dl>
 
-            <button class="btn btn-primary" @onclick="ConfirmarAsync">Confirmar liquidación</button>
+            <button class="btn btn-primary" disabled="@confirmando" @onclick="ConfirmarAsync">@(confirmando ? "Confirmando…" : "Confirmar liquidación")</button>
         }
     </div>
 }
@@ -103,6 +103,7 @@
     private Moneda moneda = Moneda.Pesos;
     private VistaPreviaLiquidacion? vista;
     private string? error;
+    private bool confirmando;
 
     protected override async Task OnInitializedAsync()
     {
@@ -131,7 +132,9 @@
 
     private async Task ConfirmarAsync()
     {
+        if (confirmando) return;
         error = null;
+        confirmando = true;
 
         try
         {
@@ -141,6 +144,10 @@
         catch (InvalidOperationException ex)
         {
             error = ex.Message;
+        }
+        finally
+        {
+            confirmando = false;
         }
     }
 

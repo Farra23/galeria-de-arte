@@ -94,7 +94,7 @@ else
                 <InputTextArea class="form-control" @bind-Value="Input.Motivo" rows="2" />
             </div>
 
-            <button type="submit" class="btn btn-primary">Confirmar retiro</button>
+            <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "Confirmar retiro")</button>
             <button type="button" class="btn btn-link text-danger" @onclick="Cancelar">Cancelar</button>
         </EditForm>
     </div>
@@ -108,6 +108,7 @@ else
     private List<ObraParaOperacion>? resultados;
     private ObraParaOperacion? obra;
     private string? error;
+    private bool guardando;
     private InputModel Input { get; set; } = new();
     private ConfirmModal confirmModal = default!;
 
@@ -129,7 +130,7 @@ else
     // 0.6: confirmación antes de lo irreversible) — se confirma con un modal antes de registrarlo.
     private Task ConfirmarAsync()
     {
-        if (obra is null) return Task.CompletedTask;
+        if (obra is null || guardando) return Task.CompletedTask;
 
         if (Input.Tipo == TipoRetiro.Definitivo)
         {
@@ -147,8 +148,9 @@ else
 
     private async Task RegistrarAsync()
     {
-        if (obra is null) return;
+        if (obra is null || guardando) return;
         error = null;
+        guardando = true;
 
         try
         {
@@ -166,6 +168,10 @@ else
         catch (InvalidOperationException ex)
         {
             error = ex.Message;
+        }
+        finally
+        {
+            guardando = false;
             StateHasChanged();
         }
     }

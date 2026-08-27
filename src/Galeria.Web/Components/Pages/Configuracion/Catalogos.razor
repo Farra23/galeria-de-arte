@@ -18,7 +18,7 @@
             <EditForm Model="nuevoRubro" OnValidSubmit="CrearRubroAsync" FormName="nuevo-rubro" class="d-flex gap-2 mb-3">
                 <DataAnnotationsValidator />
                 <InputText class="form-control" @bind-Value="nuevoRubro.Nombre" placeholder="Nuevo rubro..." />
-                <button type="submit" class="btn btn-primary text-nowrap">+ Agregar</button>
+                <button type="submit" class="btn btn-primary text-nowrap" disabled="@guardandoRubro">@(guardandoRubro ? "Agregando…" : "+ Agregar")</button>
             </EditForm>
 
             @if (rubros is not null)
@@ -49,7 +49,7 @@
             <EditForm Model="nuevaTecnica" OnValidSubmit="CrearTecnicaAsync" FormName="nueva-tecnica" class="d-flex gap-2 mb-3">
                 <DataAnnotationsValidator />
                 <InputText class="form-control" @bind-Value="nuevaTecnica.Nombre" placeholder="Nueva técnica..." />
-                <button type="submit" class="btn btn-primary text-nowrap">+ Agregar</button>
+                <button type="submit" class="btn btn-primary text-nowrap" disabled="@guardandoTecnica">@(guardandoTecnica ? "Agregando…" : "+ Agregar")</button>
             </EditForm>
 
             @if (tecnicas is not null)
@@ -82,6 +82,8 @@
     private List<CatalogoItem>? tecnicas;
     private NombreInput nuevoRubro = new();
     private NombreInput nuevaTecnica = new();
+    private bool guardandoRubro;
+    private bool guardandoTecnica;
 
     protected override async Task OnInitializedAsync() => await CargarAsync();
 
@@ -93,18 +95,36 @@
 
     private async Task CrearRubroAsync()
     {
-        if (string.IsNullOrWhiteSpace(nuevoRubro.Nombre)) return;
-        await CatalogoRepository.CrearRubroAsync(nuevoRubro.Nombre.Trim());
-        nuevoRubro = new();
-        await CargarAsync();
+        if (string.IsNullOrWhiteSpace(nuevoRubro.Nombre) || guardandoRubro) return;
+        guardandoRubro = true;
+
+        try
+        {
+            await CatalogoRepository.CrearRubroAsync(nuevoRubro.Nombre.Trim());
+            nuevoRubro = new();
+            await CargarAsync();
+        }
+        finally
+        {
+            guardandoRubro = false;
+        }
     }
 
     private async Task CrearTecnicaAsync()
     {
-        if (string.IsNullOrWhiteSpace(nuevaTecnica.Nombre)) return;
-        await CatalogoRepository.CrearTecnicaAsync(nuevaTecnica.Nombre.Trim());
-        nuevaTecnica = new();
-        await CargarAsync();
+        if (string.IsNullOrWhiteSpace(nuevaTecnica.Nombre) || guardandoTecnica) return;
+        guardandoTecnica = true;
+
+        try
+        {
+            await CatalogoRepository.CrearTecnicaAsync(nuevaTecnica.Nombre.Trim());
+            nuevaTecnica = new();
+            await CargarAsync();
+        }
+        finally
+        {
+            guardandoTecnica = false;
+        }
     }
 
     private async Task RenombrarRubroAsync(CatalogoItem rubro, string? nombre)

@@ -45,7 +45,7 @@
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary">+ Crear usuario</button>
+        <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "+ Crear usuario")</button>
     </EditForm>
 
     <h2 class="h5">Usuarios existentes</h2>
@@ -119,6 +119,7 @@
     private string? error;
     private string? restableciendoId;
     private string nuevaPassword = "";
+    private bool guardando;
 
     protected override async Task OnInitializedAsync() => await CargarAsync();
 
@@ -138,25 +139,34 @@
 
     private async Task CrearAsync()
     {
+        if (guardando) return;
+        guardando = true;
         mensaje = null;
         error = null;
 
-        var nuevoUsuario = new ApplicationUser { UserName = nuevoInput.UserName.Trim() };
-        var resultado = await UserManager.CreateAsync(nuevoUsuario, nuevoInput.Password);
-
-        if (!resultado.Succeeded)
+        try
         {
-            error = string.Join(" ", resultado.Errors.Select(e => e.Description));
-            return;
+            var nuevoUsuario = new ApplicationUser { UserName = nuevoInput.UserName.Trim() };
+            var resultado = await UserManager.CreateAsync(nuevoUsuario, nuevoInput.Password);
+
+            if (!resultado.Succeeded)
+            {
+                error = string.Join(" ", resultado.Errors.Select(e => e.Description));
+                return;
+            }
+
+            await AuditoriaService.RegistrarAsync(new RegistrarAuditoriaRequest(
+                Pantalla: "Configuración", TipoOperacion: "Alta", Tabla: "Usuario",
+                EntidadId: nuevoUsuario.Id, ValorNuevo: nuevoUsuario.UserName));
+
+            mensaje = $"Usuario \"{nuevoUsuario.UserName}\" creado.";
+            nuevoInput = new NuevoUsuarioInput();
+            await CargarAsync();
         }
-
-        await AuditoriaService.RegistrarAsync(new RegistrarAuditoriaRequest(
-            Pantalla: "Configuración", TipoOperacion: "Alta", Tabla: "Usuario",
-            EntidadId: nuevoUsuario.Id, ValorNuevo: nuevoUsuario.UserName));
-
-        mensaje = $"Usuario \"{nuevoUsuario.UserName}\" creado.";
-        nuevoInput = new NuevoUsuarioInput();
-        await CargarAsync();
+        finally
+        {
+            guardando = false;
+        }
     }
 
     private async Task ConfirmarRestablecerAsync(string usuarioId)

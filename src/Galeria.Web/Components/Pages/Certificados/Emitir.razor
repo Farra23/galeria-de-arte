@@ -17,7 +17,7 @@ else if (datos is null)
     <div class="page-narrow">
         <h1>Emitir certificado</h1>
         <p>Todavía no se emitió el certificado de esta venta.</p>
-        <button class="btn btn-primary" @onclick="EmitirAsync">Emitir certificado</button>
+        <button class="btn btn-primary" disabled="@emitiendo" @onclick="EmitirAsync">@(emitiendo ? "Emitiendo…" : "Emitir certificado")</button>
     </div>
 }
 else
@@ -59,6 +59,7 @@ else
     private bool cargando = true;
     private CertificadoDatos? datos;
     private int certificadoId;
+    private bool emitiendo;
 
     protected override async Task OnInitializedAsync()
     {
@@ -74,8 +75,18 @@ else
 
     private async Task EmitirAsync()
     {
-        certificadoId = await CertificadoService.EmitirAsync(VentaId);
-        datos = await CertificadoService.ObtenerDatosAsync(certificadoId);
+        if (emitiendo) return;
+        emitiendo = true;
+
+        try
+        {
+            certificadoId = await CertificadoService.EmitirAsync(VentaId);
+            datos = await CertificadoService.ObtenerDatosAsync(certificadoId);
+        }
+        finally
+        {
+            emitiendo = false;
+        }
     }
 
     private string MedidasTexto()

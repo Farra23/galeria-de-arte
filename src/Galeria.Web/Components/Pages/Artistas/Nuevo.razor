@@ -58,7 +58,7 @@
             <InputTextArea class="form-control" @bind-Value="Input.Perfil" rows="3" />
         </div>
 
-        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "Guardar")</button>
         <a href="artistas" class="btn btn-link text-danger">Cancelar</a>
     </EditForm>
 </div>
@@ -67,21 +67,33 @@
     [SupplyParameterFromForm]
     private InputModel Input { get; set; } = new();
 
+    private bool guardando;
+
     private async Task GuardarAsync()
     {
-        var request = new CrearArtistaRequest(
-            Input.Apellido.Trim(),
-            Input.Nombre.Trim(),
-            Input.Taller,
-            Input.Celular,
-            Input.TelFijo,
-            Input.Direccion,
-            Input.Correo,
-            Input.Perfil);
+        if (guardando) return;
+        guardando = true;
 
-        await ArtistaService.CrearAsync(request);
+        try
+        {
+            var request = new CrearArtistaRequest(
+                Input.Apellido.Trim(),
+                Input.Nombre.Trim(),
+                Input.Taller,
+                Input.Celular,
+                Input.TelFijo,
+                Input.Direccion,
+                Input.Correo,
+                Input.Perfil);
 
-        NavigationManager.NavigateTo("artistas");
+            await ArtistaService.CrearAsync(request);
+
+            NavigationManager.NavigateTo("artistas");
+        }
+        finally
+        {
+            guardando = false;
+        }
     }
 
     private sealed class InputModel

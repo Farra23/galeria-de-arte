@@ -21,6 +21,10 @@
     {
         <div class="alert alert-success">@mensaje</div>
     }
+    @if (error is not null)
+    {
+        <ul class="text-danger" role="alert"><li>@error</li></ul>
+    }
 
     <div class="row g-2 mb-3">
         <div class="col-md-5">
@@ -84,7 +88,7 @@
             </table>
             </div>
 
-            <button type="button" class="btn btn-primary" @onclick="ConfirmarAsync">Confirmar cambios</button>
+            <button type="button" class="btn btn-primary" disabled="@guardando" @onclick="ConfirmarAsync">@(guardando ? "Guardando…" : "Confirmar cambios")</button>
         }
     }
 </div>
@@ -95,6 +99,8 @@
     private List<FilaPrecio>? filas;
     private decimal porcentaje = 10;
     private string? mensaje;
+    private string? error;
+    private bool guardando;
     private ParametrosCalculoPrecio? parametros;
 
     protected override async Task OnInitializedAsync()
@@ -150,18 +156,32 @@
 
     private async Task ConfirmarAsync()
     {
-        if (filas is null) return;
+        if (filas is null || guardando) return;
+        mensaje = null;
+        error = null;
+        guardando = true;
 
-        var aplicar = filas.Where(f => f.Seleccionada && f.PrecioNuevo != f.PrecioActual).ToList();
-        foreach (var fila in aplicar)
+        try
         {
-            await ObraService.ActualizarPrecioAsync(fila.ObraId, fila.PrecioNuevo);
-            fila.PrecioActual = fila.PrecioNuevo;
-        }
+            var aplicar = filas.Where(f => f.Seleccionada && f.PrecioNuevo != f.PrecioActual).ToList();
+            foreach (var fila in aplicar)
+            {
+                await ObraService.ActualizarPrecioAsync(fila.ObraId, fila.PrecioNuevo);
+                fila.PrecioActual = fila.PrecioNuevo;
+            }
 
-        mensaje = aplicar.Count == 0
-            ? "No había cambios de precio para aplicar."
-            : $"Se actualizó el precio de {aplicar.Count} obra(s).";
+            mensaje = aplicar.Count == 0
+                ? "No había cambios de precio para aplicar."
+                : $"Se actualizó el precio de {aplicar.Count} obra(s).";
+        }
+        catch (InvalidOperationException ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            guardando = false;
+        }
     }
 
     private sealed class FilaPrecio

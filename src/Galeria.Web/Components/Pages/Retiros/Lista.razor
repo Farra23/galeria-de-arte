@@ -112,7 +112,7 @@ else
                         }
                         @if (retiro.Tipo == TipoRetiro.Temporal && !retiro.EstaDevuelto)
                         {
-                            <button class="btn btn-sm btn-outline-primary" @onclick="() => DevolverAsync(retiro.Id)">Devolver al stock</button>
+                            <button class="btn btn-sm btn-outline-primary" disabled="@(procesandoId == retiro.Id)" @onclick="() => DevolverAsync(retiro.Id)">@(procesandoId == retiro.Id ? "Procesando…" : "Devolver al stock")</button>
                         }
                     </td>
                 </tr>
@@ -138,6 +138,7 @@ else
     private List<ArtistaOpcion>? artistas;
     private string? texto;
     private string? mensaje;
+    private int? procesandoId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -153,10 +154,20 @@ else
 
     private async Task DevolverAsync(int retiroId)
     {
+        if (procesandoId is not null) return;
+        procesandoId = retiroId;
         mensaje = null;
-        await RetiroService.DevolverAsync(retiroId);
-        mensaje = "La pieza volvió al stock.";
-        retiros = await RetiroService.BuscarAsync(FiltroActual());
+
+        try
+        {
+            await RetiroService.DevolverAsync(retiroId);
+            mensaje = "La pieza volvió al stock.";
+            retiros = await RetiroService.BuscarAsync(FiltroActual());
+        }
+        finally
+        {
+            procesandoId = null;
+        }
     }
 
     private RetiroFiltro FiltroActual() => new(TextoLibre, ArtistaId, TipoFiltro, Orden: OrdenActual, OrdenDescendente: DescActual);

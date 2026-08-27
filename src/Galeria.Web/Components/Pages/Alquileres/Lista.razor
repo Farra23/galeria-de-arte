@@ -100,7 +100,7 @@ else
                     <td>
                         @if (alquiler.EstaActivo)
                         {
-                            <button class="btn btn-sm btn-outline-primary" @onclick="() => DevolverAsync(alquiler.Id)">Devolver al stock</button>
+                            <button class="btn btn-sm btn-outline-primary" disabled="@(procesandoId == alquiler.Id)" @onclick="() => DevolverAsync(alquiler.Id)">@(procesandoId == alquiler.Id ? "Procesando…" : "Devolver al stock")</button>
                         }
                     </td>
                 </tr>
@@ -125,6 +125,7 @@ else
     private List<ArtistaOpcion>? artistas;
     private string? texto;
     private string? mensaje;
+    private int? procesandoId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -140,10 +141,20 @@ else
 
     private async Task DevolverAsync(int alquilerId)
     {
+        if (procesandoId is not null) return;
+        procesandoId = alquilerId;
         mensaje = null;
-        await AlquilerService.DevolverAsync(alquilerId);
-        mensaje = "La pieza volvió al stock.";
-        alquileres = await AlquilerService.BuscarAsync(FiltroActual());
+
+        try
+        {
+            await AlquilerService.DevolverAsync(alquilerId);
+            mensaje = "La pieza volvió al stock.";
+            alquileres = await AlquilerService.BuscarAsync(FiltroActual());
+        }
+        finally
+        {
+            procesandoId = null;
+        }
     }
 
     private AlquilerFiltro FiltroActual() => new(TextoLibre, ArtistaId, SoloActivos, Orden: OrdenActual, OrdenDescendente: DescActual);

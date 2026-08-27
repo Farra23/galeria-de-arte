@@ -82,7 +82,7 @@ else
                 <InputTextArea class="form-control" @bind-Value="Input.Motivo" rows="2" />
             </div>
 
-            <button type="submit" class="btn btn-primary">Confirmar devolución</button>
+            <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "Confirmar devolución")</button>
             <button type="button" class="btn btn-link text-danger" @onclick="Cancelar">Cancelar</button>
         </EditForm>
     </div>
@@ -94,6 +94,7 @@ else
     private List<VentaParaDevolucion>? resultados;
     private VentaParaDevolucion? venta;
     private string? error;
+    private bool guardando;
     private InputModel Input { get; set; } = new();
 
     private async Task BuscarAsync() => resultados = await DevolucionService.BuscarVentasAsync(texto);
@@ -112,8 +113,9 @@ else
 
     private async Task ConfirmarAsync()
     {
-        if (venta is null) return;
+        if (venta is null || guardando) return;
         error = null;
+        guardando = true;
 
         try
         {
@@ -129,6 +131,10 @@ else
         catch (InvalidOperationException ex)
         {
             error = ex.Message;
+        }
+        finally
+        {
+            guardando = false;
         }
     }
 

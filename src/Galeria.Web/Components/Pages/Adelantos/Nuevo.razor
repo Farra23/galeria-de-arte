@@ -70,7 +70,7 @@
             <InputTextArea class="form-control" @bind-Value="Input.Observaciones" rows="2" />
         </div>
 
-        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "Guardar")</button>
         <a href="adelantos" class="btn btn-link text-danger">Cancelar</a>
     </EditForm>
 </div>
@@ -78,6 +78,7 @@
 @code {
     private List<ArtistaOpcion>? artistas;
     private string? error;
+    private bool guardando;
     private InputModel Input { get; set; } = new();
 
     protected override async Task OnInitializedAsync() =>
@@ -85,6 +86,7 @@
 
     private async Task ConfirmarAsync()
     {
+        if (guardando) return;
         error = null;
 
         if (Input.ArtistaId == 0)
@@ -92,6 +94,8 @@
             error = "Elegí un artista.";
             return;
         }
+
+        guardando = true;
 
         try
         {
@@ -109,6 +113,10 @@
         catch (InvalidOperationException ex)
         {
             error = ex.Message;
+        }
+        finally
+        {
+            guardando = false;
         }
     }
 
