@@ -43,6 +43,15 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
         await obras.AgregarAsync(obra, ct);
         await obras.GuardarCambiosAsync(ct);
 
+        await auditoria.RegistrarAsync(new RegistrarAuditoriaRequest(
+            Pantalla: "Obras",
+            TipoOperacion: "Alta",
+            Tabla: "Obra",
+            ValorNuevo: obra.Titulo,
+            ArtistaId: obra.ArtistaId,
+            ObraId: obra.Id,
+            EntidadId: obra.Id.ToString()), ct);
+
         return obra.Id;
     }
 
@@ -57,14 +66,29 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
         await obras.GuardarCambiosAsync(ct); // necesito serie.Id antes de crear las obras
 
         var numeroInicial = await obras.ProximoNumeroObraAsync(request.ArtistaId, ct);
+        var creadas = new List<Obra>();
 
         for (var i = 0; i < cantidadPiezas; i++)
         {
             var obra = ConstruirObra(request, numeroInicial + i, serie.Id);
             await obras.AgregarAsync(obra, ct);
+            creadas.Add(obra);
         }
 
         await obras.GuardarCambiosAsync(ct);
+
+        foreach (var obra in creadas)
+        {
+            await auditoria.RegistrarAsync(new RegistrarAuditoriaRequest(
+                Pantalla: "Obras",
+                TipoOperacion: "Alta",
+                Tabla: "Obra",
+                Columna: "Serie",
+                ValorNuevo: obra.Titulo,
+                ArtistaId: obra.ArtistaId,
+                ObraId: obra.Id,
+                EntidadId: obra.Id.ToString()), ct);
+        }
 
         return serie.Id;
     }

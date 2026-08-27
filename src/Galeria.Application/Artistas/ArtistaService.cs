@@ -1,8 +1,9 @@
+using Galeria.Application.Auditorias;
 using Galeria.Domain.Entities;
 
 namespace Galeria.Application.Artistas;
 
-public class ArtistaService(IArtistaRepository repositorio)
+public class ArtistaService(IArtistaRepository repositorio, AuditoriaService auditoria)
 {
     public Task<List<ArtistaListItem>> BuscarAsync(ArtistaFiltro filtro, CancellationToken ct = default) =>
         repositorio.BuscarAsync(filtro, ct);
@@ -31,6 +32,14 @@ public class ArtistaService(IArtistaRepository repositorio)
 
         await repositorio.AgregarAsync(artista, ct);
         await repositorio.GuardarCambiosAsync(ct);
+
+        await auditoria.RegistrarAsync(new RegistrarAuditoriaRequest(
+            Pantalla: "Artistas",
+            TipoOperacion: "Alta",
+            Tabla: "Artista",
+            ValorNuevo: $"{artista.Apellido}, {artista.Nombre}",
+            ArtistaId: artista.Id,
+            EntidadId: artista.Id.ToString()), ct);
 
         return artista.Id;
     }
