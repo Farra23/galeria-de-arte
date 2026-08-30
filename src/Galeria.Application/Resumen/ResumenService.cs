@@ -57,6 +57,7 @@ public class ResumenService(
 
         var avisos = new AvisosOperativos(
             todasLasObras.Count(o => o.Tecnica is null),
+            todasLasObras.Count(o => o.Rubro is null),
             todosLosRetiros.Count(r => r.EstaVencido),
             todosLosAlquileres.Count(a => a.EstaActivo && a.FechaRecupero is null));
 

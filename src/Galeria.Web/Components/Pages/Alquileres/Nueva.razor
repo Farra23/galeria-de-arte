@@ -8,7 +8,7 @@
 
 <PageTitle>Nuevo alquiler</PageTitle>
 <HeadContent>
-    <meta name="description" content="Registrar el alquiler de una obra con el reparto entre galería y artista." />
+    <meta name="description" content="Registrar el alquiler de una o varias obras con el reparto entre galería y artista." />
 </HeadContent>
 
 <div class="page-form">
@@ -19,7 +19,7 @@
     <ul class="text-danger" role="alert"><li>@error</li></ul>
 }
 
-@if (obra is null)
+@if (!continuar)
 {
     <div class="mb-3">
         <label class="form-label">Buscar obra por código, nombre o artista</label>
@@ -36,11 +36,12 @@
         {
             <div class="table-responsive">
             <table class="table table-striped mt-3">
-                <thead><tr><th>Código</th><th>Nombre</th><th>Artista</th><th class="text-end">Precio</th></tr></thead>
+                <thead><tr><th></th><th>Código</th><th>Nombre</th><th>Artista</th><th class="text-end">Precio</th></tr></thead>
                 <tbody>
                     @foreach (var item in resultados)
                     {
-                        <tr style="cursor:pointer" @onclick="() => Seleccionar(item)">
+                        <tr style="cursor:pointer" @onclick="() => Marcar(item, true)">
+                            <td><input type="checkbox" class="form-check-input" checked="@seleccion.ContainsKey(item.Id)" @onclick:stopPropagation="true" @onclick="() => Alternar(item)" /></td>
                             <td>@item.CodigoVisible</td>
                             <td>@item.Titulo</td>
                             <td>@item.ArtistaNombre</td>
@@ -52,14 +53,19 @@
             </div>
         }
     }
+
+    @if (seleccion.Count > 0)
+    {
+        <div class="alert alert-light border d-flex justify-content-between align-items-center">
+            <span>@seleccion.Count obra(s) marcada(s) para alquilar.</span>
+            <button type="button" class="btn btn-primary" @onclick="() => continuar = true">Continuar</button>
+        </div>
+    }
 }
 else
 {
     <div>
-        <h2 class="h5">@obra.CodigoVisible — @obra.Titulo</h2>
-        <p class="text-body-secondary mb-3">
-            Artista: @obra.ArtistaNombre — precio de venta: @Formato.Monto(obra.PrecioVenta, obra.Moneda)
-        </p>
+        <h2 class="h5">@seleccion.Count obra(s) a alquilar</h2>
 
         <EditForm Model="Input" OnValidSubmit="ConfirmarAsync" FormName="nuevo-alquiler" data-enhance="false">
             <DataAnnotationsValidator />
@@ -89,13 +95,26 @@ else
                 <InputText class="form-control" @bind-Value="Input.Cliente" />
             </div>
 
-            <div class="alert alert-light border">
-                <div>Importe del alquiler: <strong>@Formato.Monto(reparto.MontoAlquiler, obra.Moneda)</strong></div>
-                <div>Le corresponde al artista: <strong>@Formato.Monto(reparto.MontoArtista, obra.Moneda)</strong></div>
-                <div>Le corresponde a la galería: <strong>@Formato.Monto(reparto.MontoGaleria, obra.Moneda)</strong></div>
+            <div class="table-responsive mb-3">
+                <table class="table table-sm">
+                    <thead><tr><th></th><th>Obra</th><th class="text-end">Alquiler</th><th class="text-end">Artista</th><th class="text-end">Galería</th></tr></thead>
+                    <tbody>
+                        @foreach (var item in seleccion.Values)
+                        {
+                            var reparto = AlquilerService.CalcularReparto(item.PrecioVenta, Input.PorcentajeAlquiler, Input.PorcentajeArtista);
+                            <tr>
+                                <td><button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => Quitar(item.Id)">Quitar</button></td>
+                                <td>@item.CodigoVisible — @item.Titulo</td>
+                                <td class="text-end">@Formato.Monto(reparto.MontoAlquiler, item.Moneda)</td>
+                                <td class="text-end">@Formato.Monto(reparto.MontoArtista, item.Moneda)</td>
+                                <td class="text-end">@Formato.Monto(reparto.MontoGaleria, item.Moneda)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
 
-            <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "Confirmar alquiler")</button>
+            <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : seleccion.Count > 1 ? $"Confirmar {seleccion.Count} alquileres" : "Confirmar alquiler")</button>
             <button type="button" class="btn btn-link text-danger" @onclick="Cancelar">Cancelar</button>
         </EditForm>
     </div>
@@ -107,17 +126,32 @@ else
 @code {
     private string? texto;
     private List<ObraParaOperacion>? resultados;
-    private ObraParaOperacion? obra;
+    private readonly Dictionary<int, ObraParaOperacion> seleccion = [];
+    private bool continuar;
     private string? error;
     private int guardandoFlag;
     private bool guardando => guardandoFlag != 0;
     private InputModel Input { get; set; } = new();
     private ConfirmModal confirmModal = default!;
 
-    private (decimal MontoAlquiler, decimal MontoArtista, decimal MontoGaleria) reparto =>
-        obra is null ? (0, 0, 0) : AlquilerService.CalcularReparto(obra.PrecioVenta, Input.PorcentajeAlquiler, Input.PorcentajeArtista);
-
     private async Task BuscarAsync() => resultados = await AlquilerService.BuscarObrasDisponiblesAsync(texto);
+
+    private void Marcar(ObraParaOperacion item, bool valor)
+    {
+        if (valor) seleccion[item.Id] = item;
+        else seleccion.Remove(item.Id);
+    }
+
+    private void Alternar(ObraParaOperacion item) => Marcar(item, !seleccion.ContainsKey(item.Id));
+
+    private void Quitar(int obraId)
+    {
+        seleccion.Remove(obraId);
+        if (seleccion.Count == 0)
+        {
+            Cancelar();
+        }
+    }
 
     private void OnPorcentajeAlquilerChanged(decimal valor)
     {
@@ -131,51 +165,63 @@ else
         StateHasChanged();
     }
 
-    private void Seleccionar(ObraParaOperacion item)
-    {
-        obra = item;
-        Input = new InputModel { FechaInicio = DateTime.Now };
-    }
-
     private void Cancelar()
     {
-        obra = null;
+        seleccion.Clear();
+        continuar = false;
         error = null;
+        Input = new InputModel { FechaInicio = DateTime.Now };
     }
 
     private void ConfirmarAsync()
     {
-        if (obra is null) return;
         error = null;
 
-        confirmModal.Mostrar(
-            "Confirmar alquiler",
-            $"¿Confirmás el alquiler de \"{obra.Titulo}\" ({obra.CodigoVisible}) por {Formato.Monto(reparto.MontoAlquiler, obra.Moneda)} mensuales?",
-            RegistrarAsync,
-            "Confirmar alquiler");
+        var mensaje = seleccion.Count == 1
+            ? $"¿Confirmás el alquiler de \"{seleccion.Values.First().Titulo}\"?"
+            : $"¿Confirmás el alquiler de las {seleccion.Count} obras marcadas?";
+
+        confirmModal.Mostrar("Confirmar alquiler", mensaje, RegistrarAsync, "Confirmar alquiler");
     }
 
     private async Task RegistrarAsync()
     {
-        if (obra is null) return;
         if (Interlocked.CompareExchange(ref guardandoFlag, 1, 0) != 0) return;
 
         try
         {
-            var request = new RegistrarAlquilerRequest(
-                obra.Id,
-                DateOnly.FromDateTime(Input.FechaInicio),
-                Input.FechaRecupero.HasValue ? DateOnly.FromDateTime(Input.FechaRecupero.Value) : null,
-                Input.PorcentajeAlquiler,
-                Input.PorcentajeArtista,
-                Input.Cliente);
+            var fallidas = new List<string>();
 
-            await AlquilerService.RegistrarAsync(request);
-            NavigationManager.NavigateTo("alquileres");
-        }
-        catch (InvalidOperationException ex)
-        {
-            error = ex.Message;
+            foreach (var item in seleccion.Values.ToList())
+            {
+                try
+                {
+                    var request = new RegistrarAlquilerRequest(
+                        item.Id,
+                        DateOnly.FromDateTime(Input.FechaInicio),
+                        Input.FechaRecupero.HasValue ? DateOnly.FromDateTime(Input.FechaRecupero.Value) : null,
+                        Input.PorcentajeAlquiler,
+                        Input.PorcentajeArtista,
+                        Input.Cliente);
+
+                    await AlquilerService.RegistrarAsync(request);
+                    seleccion.Remove(item.Id);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    fallidas.Add($"{item.CodigoVisible} — {item.Titulo}: {ex.Message}");
+                }
+            }
+
+            if (fallidas.Count > 0)
+            {
+                error = "No se pudo registrar el alquiler de: " + string.Join(" | ", fallidas);
+            }
+
+            if (seleccion.Count == 0)
+            {
+                NavigationManager.NavigateTo("alquileres");
+            }
         }
         finally
         {

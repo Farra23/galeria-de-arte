@@ -4,7 +4,7 @@ public record VentaDelMesResumen(int Cantidad, decimal TotalPesos, decimal Total
 
 public record ArtistaConDeuda(int ArtistaId, string ArtistaNombre, decimal SaldoPesos, decimal SaldoDolares, DateOnly? UltimaLiquidacion);
 
-public record AvisosOperativos(int ObrasSinTecnica, int RetirosVencidos, int AlquileresSinFechaRecupero);
+public record AvisosOperativos(int ObrasSinTecnica, int ObrasSinRubro, int RetirosVencidos, int AlquileresSinFechaRecupero);
 
 public record ResumenDashboard(
     VentaDelMesResumen VentasDelMes,

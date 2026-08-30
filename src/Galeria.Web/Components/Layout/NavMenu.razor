@@ -6,9 +6,12 @@
    panel de navegación) y usuario a la derecha (despliega Logout). Sin marca/color de fondo — el
    azul marino solo aparece en el panel de navegación cuando está desplegado. *@
 <div class="topbar">
-    <button type="button" class="hamburger-btn" @onclick="AlternarNav" aria-label="Abrir o cerrar el menú" title="Menú">
-        <span class="hamburger-icon @(navAbierto ? "hamburger-icon-abierto" : "")"></span>
-    </button>
+    <div class="topbar-left">
+        <button type="button" class="hamburger-btn" @onclick="AlternarNav" aria-label="Abrir o cerrar el menú" title="Menú">
+            <span class="hamburger-icon @(navAbierto ? "hamburger-icon-abierto" : "")"></span>
+        </button>
+        <button type="button" class="back-btn" onclick="history.back()" aria-label="Volver atrás" title="Volver atrás">←</button>
+    </div>
 
     <AuthorizeView>
         <Authorized>

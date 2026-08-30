@@ -56,11 +56,45 @@ else
         </div>
     </div>
 
-    @if (resumen.Avisos.ObrasSinTecnica > 0)
+    <h2 class="h5">Pendientes</h2>
+    @if (!HayPendientes(resumen))
     {
-        <div class="alert alert-warning" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("obras")'>
-            @resumen.Avisos.ObrasSinTecnica obra(s) sin técnica cargada.
-        </div>
+        <p class="text-body-secondary mb-4">No hay pendientes — todo al día.</p>
+    }
+    else
+    {
+        <ul class="list-group mb-4">
+            @if (resumen.Avisos.ObrasSinTecnica > 0)
+            {
+                <li class="list-group-item" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("obras")'>
+                    @resumen.Avisos.ObrasSinTecnica obra(s) sin técnica cargada.
+                </li>
+            }
+            @if (resumen.Avisos.ObrasSinRubro > 0)
+            {
+                <li class="list-group-item" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("obras")'>
+                    @resumen.Avisos.ObrasSinRubro obra(s) sin rubro cargado.
+                </li>
+            }
+            @if (resumen.Avisos.RetirosVencidos > 0)
+            {
+                <li class="list-group-item" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("retiros")'>
+                    @resumen.Avisos.RetirosVencidos retiro(s) vencido(s) sin devolver.
+                </li>
+            }
+            @if (resumen.Avisos.AlquileresSinFechaRecupero > 0)
+            {
+                <li class="list-group-item" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("alquileres")'>
+                    @resumen.Avisos.AlquileresSinFechaRecupero alquiler(es) sin fecha de recupero.
+                </li>
+            }
+            @if (resumen.ArtistasConDeuda.Count > 0)
+            {
+                <li class="list-group-item" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("artistas")'>
+                    @resumen.ArtistasConDeuda.Count artista(s) con plata pendiente de pago.
+                </li>
+            }
+        </ul>
     }
 
     <div class="row g-4">
@@ -122,6 +156,11 @@ else
 
     protected override async Task OnInitializedAsync() =>
         resumen = await ResumenService.ObtenerAsync();
+
+    private static bool HayPendientes(ResumenDashboard r) =>
+        r.Avisos.ObrasSinTecnica > 0 || r.Avisos.ObrasSinRubro > 0
+        || r.Avisos.RetirosVencidos > 0 || r.Avisos.AlquileresSinFechaRecupero > 0
+        || r.ArtistasConDeuda.Count > 0;
 
     private static string Antiguedad(DateOnly? ultimaLiquidacion)
     {
