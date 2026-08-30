@@ -25,9 +25,23 @@ else
             {
                 <a class="btn btn-outline-secondary" href="@EnlaceMail()">Enviar por mail</a>
             }
+            else
+            {
+                <span class="btn btn-outline-secondary disabled" title="Este artista no tiene mail cargado">
+                    Enviar por mail
+                </span>
+                <a class="small ms-1" href="@($"artistas/{detalle.ArtistaId}")">cargar mail en su ficha</a>
+            }
             @if (!string.IsNullOrWhiteSpace(detalle.ArtistaCelular))
             {
                 <a class="btn btn-outline-success" href="@EnlaceWhatsApp()" target="_blank">Enviar por WhatsApp</a>
+            }
+            else
+            {
+                <span class="btn btn-outline-success disabled" title="Este artista no tiene celular cargado">
+                    Enviar por WhatsApp
+                </span>
+                <a class="small ms-1" href="@($"artistas/{detalle.ArtistaId}")">cargar celular en su ficha</a>
             }
             <a class="btn btn-link" href="liquidaciones">Volver a Liquidaciones</a>
         </div>

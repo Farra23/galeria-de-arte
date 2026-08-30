@@ -172,6 +172,7 @@ public class LiquidacionRepository(GaleriaDbContext db) : ILiquidacionRepository
             liquidacion.Id,
             liquidacion.NumeroCorrelativo,
             liquidacion.Fecha,
+            liquidacion.ArtistaId,
             liquidacion.Artista.Apellido + ", " + liquidacion.Artista.Nombre,
             liquidacion.Moneda,
             lineas,

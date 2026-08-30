@@ -14,7 +14,8 @@ public record ObraParaOperacion(
     Moneda Moneda,
     decimal Costo,
     decimal PrecioVenta,
-    bool TieneIVA);
+    bool TieneIVA,
+    string? ImagenUrl);
 
 public record ObraListItem(
     int Id,

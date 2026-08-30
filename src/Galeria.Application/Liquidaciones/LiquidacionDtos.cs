@@ -40,6 +40,7 @@ public record LiquidacionDetalle(
     int Id,
     int NumeroCorrelativo,
     DateOnly Fecha,
+    int ArtistaId,
     string ArtistaNombre,
     Moneda Moneda,
     List<LineaPendiente> Lineas,

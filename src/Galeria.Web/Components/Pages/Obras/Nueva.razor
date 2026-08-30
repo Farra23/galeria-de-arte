@@ -19,6 +19,14 @@
 <div class="page-form">
 <h1>Nueva obra</h1>
 
+@if (mensaje is not null)
+{
+    <div class="alert alert-success alert-dismissible">
+        @mensaje
+        <button type="button" class="btn-close" @onclick="() => mensaje = null"></button>
+    </div>
+}
+
 @if (parametros is null || artistas is null)
 {
     <p><em>Cargando...</em></p>
@@ -70,10 +78,14 @@ else
                 <div class="d-flex align-items-end gap-2">
                     <div>
                         <label class="form-label mb-0">Cantidad a agregar</label>
-                        <InputNumber class="form-control" @bind-Value="cantidadAAgregar" style="width: 8rem;" />
+                        <InputNumber class="form-control" @bind-Value="cantidadAAgregar" min="1" style="width: 8rem;" />
                     </div>
                     <button type="button" class="btn btn-warning" @onclick="AgregarExistenciaAsync">Agregar existencia a esa obra</button>
                 </div>
+                @if (errorExistencia is not null)
+                {
+                    <div class="text-danger mt-2">@errorExistencia</div>
+                }
                 <p class="mt-2 mb-0">
                     <small>¿Es en realidad una obra distinta? Completá el resto del formulario y guardá normalmente.</small>
                 </p>
@@ -186,7 +198,7 @@ else
         {
             <div class="mb-3">
                 <label class="form-label">Imagen (opcional — también se puede subir más tarde desde la ficha)</label>
-                <InputFile class="form-control" OnChange="SeleccionarImagen" accept=".jpg,.jpeg,.png,.webp" />
+                <InputFile @key="formResetKey" class="form-control" OnChange="SeleccionarImagen" accept=".jpg,.jpeg,.png,.webp" />
                 @if (imagenError is not null)
                 {
                     <div class="text-danger">@imagenError</div>
@@ -213,6 +225,9 @@ else
     private ParametrosCalculoPrecio? parametros;
     private ObraCoincidente? coincidencia;
     private int cantidadAAgregar = 1;
+    private string? errorExistencia;
+    private string? mensaje;
+    private int formResetKey;
     private bool precioEditadoManualmente;
     private IBrowserFile? imagenSeleccionada;
     private string? imagenError;
@@ -310,8 +325,15 @@ else
             return;
         }
 
-        await ObraService.AgregarExistenciaAsync(coincidencia.Id, cantidadAAgregar);
-        NavigationManager.NavigateTo("obras");
+        try
+        {
+            await ObraService.AgregarExistenciaAsync(coincidencia.Id, cantidadAAgregar);
+            NavigationManager.NavigateTo("obras");
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorExistencia = ex.Message;
+        }
     }
 
     private async Task GuardarAsync()
@@ -340,6 +362,7 @@ else
             if (Input.CantidadEnSerie > 1)
             {
                 await ObraService.CrearSerieAsync(request, Input.CantidadEnSerie, Input.NombreSerie ?? Input.Titulo);
+                mensaje = $"Serie \"{request.Titulo}\" agregada ({Input.CantidadEnSerie} piezas). Podés seguir cargando obras.";
             }
             else
             {
@@ -350,9 +373,18 @@ else
                     var ruta = await ImagenObraHelper.GuardarAsync(imagenSeleccionada, obraId, WebHostEnvironment.WebRootPath);
                     await ObraService.ActualizarImagenAsync(obraId, ruta);
                 }
+
+                mensaje = $"\"{request.Titulo}\" agregada. Podés seguir cargando obras.";
             }
 
-            NavigationManager.NavigateTo("obras");
+            var artistaIdAnterior = Input.ArtistaId;
+            Input = new InputModel { ArtistaId = artistaIdAnterior, Utilidad = parametros!.UtilidadDefault };
+            coincidencia = null;
+            imagenSeleccionada = null;
+            imagenError = null;
+            precioEditadoManualmente = false;
+            formResetKey++;
+            RecalcularPrecio();
         }
         finally
         {
@@ -387,15 +419,15 @@ else
 
         public Moneda Moneda { get; set; } = Moneda.Pesos;
 
-        [Range(0.01, 999999999, ErrorMessage = "El costo tiene que ser mayor a 0.")]
+        [Range(typeof(decimal), "0.01", "999999999", ErrorMessage = "El costo tiene que ser mayor a 0.", ParseLimitsInInvariantCulture = true)]
         public decimal Costo { get; set; }
 
-        [Range(0, 1000, ErrorMessage = "La utilidad no puede ser negativa.")]
+        [Range(typeof(decimal), "0", "1000", ErrorMessage = "La utilidad no puede ser negativa.", ParseLimitsInInvariantCulture = true)]
         public decimal Utilidad { get; set; } = 50;
 
         public bool TieneIVA { get; set; }
 
-        [Range(0, 999999999)]
+        [Range(typeof(decimal), "0", "999999999", ErrorMessage = "El precio de venta no puede ser negativo ni superar 999.999.999.", ParseLimitsInInvariantCulture = true)]
         public decimal PrecioVenta { get; set; }
 
         public bool PagoContado { get; set; }

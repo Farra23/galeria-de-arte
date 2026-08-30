@@ -38,7 +38,8 @@ public class CertificadoRepository(GaleriaDbContext db) : ICertificadoRepository
                 c.Venta.Obra.AltoCm,
                 c.Venta.Obra.AnchoCm,
                 c.Venta.Obra.LargoCm,
-                c.Venta.Obra.FechaIngreso.Year))
+                c.Venta.Obra.FechaIngreso.Year,
+                c.Venta.Obra.ImagenPrincipalPath))
             .FirstOrDefaultAsync(ct);
 
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);

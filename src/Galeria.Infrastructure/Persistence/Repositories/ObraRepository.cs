@@ -267,7 +267,8 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.Moneda,
                 o.Costo,
                 o.PrecioVenta,
-                o.TieneIVA))
+                o.TieneIVA,
+                o.ImagenPrincipalPath))
             .ToListAsync(ct);
 
         // El texto compara también contra el código visible (Artista.Codigo + NumeroObra), que es
@@ -300,7 +301,8 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.Moneda,
                 o.Costo,
                 o.PrecioVenta,
-                o.TieneIVA))
+                o.TieneIVA,
+                o.ImagenPrincipalPath))
             .FirstOrDefaultAsync(ct);
 
     public Task RegistrarMovimientoAsync(Movimiento movimiento, CancellationToken ct = default)

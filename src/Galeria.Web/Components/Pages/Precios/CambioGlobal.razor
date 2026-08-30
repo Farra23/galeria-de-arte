@@ -53,7 +53,7 @@
             <div class="row g-2 mb-3 align-items-end">
                 <div class="col-auto">
                     <label class="form-label">Aplicar % a las obras tildadas</label>
-                    <input type="number" class="form-control" @bind="porcentaje" style="width:120px" />
+                    <input type="number" class="form-control" @bind="porcentaje" min="-100" max="1000" step="0.01" style="width:120px" />
                 </div>
                 <div class="col-auto">
                     <button type="button" class="btn btn-outline-primary" @onclick="AplicarPorcentajeAsync">Aplicar</button>
@@ -80,7 +80,7 @@
                             <td>@fila.Titulo</td>
                             <td class="text-end">@Formato.Monto(fila.PrecioActual, fila.Moneda)</td>
                             <td class="text-end" style="max-width:140px">
-                                <input type="number" class="form-control form-control-sm text-end" @bind="fila.PrecioNuevo" />
+                                <input type="number" class="form-control form-control-sm text-end" @bind="fila.PrecioNuevo" min="0.01" max="999999999" step="0.01" />
                             </td>
                         </tr>
                     }

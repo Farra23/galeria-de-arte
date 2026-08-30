@@ -13,4 +13,5 @@ public record CertificadoDatos(
     decimal? AltoCm,
     decimal? AnchoCm,
     decimal? LargoCm,
-    int AnioIngreso);
+    int AnioIngreso,
+    string? ImagenUrl);

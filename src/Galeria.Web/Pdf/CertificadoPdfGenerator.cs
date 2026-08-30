@@ -9,7 +9,7 @@ namespace Galeria.Web.Pdf;
 // CertificadoDatos, que nunca trae esos campos).
 public static class CertificadoPdfGenerator
 {
-    public static byte[] Generar(CertificadoDatos datos, string nombreGaleria)
+    public static byte[] Generar(CertificadoDatos datos, string nombreGaleria, byte[]? imagenBytes = null)
     {
         return Document.Create(contenedor =>
         {
@@ -29,6 +29,13 @@ public static class CertificadoPdfGenerator
                 pagina.Content().PaddingTop(15).Column(col =>
                 {
                     col.Spacing(6);
+
+                    if (imagenBytes is not null)
+                    {
+                        col.Item().AlignCenter().MaxHeight(150).Image(imagenBytes).FitArea();
+                        col.Item().PaddingBottom(6);
+                    }
+
                     Fila(col, "Código", datos.CodigoObra);
                     Fila(col, "Obra", datos.Titulo);
                     Fila(col, "Artista", datos.ArtistaNombre);

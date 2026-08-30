@@ -71,6 +71,7 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
         for (var i = 0; i < cantidadPiezas; i++)
         {
             var obra = ConstruirObra(request, numeroInicial + i, serie.Id);
+            obra.Titulo = $"{obra.Titulo} {NumeroRomano(i + 1)}";
             await obras.AgregarAsync(obra, ct);
             creadas.Add(obra);
         }
@@ -91,6 +92,26 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
         }
 
         return serie.Id;
+    }
+
+    // Requerimiento 3.3 "+": cada pieza de una serie se distingue en el nombre con un numeral
+    // romano (I, II, III...) además del código correlativo que ya la distingue en la base.
+    private static string NumeroRomano(int numero)
+    {
+        var valores = new[] { 1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1 };
+        var simbolos = new[] { "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I" };
+
+        var resultado = new System.Text.StringBuilder();
+        for (var i = 0; i < valores.Length && numero > 0; i++)
+        {
+            while (numero >= valores[i])
+            {
+                resultado.Append(simbolos[i]);
+                numero -= valores[i];
+            }
+        }
+
+        return resultado.ToString();
     }
 
     private static Obra ConstruirObra(CrearObraRequest request, int numeroObra, int? serieId) => new()
@@ -118,6 +139,11 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
 
     public async Task AgregarExistenciaAsync(int obraId, int cantidad, CancellationToken ct = default)
     {
+        if (cantidad < 1)
+        {
+            throw new InvalidOperationException("La cantidad a agregar tiene que ser al menos 1.");
+        }
+
         await obras.AumentarExistenciaAsync(obraId, cantidad, ct);
         await obras.GuardarCambiosAsync(ct);
     }
@@ -142,6 +168,11 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
     // muchas obras de un mismo artista en una sola operación.
     public async Task ActualizarPrecioAsync(int obraId, decimal nuevoPrecio, CancellationToken ct = default)
     {
+        if (nuevoPrecio <= 0 || nuevoPrecio > 999999999)
+        {
+            throw new InvalidOperationException("El precio nuevo tiene que ser mayor a 0 y no superar 999.999.999.");
+        }
+
         var anterior = await obras.ObtenerFichaAsync(obraId, ct);
 
         await obras.ActualizarPrecioAsync(obraId, nuevoPrecio, ct);

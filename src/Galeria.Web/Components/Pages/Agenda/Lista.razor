@@ -128,9 +128,17 @@ else
                             {
                                 <a class="btn btn-sm btn-outline-secondary" href="@EnlaceMail(fila)" title="Avisar por mail">✉</a>
                             }
+                            else
+                            {
+                                <a class="btn btn-sm btn-light border text-body-secondary" href="@($"artistas/{fila.ArtistaId}")" title="Sin mail cargado — click para cargarlo en su ficha">✉</a>
+                            }
                             @if (!string.IsNullOrWhiteSpace(fila.ArtistaCelular))
                             {
                                 <a class="btn btn-sm btn-outline-success" href="@EnlaceWhatsApp(fila)" target="_blank" title="Avisar por WhatsApp">WA</a>
+                            }
+                            else
+                            {
+                                <a class="btn btn-sm btn-light border text-body-secondary" href="@($"artistas/{fila.ArtistaId}")" title="Sin celular cargado — click para cargarlo en su ficha">WA</a>
                             }
                             <a class="btn btn-sm btn-primary" href="@($"liquidaciones/generar?artista={fila.ArtistaId}")">Liquidar</a>
                         </td>

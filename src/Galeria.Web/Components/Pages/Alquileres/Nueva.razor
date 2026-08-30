@@ -190,10 +190,10 @@ else
 
         public DateTime? FechaRecupero { get; set; }
 
-        [Range(0.01, 100, ErrorMessage = "Tiene que ser un porcentaje entre 0 y 100.")]
+        [Range(typeof(decimal), "0.01", "100", ErrorMessage = "Tiene que ser un porcentaje entre 0 y 100.", ParseLimitsInInvariantCulture = true)]
         public decimal PorcentajeAlquiler { get; set; } = 10;
 
-        [Range(0, 100, ErrorMessage = "Tiene que ser un porcentaje entre 0 y 100.")]
+        [Range(typeof(decimal), "0", "100", ErrorMessage = "Tiene que ser un porcentaje entre 0 y 100.", ParseLimitsInInvariantCulture = true)]
         public decimal PorcentajeArtista { get; set; } = 50;
 
         [MaxLength(200)]

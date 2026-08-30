@@ -142,7 +142,7 @@
 
         public Moneda Moneda { get; set; } = Moneda.Pesos;
 
-        [Range(0.01, 999999999, ErrorMessage = "El monto tiene que ser mayor a 0.")]
+        [Range(typeof(decimal), "0.01", "999999999", ErrorMessage = "El monto tiene que ser mayor a 0.", ParseLimitsInInvariantCulture = true)]
         public decimal Importe { get; set; }
 
         public DateTime Fecha { get; set; } = DateTime.Now;

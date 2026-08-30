@@ -4,7 +4,9 @@
 @using Galeria.Application.Obras
 @using Galeria.Application.Ventas
 @inject VentaService VentaService
+@inject ObraService ObraService
 @inject NavigationManager NavigationManager
+@inject IWebHostEnvironment WebHostEnvironment
 
 <PageTitle>Nueva venta</PageTitle>
 <HeadContent>
@@ -107,6 +109,22 @@ else
                 <InputTextArea class="form-control" @bind-Value="Input.Observaciones" rows="2" />
             </div>
 
+            @if (obra.ImagenUrl is null)
+            {
+                <div class="mb-3">
+                    <label class="form-label">Foto de la obra (opcional — hace falta para el certificado de autenticidad)</label>
+                    <InputFile class="form-control" OnChange="SeleccionarImagen" accept=".jpg,.jpeg,.png,.webp" />
+                    @if (imagenError is not null)
+                    {
+                        <div class="text-danger">@imagenError</div>
+                    }
+                    @if (imagenSeleccionada is not null && imagenError is null)
+                    {
+                        <div class="form-text">@imagenSeleccionada.Name (@((imagenSeleccionada.Size / 1024.0).ToString("N0")) KB)</div>
+                    }
+                </div>
+            }
+
             <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "Confirmar venta")</button>
             <button type="button" class="btn btn-link text-danger" @onclick="Cancelar">Cancelar</button>
         </EditForm>
@@ -126,6 +144,14 @@ else
     private bool guardando => guardandoFlag != 0;
     private InputModel Input { get; set; } = new();
     private ConfirmModal confirmModal = default!;
+    private IBrowserFile? imagenSeleccionada;
+    private string? imagenError;
+
+    private void SeleccionarImagen(InputFileChangeEventArgs e)
+    {
+        imagenSeleccionada = e.File;
+        ImagenObraHelper.EsValida(e.File, out imagenError);
+    }
 
     private async Task BuscarAsync() => resultados = await VentaService.BuscarObrasDisponiblesAsync(texto);
 
@@ -178,6 +204,13 @@ else
                 Input.Observaciones);
 
             var ventaId = await VentaService.RegistrarAsync(request);
+
+            if (imagenSeleccionada is not null && imagenError is null)
+            {
+                var ruta = await ImagenObraHelper.GuardarAsync(imagenSeleccionada, obra.Id, WebHostEnvironment.WebRootPath);
+                await ObraService.ActualizarImagenAsync(obra.Id, ruta);
+            }
+
             NavigationManager.NavigateTo($"certificados/emitir/{ventaId}");
         }
         catch (InvalidOperationException ex)
@@ -200,7 +233,7 @@ else
 
         public bool ExentaIVA { get; set; }
 
-        [Range(0.01, 999999999, ErrorMessage = "El precio de venta tiene que ser mayor a 0.")]
+        [Range(typeof(decimal), "0.01", "999999999", ErrorMessage = "El precio de venta tiene que ser mayor a 0.", ParseLimitsInInvariantCulture = true)]
         public decimal PrecioVenta { get; set; }
 
         [MaxLength(1000)]

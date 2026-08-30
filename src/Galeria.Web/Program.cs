@@ -199,7 +199,7 @@ app.MapAdditionalIdentityEndpoints();
 // Requerimiento 0.2 (INSISTIDO): PDF real de los comprobantes, no solo "imprimir" del navegador.
 // Endpoints propios (no Razor components) porque generar el PDF es un detalle de infraestructura
 // de Web, no algo que tenga sentido meter en la página que ya renderiza la vista imprimible.
-app.MapGet("/certificados/{certificadoId:int}/pdf", async (int certificadoId, CertificadoService certificados, IParametroRepository parametros) =>
+app.MapGet("/certificados/{certificadoId:int}/pdf", async (int certificadoId, CertificadoService certificados, IParametroRepository parametros, IWebHostEnvironment env) =>
 {
     var datos = await certificados.ObtenerDatosAsync(certificadoId);
     if (datos is null)
@@ -211,7 +211,17 @@ app.MapGet("/certificados/{certificadoId:int}/pdf", async (int certificadoId, Ce
         ? nombre
         : "Galería ACATRAS";
 
-    var pdf = CertificadoPdfGenerator.Generar(datos, nombreGaleria);
+    byte[]? imagenBytes = null;
+    if (datos.ImagenUrl is not null)
+    {
+        var rutaFisica = Path.Combine(env.WebRootPath, datos.ImagenUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+        if (File.Exists(rutaFisica))
+        {
+            imagenBytes = await File.ReadAllBytesAsync(rutaFisica);
+        }
+    }
+
+    var pdf = CertificadoPdfGenerator.Generar(datos, nombreGaleria, imagenBytes);
     return Results.File(pdf, "application/pdf", $"certificado-{datos.NumeroCertificado:D6}.pdf");
 }).RequireAuthorization();
 
