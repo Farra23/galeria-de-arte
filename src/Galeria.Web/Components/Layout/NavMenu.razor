@@ -1,6 +1,7 @@
 @implements IDisposable
 
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JS
 
 @* Barra superior fija, blanca, una sola vez por página: hamburguesa a la izquierda (despliega el
    panel de navegación) y usuario a la derecha (despliega Logout). Sin marca/color de fondo — el
@@ -10,7 +11,7 @@
         <button type="button" class="hamburger-btn" @onclick="AlternarNav" aria-label="Abrir o cerrar el menú" title="Menú">
             <span class="hamburger-icon @(navAbierto ? "hamburger-icon-abierto" : "")"></span>
         </button>
-        <button type="button" class="back-btn" onclick="history.back()" aria-label="Volver atrás" title="Volver atrás">←</button>
+        <button type="button" class="back-btn" onclick="navHistorial.volver()" aria-label="Volver atrás" title="Volver atrás">←</button>
     </div>
 
     <AuthorizeView>
@@ -111,10 +112,22 @@
         NavigationManager.LocationChanged += OnLocationChanged;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Registra la página de entrada en la pila de "volver atrás" (ver app.js) — las
+            // navegaciones siguientes las registra OnLocationChanged, pero la primera no dispara
+            // ese evento.
+            await JS.InvokeVoidAsync("navHistorial.registrar", currentUrl);
+        }
+    }
+
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
         navAbierto = false;
+        _ = JS.InvokeVoidAsync("navHistorial.registrar", currentUrl);
         StateHasChanged();
     }
 

@@ -29,29 +29,30 @@ else
     <div class="page-form">
     <h1>@ficha.CodigoVisible — @ficha.Titulo</h1>
 
-    <dl class="row mb-4">
-        <dt class="col-sm-2">Artista</dt>
-        <dd class="col-sm-4">@ficha.ArtistaNombre</dd>
-        <dt class="col-sm-2">Moneda</dt>
-        <dd class="col-sm-4">@Formato.Simbolo(ficha.Moneda)</dd>
-        <dt class="col-sm-2">Existencia</dt>
-        <dd class="col-sm-4">@ficha.Existencia</dd>
-        <dt class="col-sm-2">Estado</dt>
-        <dd class="col-sm-4"><span class="badge bg-secondary">@Formato.Estado(ficha.Estado)</span></dd>
-        <dt class="col-sm-2">Fecha de ingreso</dt>
-        <dd class="col-sm-4">@ficha.FechaIngreso.ToString("dd/MM/yyyy")</dd>
-        @if (ficha.SerieNombre is not null)
-        {
-            <dt class="col-sm-2">Serie</dt>
-            <dd class="col-sm-4">Pieza @ficha.SeriePosicion de @ficha.SerieTotal · @ficha.SerieNombre</dd>
-        }
-    </dl>
-
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-md-8">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Artista</dt>
+                <dd class="col-sm-3">@ficha.ArtistaNombre</dd>
+                <dt class="col-sm-3">Moneda</dt>
+                <dd class="col-sm-3">@Formato.Simbolo(ficha.Moneda)</dd>
+                <dt class="col-sm-3">Existencia</dt>
+                <dd class="col-sm-3">@ficha.Existencia</dd>
+                <dt class="col-sm-3">Estado</dt>
+                <dd class="col-sm-3"><span class="badge bg-secondary">@Formato.Estado(ficha.Estado)</span></dd>
+                <dt class="col-sm-3">Fecha de ingreso</dt>
+                <dd class="col-sm-3">@ficha.FechaIngreso.ToString("dd/MM/yyyy")</dd>
+                @if (ficha.SerieNombre is not null)
+                {
+                    <dt class="col-sm-3">Serie</dt>
+                    <dd class="col-sm-9">Pieza @ficha.SeriePosicion de @ficha.SerieTotal · @ficha.SerieNombre</dd>
+                }
+            </dl>
+        </div>
+        <div class="col-md-4">
             @if (ficha.ImagenUrl is not null)
             {
-                <img src="@ficha.ImagenUrl" alt="@ficha.Titulo" class="img-thumbnail mb-2" style="max-height:220px" />
+                <img src="@ficha.ImagenUrl" alt="@ficha.Titulo" class="img-thumbnail mb-1" style="max-height:110px" />
                 <div>
                     <button type="button" class="btn btn-sm btn-outline-danger" @onclick="QuitarImagenAsync">Quitar imagen</button>
                 </div>
@@ -140,82 +141,86 @@ else
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
-        <div class="mb-3">
-            <label class="form-label">Nombre de la obra</label>
-            <InputText class="form-control" @bind-Value="Input.Titulo" />
-</div>
-
         <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Rubro</label>
-                <InputSelect class="form-select" @bind-Value="Input.RubroId">
-                    <option value="">Sin especificar</option>
-                    @foreach (var rubro in rubros)
-                    {
-                        <option value="@rubro.Id">@rubro.Nombre</option>
-                    }
-                </InputSelect>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Técnica</label>
-                <InputSelect class="form-select" @bind-Value="Input.TecnicaId">
-                    <option value="">Sin especificar</option>
-                    @foreach (var tecnica in tecnicas)
-                    {
-                        <option value="@tecnica.Id">@tecnica.Nombre</option>
-                    }
-                </InputSelect>
-            </div>
-        </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Nombre de la obra</label>
+                    <InputText class="form-control" @bind-Value="Input.Titulo" />
+                </div>
 
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Alto (cm)</label>
-                <InputNumber class="form-control" @bind-Value="Input.AltoCm" />
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Ancho (cm)</label>
-                <InputNumber class="form-control" @bind-Value="Input.AnchoCm" />
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Largo (cm)</label>
-                <InputNumber class="form-control" @bind-Value="Input.LargoCm" />
-            </div>
-        </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Rubro</label>
+                        <InputSelect class="form-select" @bind-Value="Input.RubroId">
+                            <option value="">Sin especificar</option>
+                            @foreach (var rubro in rubros)
+                            {
+                                <option value="@rubro.Id">@rubro.Nombre</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Técnica</label>
+                        <InputSelect class="form-select" @bind-Value="Input.TecnicaId">
+                            <option value="">Sin especificar</option>
+                            @foreach (var tecnica in tecnicas)
+                            {
+                                <option value="@tecnica.Id">@tecnica.Nombre</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
 
-        <div class="row">
-            <div class="col-md-4 mb-3 form-check pt-4 mt-2">
-                <InputCheckbox TValue="bool" class="form-check-input" id="tieneIva" Value="Input.TieneIVA" ValueChanged="OnTieneIvaChanged" ValueExpression="() => Input.TieneIVA" />
-                <label class="form-check-label" for="tieneIva">Tiene IVA</label>
-            </div>
-        </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Alto (cm)</label>
+                        <InputNumber class="form-control" @bind-Value="Input.AltoCm" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Ancho (cm)</label>
+                        <InputNumber class="form-control" @bind-Value="Input.AnchoCm" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Largo (cm)</label>
+                        <InputNumber class="form-control" @bind-Value="Input.LargoCm" />
+                    </div>
+                </div>
 
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Costo (lo que cobra el artista)</label>
-                <InputNumber TValue="decimal" class="form-control" Value="Input.Costo" ValueChanged="OnCostoChanged" ValueExpression="() => Input.Costo" />
-</div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Utilidad (%)</label>
-                <InputNumber TValue="decimal" class="form-control" Value="Input.Utilidad" ValueChanged="OnUtilidadChanged" ValueExpression="() => Input.Utilidad" />
+                <div class="mb-3 form-check">
+                    <InputCheckbox TValue="bool" class="form-check-input" id="tieneIva" Value="Input.TieneIVA" ValueChanged="OnTieneIvaChanged" ValueExpression="() => Input.TieneIVA" />
+                    <label class="form-check-label" for="tieneIva">Tiene IVA</label>
+                </div>
             </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Precio de venta</label>
-                <InputNumber TValue="decimal" class="form-control fw-bold" Value="Input.PrecioVenta" ValueChanged="OnPrecioVentaChanged" ValueExpression="() => Input.PrecioVenta" />
-                <div class="form-text">Calculado automático — se puede ajustar a mano.</div>
+
+            <div class="col-md-6">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Costo (artista)</label>
+                        <InputNumber TValue="decimal" class="form-control" Value="Input.Costo" ValueChanged="OnCostoChanged" ValueExpression="() => Input.Costo" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Utilidad (%)</label>
+                        <InputNumber TValue="decimal" class="form-control" Value="Input.Utilidad" ValueChanged="OnUtilidadChanged" ValueExpression="() => Input.Utilidad" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Precio de venta</label>
+                        <InputNumber TValue="decimal" class="form-control fw-bold" Value="Input.PrecioVenta" ValueChanged="OnPrecioVentaChanged" ValueExpression="() => Input.PrecioVenta" />
+                    </div>
+                </div>
+                <div class="form-text mt-n2 mb-2">Precio de venta calculado automático — se puede ajustar a mano.</div>
+
+                <div class="mb-3 form-check">
+                    <InputCheckbox class="form-check-input" id="pagoContado" @bind-Value="Input.PagoContado" />
+                    <label class="form-check-label" for="pagoContado">
+                        Pago contado (ya se le pagó al artista)
+                    </label>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Observaciones</label>
+                    <InputTextArea class="form-control" @bind-Value="Input.Observaciones" rows="2" />
+                </div>
             </div>
-        </div>
-
-        <div class="mb-3 form-check">
-            <InputCheckbox class="form-check-input" id="pagoContado" @bind-Value="Input.PagoContado" />
-            <label class="form-check-label" for="pagoContado">
-                Pago contado (ya se le pagó al artista al ingresar la pieza)
-            </label>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Observaciones</label>
-            <InputTextArea class="form-control" @bind-Value="Input.Observaciones" rows="2" />
         </div>
 
         <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "Guardar")</button>
@@ -410,8 +415,13 @@ else
         public int? RubroId { get; set; }
         public int? TecnicaId { get; set; }
 
+        [Range(typeof(decimal), "0.01", "9999", ErrorMessage = "La medida tiene que ser mayor a 0 y no superar 9999 cm.", ParseLimitsInInvariantCulture = true)]
         public decimal? AltoCm { get; set; }
+
+        [Range(typeof(decimal), "0.01", "9999", ErrorMessage = "La medida tiene que ser mayor a 0 y no superar 9999 cm.", ParseLimitsInInvariantCulture = true)]
         public decimal? AnchoCm { get; set; }
+
+        [Range(typeof(decimal), "0.01", "9999", ErrorMessage = "La medida tiene que ser mayor a 0 y no superar 9999 cm.", ParseLimitsInInvariantCulture = true)]
         public decimal? LargoCm { get; set; }
 
         [Range(typeof(decimal), "0.01", "999999999", ErrorMessage = "El costo tiene que ser mayor a 0.", ParseLimitsInInvariantCulture = true)]

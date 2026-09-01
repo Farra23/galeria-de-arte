@@ -139,9 +139,9 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
 
     public async Task AgregarExistenciaAsync(int obraId, int cantidad, CancellationToken ct = default)
     {
-        if (cantidad < 1)
+        if (cantidad < 1 || cantidad > 9999)
         {
-            throw new InvalidOperationException("La cantidad a agregar tiene que ser al menos 1.");
+            throw new InvalidOperationException("La cantidad a agregar tiene que estar entre 1 y 9999.");
         }
 
         await obras.AumentarExistenciaAsync(obraId, cantidad, ct);

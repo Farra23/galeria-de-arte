@@ -4,6 +4,7 @@
 @using Galeria.Application.Artistas
 @inject ArtistaService ArtistaService
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JS
 
 <PageTitle>Nuevo artista</PageTitle>
 <HeadContent>
@@ -13,49 +14,58 @@
 <div class="page-narrow">
     <h1>Nuevo artista</h1>
 
+    @if (esPopupYaGuardado)
+    {
+        <div class="alert alert-success">
+            "@ultimoGuardado" se creó correctamente. Podés cerrar esta pestaña y volver al formulario anterior
+            (si no se cerró sola, cerrala con la X de arriba).
+        </div>
+    }
+
     <EditForm Model="Input" OnValidSubmit="GuardarAsync" FormName="nuevo-artista" data-enhance="false">
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
-        <div class="mb-3">
-            <label class="form-label">Apellido</label>
-            <InputText class="form-control" @bind-Value="Input.Apellido" />
-</div>
-
-        <div class="mb-3">
-            <label class="form-label">Nombre</label>
-            <InputText class="form-control" @bind-Value="Input.Nombre" />
-</div>
-
-        <div class="mb-3">
-            <label class="form-label">Taller</label>
-            <InputText class="form-control" @bind-Value="Input.Taller" />
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Apellido</label>
+                <InputText class="form-control" @bind-Value="Input.Apellido" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Nombre</label>
+                <InputText class="form-control" @bind-Value="Input.Nombre" />
+            </div>
         </div>
 
         <div class="row">
             <div class="col-md-6 mb-3">
+                <label class="form-label">Taller</label>
+                <InputText class="form-control" @bind-Value="Input.Taller" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Dirección</label>
+                <InputText class="form-control" @bind-Value="Input.Direccion" />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
                 <label class="form-label">Celular</label>
                 <InputText class="form-control" @bind-Value="Input.Celular" />
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
                 <label class="form-label">Teléfono fijo</label>
                 <InputText class="form-control" @bind-Value="Input.TelFijo" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Correo</label>
+                <InputText class="form-control" @bind-Value="Input.Correo" />
             </div>
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Dirección</label>
-            <InputText class="form-control" @bind-Value="Input.Direccion" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Correo</label>
-            <InputText class="form-control" @bind-Value="Input.Correo" />
-</div>
-
-        <div class="mb-3">
             <label class="form-label">Perfil / notas</label>
-            <InputTextArea class="form-control" @bind-Value="Input.Perfil" rows="3" />
+            <InputTextArea class="form-control" @bind-Value="Input.Perfil" rows="2" />
         </div>
 
         <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "Guardar")</button>
@@ -69,6 +79,8 @@
 
     private int guardandoFlag;
     private bool guardando => guardandoFlag != 0;
+    private bool esPopupYaGuardado;
+    private string? ultimoGuardado;
 
     private async Task GuardarAsync()
     {
@@ -87,6 +99,15 @@
                 Input.Perfil);
 
             await ArtistaService.CrearAsync(request);
+
+            // Si este formulario se abrió en una pestaña nueva (ej. "Crealo acá" desde Nueva
+            // obra), se cierra sola en vez de dejar dos pestañas abiertas al mismo tiempo.
+            if (await JS.InvokeAsync<bool>("navHistorial.cerrarSiEsPopup"))
+            {
+                ultimoGuardado = $"{request.Apellido}, {request.Nombre}";
+                esPopupYaGuardado = true;
+                return;
+            }
 
             NavigationManager.NavigateTo("artistas");
         }

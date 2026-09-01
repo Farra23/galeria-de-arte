@@ -64,25 +64,43 @@ a, .btn-link {
 
 /* Pedido del cliente: los formularios largos (Nueva obra, Nueva venta, etc.) obligaban a
    scrollear antes de ver el botón de guardar. Se achica el espaciado vertical entre campos
-   (Bootstrap usa 1rem por .mb-3 y 0.5rem por .form-label) sin tocar el tamaño de los inputs,
-   así entra más formulario en la misma altura sin perder legibilidad ni área de click. */
-.page-form h1 {
-    font-size: 1.6rem;
-    margin-bottom: 0.75rem;
+   y la altura de cada input (Bootstrap usa 1rem por .mb-3, 0.5rem por .form-label y
+   ~0.75rem de padding vertical por .form-control), sin tocar el ancho ni el área de click
+   horizontal, así entra más formulario en la misma altura sin perder legibilidad. Los
+   formularios largos (Obras) además se reparten en dos columnas — ver Obras/Nueva.razor y
+   Obras/Ficha.razor — que es lo que de verdad los hace entrar sin scroll. */
+.page-form h1, .page-narrow h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.6rem;
 }
 
-.page-form .form-label {
-    margin-bottom: 0.15rem;
-    font-size: 0.9rem;
+.page-form .form-label, .page-narrow .form-label {
+    margin-bottom: 0.1rem;
+    font-size: 0.85rem;
 }
 
-.page-form .mb-3 {
-    margin-bottom: 0.6rem !important;
+.page-form .mb-3, .page-narrow .mb-3 {
+    margin-bottom: 0.45rem !important;
 }
 
-.page-form .form-text {
+.page-form .mb-4, .page-narrow .mb-4 {
+    margin-bottom: 0.75rem !important;
+}
+
+.page-form .form-text, .page-narrow .form-text {
     margin-top: 0.1rem;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
+    line-height: 1.15;
+}
+
+.page-form .form-control, .page-narrow .form-control,
+.page-form .form-select, .page-narrow .form-select {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+.page-form .row, .page-narrow .row {
+    --bs-gutter-y: 0;
 }
 
 /* Pantallas de lista (tablas anchas): no se centran en una columna angosta como los
