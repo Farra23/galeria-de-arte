@@ -32,7 +32,7 @@ public class ResumenService(
             ventasDelMesList.Where(v => v.Moneda == Moneda.USD).Sum(v => v.PrecioVenta));
 
         var todasLasVentas = await ventas.BuscarAsync(new VentaFiltro(), ct);
-        var ultimasVentas = todasLasVentas.Take(8).ToList();
+        var ultimasVentas = todasLasVentas.Take(5).ToList();
 
         var todosLosArtistas = await artistas.BuscarAsync(new ArtistaFiltro(), ct);
         var conDeuda = todosLosArtistas.Where(a => a.SaldoPesos > 0 || a.SaldoDolares > 0).ToList();
@@ -50,6 +50,8 @@ public class ResumenService(
             .OrderBy(a => a.UltimaLiquidacion.HasValue)
             .ThenBy(a => a.UltimaLiquidacion)
             .ToList();
+        var totalArtistasConDeuda = artistasConDeuda.Count;
+        artistasConDeuda = artistasConDeuda.Take(5).ToList();
 
         var todasLasObras = await obras.BuscarAsync(new ObraFiltro(), ct);
         var todosLosRetiros = await retiros.BuscarAsync(new RetiroFiltro(), ct);
@@ -67,6 +69,7 @@ public class ResumenService(
             conDeuda.Where(a => a.SaldoPesos > 0).Sum(a => a.SaldoPesos),
             conDeuda.Where(a => a.SaldoDolares > 0).Sum(a => a.SaldoDolares),
             artistasConDeuda,
+            totalArtistasConDeuda,
             avisos);
     }
 }

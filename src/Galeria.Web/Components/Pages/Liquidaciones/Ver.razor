@@ -18,30 +18,24 @@
 else
 {
     <div class="page-form">
-        <div class="mb-3 d-print-none">
+        <div class="mb-3 d-print-none d-flex flex-wrap gap-2">
             <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
             <a class="btn btn-outline-primary" href="@($"liquidaciones/{detalle.Id}/pdf")" target="_blank">Descargar PDF</a>
             @if (!string.IsNullOrWhiteSpace(detalle.ArtistaCorreo))
             {
-                <a class="btn btn-outline-secondary" href="@EnlaceMail()">Enviar por mail</a>
+                <a class="btn btn-outline-secondary" href="@EnlaceMail()" title="Avisar por mail">✉ Mail</a>
             }
             else
             {
-                <span class="btn btn-outline-secondary disabled" title="Este artista no tiene mail cargado">
-                    Enviar por mail
-                </span>
-                <a class="small ms-1" href="@($"artistas/{detalle.ArtistaId}")">cargar mail en su ficha</a>
+                <a class="btn btn-light border text-body-secondary" href="@($"artistas/{detalle.ArtistaId}")" title="Sin mail cargado — click para cargarlo en su ficha">✉ Mail</a>
             }
             @if (!string.IsNullOrWhiteSpace(detalle.ArtistaCelular))
             {
-                <a class="btn btn-outline-success" href="@EnlaceWhatsApp()" target="_blank">Enviar por WhatsApp</a>
+                <a class="btn btn-outline-success" href="@EnlaceWhatsApp()" target="_blank" title="Avisar por WhatsApp">WA</a>
             }
             else
             {
-                <span class="btn btn-outline-success disabled" title="Este artista no tiene celular cargado">
-                    Enviar por WhatsApp
-                </span>
-                <a class="small ms-1" href="@($"artistas/{detalle.ArtistaId}")">cargar celular en su ficha</a>
+                <a class="btn btn-light border text-body-secondary" href="@($"artistas/{detalle.ArtistaId}")" title="Sin celular cargado — click para cargarlo en su ficha">WA</a>
             }
             <a class="btn btn-link" href="liquidaciones">Volver a Liquidaciones</a>
         </div>

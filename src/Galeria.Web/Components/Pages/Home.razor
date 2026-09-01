@@ -11,7 +11,7 @@
 </HeadContent>
 
 <div class="page-wide">
-<h1>Resumen</h1>
+<h1 class="h3 mb-2">Resumen</h1>
 
 @if (resumen is null)
 {
@@ -19,7 +19,7 @@
 }
 else
 {
-    <div class="row g-3 mb-3">
+    <div class="row g-3 mb-2">
         <div class="col-md-6">
             <div class="card h-100" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"ventas?desde={primerDiaDelMes}")'>
                 <div class="card-body py-2">
@@ -43,14 +43,14 @@ else
     @* Retiros vencidos y alquileres sin fecha de recupero NO tienen su propia tarjeta acá — antes
        la tenían Y aparecían de nuevo en Pendientes, duplicado. "Pendientes" abajo es la única
        fuente de esos dos avisos (y de todo lo demás), para no repetir el mismo dato dos veces. *@
-    <h2 class="h5">Pendientes</h2>
+    <h2 class="h6 mb-1">Pendientes</h2>
     @if (!HayPendientes(resumen))
     {
-        <p class="text-body-secondary mb-4">No hay pendientes — todo al día.</p>
+        <p class="text-body-secondary mb-2">No hay pendientes — todo al día.</p>
     }
     else
     {
-        <ul class="list-group list-group-flush border rounded mb-3">
+        <ul class="list-group list-group-flush border rounded mb-2">
             @if (resumen.Avisos.ObrasSinTecnica > 0)
             {
                 <li class="list-group-item py-1" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("obras")'>
@@ -75,25 +75,31 @@ else
                     @resumen.Avisos.AlquileresSinFechaRecupero alquiler(es) sin fecha de recupero.
                 </li>
             }
-            @if (resumen.ArtistasConDeuda.Count > 0)
+            @if (resumen.TotalArtistasConDeuda > 0)
             {
                 <li class="list-group-item py-1" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("artistas")'>
-                    @resumen.ArtistasConDeuda.Count artista(s) con plata pendiente de pago.
+                    @resumen.TotalArtistasConDeuda artista(s) con plata pendiente de pago.
                 </li>
             }
         </ul>
     }
 
-    <div class="row g-4">
+    <div class="row g-3">
         <div class="col-md-7">
-            <h2 class="h5">Artistas a los que se les debe</h2>
+            <div class="d-flex justify-content-between align-items-baseline">
+                <h2 class="h6 mb-1">Artistas a los que se les debe</h2>
+                @if (resumen.TotalArtistasConDeuda > resumen.ArtistasConDeuda.Count)
+                {
+                    <a class="small" href="artistas">ver todos (@resumen.TotalArtistasConDeuda)</a>
+                }
+            </div>
             @if (resumen.ArtistasConDeuda.Count == 0)
             {
-                <p>No hay saldos pendientes.</p>
+                <p class="text-body-secondary">No hay saldos pendientes.</p>
             }
             else
             {
-                <table class="table table-sm table-striped">
+                <table class="table table-sm table-striped mb-0">
                     <thead><tr><th>Artista</th><th>Hace cuánto no cobra</th><th class="text-end">Saldo $</th><th class="text-end">Saldo U$S</th></tr></thead>
                     <tbody>
                         @foreach (var artista in resumen.ArtistasConDeuda)
@@ -111,14 +117,17 @@ else
         </div>
 
         <div class="col-md-5">
-            <h2 class="h5">Últimas ventas</h2>
+            <div class="d-flex justify-content-between align-items-baseline">
+                <h2 class="h6 mb-1">Últimas ventas</h2>
+                <a class="small" href="ventas">ver todas</a>
+            </div>
             @if (resumen.UltimasVentas.Count == 0)
             {
-                <p>Todavía no hay ventas registradas.</p>
+                <p class="text-body-secondary">Todavía no hay ventas registradas.</p>
             }
             else
             {
-                <table class="table table-sm table-striped">
+                <table class="table table-sm table-striped mb-0">
                     <thead><tr><th>Fecha</th><th>Obra</th><th class="text-end">Precio</th></tr></thead>
                     <tbody>
                         @foreach (var venta in resumen.UltimasVentas)
@@ -147,7 +156,7 @@ else
     private static bool HayPendientes(ResumenDashboard r) =>
         r.Avisos.ObrasSinTecnica > 0 || r.Avisos.ObrasSinRubro > 0
         || r.Avisos.RetirosVencidos > 0 || r.Avisos.AlquileresSinFechaRecupero > 0
-        || r.ArtistasConDeuda.Count > 0;
+        || r.TotalArtistasConDeuda > 0;
 
     private static string Antiguedad(DateOnly? ultimaLiquidacion)
     {

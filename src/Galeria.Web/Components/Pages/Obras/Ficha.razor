@@ -203,11 +203,10 @@ else
                         <InputNumber TValue="decimal" class="form-control" Value="Input.Utilidad" ValueChanged="OnUtilidadChanged" ValueExpression="() => Input.Utilidad" />
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Precio de venta</label>
+                        <label class="form-label" title="Calculado automático a partir de Costo/Utilidad/IVA — se puede ajustar a mano.">Precio de venta ⓘ</label>
                         <InputNumber TValue="decimal" class="form-control fw-bold" Value="Input.PrecioVenta" ValueChanged="OnPrecioVentaChanged" ValueExpression="() => Input.PrecioVenta" />
                     </div>
                 </div>
-                <div class="form-text mt-n2 mb-2">Precio de venta calculado automático — se puede ajustar a mano.</div>
 
                 <div class="mb-3 form-check">
                     <InputCheckbox class="form-check-input" id="pagoContado" @bind-Value="Input.PagoContado" />

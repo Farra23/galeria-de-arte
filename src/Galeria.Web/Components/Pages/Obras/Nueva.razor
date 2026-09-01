@@ -132,7 +132,7 @@ else
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Existencia</label>
+                        <label class="form-label" title="Piezas iguales bajo un mismo código (ej. 10 caravanas idénticas → existencia 10).">Existencia ⓘ</label>
                         <InputNumber class="form-control" @bind-Value="Input.Existencia" />
                     </div>
                     <div class="col-md-4 mb-3">
@@ -147,11 +147,10 @@ else
                         <label class="form-check-label" for="tieneIva">Tiene IVA</label>
                     </div>
                 </div>
-                <div class="form-text mt-n2 mb-2">Existencia: piezas iguales bajo un mismo código.</div>
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Serie (piezas)</label>
+                        <label class="form-label" title="Piezas distintas con el mismo formulario, cada una con su propio código (ej. 10 caravanas distintas → 10).">Serie (piezas) ⓘ</label>
                         <InputNumber class="form-control" @bind-Value="Input.CantidadEnSerie" />
                     </div>
                     @if (Input.CantidadEnSerie > 1)
@@ -162,7 +161,6 @@ else
                         </div>
                     }
                 </div>
-                <div class="form-text mt-n2 mb-2">Serie: piezas distintas con el mismo formulario, cada una con su código.</div>
             </div>
 
             <div class="col-md-6">
@@ -176,11 +174,10 @@ else
                         <InputNumber TValue="decimal" class="form-control" Value="Input.Utilidad" ValueChanged="OnUtilidadChanged" ValueExpression="() => Input.Utilidad" />
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Precio de venta</label>
+                        <label class="form-label" title="Calculado automático a partir de Costo/Utilidad/IVA — se puede ajustar a mano.">Precio de venta ⓘ</label>
                         <InputNumber TValue="decimal" class="form-control fw-bold" Value="Input.PrecioVenta" ValueChanged="OnPrecioVentaChanged" ValueExpression="() => Input.PrecioVenta" />
                     </div>
                 </div>
-                <div class="form-text mt-n2 mb-2">Precio de venta calculado automático — se puede ajustar a mano.</div>
 
                 <div class="mb-3 form-check">
                     <InputCheckbox class="form-check-input" id="pagoContado" @bind-Value="Input.PagoContado" />
@@ -212,8 +209,10 @@ else
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "Guardar")</button>
-        <a href="obras" class="btn btn-link text-danger">Cancelar</a>
+        <div class="mt-1 mb-3">
+            <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "Guardar")</button>
+            <a href="obras" class="btn btn-link text-danger">Cancelar</a>
+        </div>
     </EditForm>
 }
 </div>

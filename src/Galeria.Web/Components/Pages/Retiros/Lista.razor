@@ -106,9 +106,17 @@ else
                         {
                             <a class="btn btn-sm btn-outline-secondary" href="@EnlaceMail(retiro)" title="Avisar por mail">✉</a>
                         }
+                        else
+                        {
+                            <a class="btn btn-sm btn-light border text-body-secondary" href="@($"artistas/{retiro.ArtistaId}")" title="Sin mail cargado — click para cargarlo en su ficha">✉</a>
+                        }
                         @if (!string.IsNullOrWhiteSpace(retiro.ArtistaCelular))
                         {
                             <a class="btn btn-sm btn-outline-success" href="@EnlaceWhatsApp(retiro)" target="_blank" title="Avisar por WhatsApp">WA</a>
+                        }
+                        else
+                        {
+                            <a class="btn btn-sm btn-light border text-body-secondary" href="@($"artistas/{retiro.ArtistaId}")" title="Sin celular cargado — click para cargarlo en su ficha">WA</a>
                         }
                         @if (retiro.Tipo == TipoRetiro.Temporal && !retiro.EstaDevuelto)
                         {

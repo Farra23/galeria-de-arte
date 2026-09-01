@@ -14,7 +14,8 @@ public record RetiroListItem(
     DateOnly? FechaEstimadaDevolucion,
     bool EstaVencido,
     string? ArtistaCorreo,
-    string? ArtistaCelular);
+    string? ArtistaCelular,
+    int ArtistaId);
 
 public record RegistrarRetiroRequest(
     int ObraId,

@@ -34,7 +34,8 @@ public class RetiroRepository(GaleriaDbContext db) : IRetiroRepository
                 r.FechaEstimadaDevolucion,
                 r.FechaDevolucion == null && r.FechaEstimadaDevolucion != null && r.FechaEstimadaDevolucion < hoy,
                 r.Obra.Artista.Correo,
-                r.Obra.Artista.Celular))
+                r.Obra.Artista.Celular,
+                r.Obra.ArtistaId))
             .FirstOrDefaultAsync(ct);
     }
 
@@ -83,7 +84,8 @@ public class RetiroRepository(GaleriaDbContext db) : IRetiroRepository
                 r.FechaEstimadaDevolucion,
                 r.FechaDevolucion == null && r.FechaEstimadaDevolucion != null && r.FechaEstimadaDevolucion < hoy,
                 r.Obra.Artista.Correo,
-                r.Obra.Artista.Celular))
+                r.Obra.Artista.Celular,
+                r.Obra.ArtistaId))
             .ToListAsync(ct);
     }
 

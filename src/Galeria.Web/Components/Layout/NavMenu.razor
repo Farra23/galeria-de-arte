@@ -11,7 +11,10 @@
         <button type="button" class="hamburger-btn" @onclick="AlternarNav" aria-label="Abrir o cerrar el menú" title="Menú">
             <span class="hamburger-icon @(navAbierto ? "hamburger-icon-abierto" : "")"></span>
         </button>
-        <button type="button" class="back-btn" onclick="navHistorial.volver()" aria-label="Volver atrás" title="Volver atrás">←</button>
+        @if (currentUrl != "")
+        {
+            <button type="button" class="back-btn" onclick="navHistorial.volver()" aria-label="Volver atrás" title="Volver atrás">←</button>
+        }
     </div>
 
     <AuthorizeView>

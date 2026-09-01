@@ -11,5 +11,9 @@ public record ResumenDashboard(
     List<Ventas.VentaListItem> UltimasVentas,
     decimal TotalAdeudadoPesos,
     decimal TotalAdeudadoDolares,
+    // Recorte para que el Resumen no dependa del tamaño de la base (podría haber cientos de
+    // artistas con deuda) — TotalArtistasConDeuda es el conteo real para el aviso de Pendientes,
+    // ArtistasConDeuda es solo lo que se muestra en la tabla (los más urgentes primero).
     List<ArtistaConDeuda> ArtistasConDeuda,
+    int TotalArtistasConDeuda,
     AvisosOperativos Avisos);

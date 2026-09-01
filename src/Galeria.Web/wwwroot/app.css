@@ -53,6 +53,7 @@ a, .btn-link {
 .page-narrow {
     max-width: 800px;
     margin: 0 auto;
+    padding-bottom: 1rem;
 }
 
 /* Variante más ancha para formularios con filas de varias columnas adentro (alto/ancho/largo,
@@ -60,6 +61,7 @@ a, .btn-link {
 .page-form {
     max-width: 960px;
     margin: 0 auto;
+    padding-bottom: 1rem;
 }
 
 /* Pedido del cliente: los formularios largos (Nueva obra, Nueva venta, etc.) obligaban a
