@@ -1,8 +1,11 @@
 :root {
-    /* Azul marino: color único de acento para toda la aplicación (botones, links, nav, foco). */
+    /* Azul marino: color único de acento para toda la aplicación (botones, links, nav, foco,
+       encabezados de sección). */
     --color-navy: #0a2540;
     --color-navy-dark: #071a2e;
     --color-navy-light: #14335c;
+    --radius: 10px;
+    --radius-sm: 8px;
 }
 
 html, body {
@@ -10,6 +13,86 @@ html, body {
 }
 
 a, .btn-link {
+    color: var(--color-navy);
+}
+
+/* Bordes redondeados consistentes en toda la app — Bootstrap 5.1 no trae variable CSS para
+   esto (recién en 5.3), así que se pisa clase por clase acá en vez de tener un radio distinto
+   en cada componente. */
+.card, .modal-content, .alert, .dropdown-menu, .list-group, .table-responsive {
+    border-radius: var(--radius) !important;
+}
+
+.btn, .form-control, .form-select, .badge, .form-control:focus, .form-select:focus {
+    border-radius: var(--radius-sm) !important;
+}
+
+.list-group {
+    overflow: hidden;
+}
+
+.table-responsive {
+    border: 1px solid #e5e5e5;
+}
+
+.table-responsive > .table {
+    margin-bottom: 0;
+}
+
+/* Panel "Pendientes" del Resumen: acordeón nativo (<details>/<summary>, sin JS) en tono ámbar
+   para que se note que son avisos que requieren acción, distinto del resto de la pantalla. */
+.pendientes-panel {
+    background-color: #fff8ec;
+    border: 1px solid #f5c265;
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.pendientes-panel summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 0.45rem 0.9rem;
+    font-weight: 600;
+    color: #8a5a00;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+    .pendientes-panel summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .pendientes-panel summary::before {
+        content: "▸";
+        display: inline-block;
+        transition: transform 0.15s ease;
+    }
+
+.pendientes-panel[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.pendientes-panel summary .badge {
+    background-color: #f0a63d;
+    color: #402c00;
+}
+
+.pendientes-panel .list-group {
+    border-top: 1px solid #f5c265;
+    border-radius: 0 !important;
+}
+
+.pendientes-panel .list-group-item {
+    background: transparent;
+    border-color: #f5e0b3;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+}
+
+/* Encabezados de sección en azul marino — el nav ya usa este color, así queda como el mismo
+   acento "de detalle" en el resto de la pantalla en vez de texto negro plano. */
+h2, .h5, .h6 {
     color: var(--color-navy);
 }
 
@@ -110,10 +193,6 @@ a, .btn-link {
 .page-wide {
     max-width: 1400px;
     margin: 0 auto;
-}
-
-.content {
-    padding-top: 1.1rem;
 }
 
 h1:focus {

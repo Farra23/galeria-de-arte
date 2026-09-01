@@ -21,7 +21,7 @@ else
 {
     <div class="row g-3 mb-2">
         <div class="col-md-6">
-            <div class="card h-100" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"ventas?desde={primerDiaDelMes}")'>
+            <div class="card h-100 text-center" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo($"ventas?desde={primerDiaDelMes}")'>
                 <div class="card-body py-2">
                     <div class="text-body-secondary">Ventas del mes</div>
                     <div class="fs-4 fw-bold">@resumen.VentasDelMes.Cantidad</div>
@@ -30,7 +30,7 @@ else
             </div>
         </div>
         <div class="col-md-6">
-            <div class="card h-100" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("artistas")'>
+            <div class="card h-100 text-center" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("artistas")'>
                 <div class="card-body py-2">
                     <div class="text-body-secondary">Adeudado a artistas</div>
                     <div class="fs-5 fw-bold">@Formato.Monto(resumen.TotalAdeudadoPesos, Moneda.Pesos)</div>
@@ -42,46 +42,50 @@ else
 
     @* Retiros vencidos y alquileres sin fecha de recupero NO tienen su propia tarjeta acá — antes
        la tenían Y aparecían de nuevo en Pendientes, duplicado. "Pendientes" abajo es la única
-       fuente de esos dos avisos (y de todo lo demás), para no repetir el mismo dato dos veces. *@
-    <h2 class="h6 mb-1">Pendientes</h2>
+       fuente de esos dos avisos (y de todo lo demás), para no repetir el mismo dato dos veces.
+       <details>/<summary> nativo en vez de un componente de acordeón: no hace falta JS ni
+       Bootstrap Collapse para algo tan simple, y arranca abierto para no esconder avisos. *@
     @if (!HayPendientes(resumen))
     {
-        <p class="text-body-secondary mb-2">No hay pendientes — todo al día.</p>
+        <p class="text-body-secondary mb-2">Pendientes: no hay — todo al día.</p>
     }
     else
     {
-        <ul class="list-group list-group-flush border rounded mb-2">
-            @if (resumen.Avisos.ObrasSinTecnica > 0)
-            {
-                <li class="list-group-item py-1" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("obras")'>
-                    @resumen.Avisos.ObrasSinTecnica obra(s) sin técnica cargada.
-                </li>
-            }
-            @if (resumen.Avisos.ObrasSinRubro > 0)
-            {
-                <li class="list-group-item py-1" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("obras")'>
-                    @resumen.Avisos.ObrasSinRubro obra(s) sin rubro cargado.
-                </li>
-            }
-            @if (resumen.Avisos.RetirosVencidos > 0)
-            {
-                <li class="list-group-item py-1" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("retiros")'>
-                    @resumen.Avisos.RetirosVencidos retiro(s) vencido(s) sin devolver.
-                </li>
-            }
-            @if (resumen.Avisos.AlquileresSinFechaRecupero > 0)
-            {
-                <li class="list-group-item py-1" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("alquileres")'>
-                    @resumen.Avisos.AlquileresSinFechaRecupero alquiler(es) sin fecha de recupero.
-                </li>
-            }
-            @if (resumen.TotalArtistasConDeuda > 0)
-            {
-                <li class="list-group-item py-1" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("artistas")'>
-                    @resumen.TotalArtistasConDeuda artista(s) con plata pendiente de pago.
-                </li>
-            }
-        </ul>
+        <details class="pendientes-panel mb-2" open>
+            <summary>Pendientes <span class="badge">@TotalPendientes(resumen)</span></summary>
+            <ul class="list-group list-group-flush">
+                @if (resumen.Avisos.ObrasSinTecnica > 0)
+                {
+                    <li class="list-group-item" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("obras")'>
+                        @resumen.Avisos.ObrasSinTecnica obra(s) sin técnica cargada.
+                    </li>
+                }
+                @if (resumen.Avisos.ObrasSinRubro > 0)
+                {
+                    <li class="list-group-item" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("obras")'>
+                        @resumen.Avisos.ObrasSinRubro obra(s) sin rubro cargado.
+                    </li>
+                }
+                @if (resumen.Avisos.RetirosVencidos > 0)
+                {
+                    <li class="list-group-item" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("retiros")'>
+                        @resumen.Avisos.RetirosVencidos retiro(s) vencido(s) sin devolver.
+                    </li>
+                }
+                @if (resumen.Avisos.AlquileresSinFechaRecupero > 0)
+                {
+                    <li class="list-group-item" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("alquileres")'>
+                        @resumen.Avisos.AlquileresSinFechaRecupero alquiler(es) sin fecha de recupero.
+                    </li>
+                }
+                @if (resumen.TotalArtistasConDeuda > 0)
+                {
+                    <li class="list-group-item" style="cursor:pointer" @onclick='() => NavigationManager.NavigateTo("artistas")'>
+                        @resumen.TotalArtistasConDeuda artista(s) con plata pendiente de pago.
+                    </li>
+                }
+            </ul>
+        </details>
     }
 
     <div class="row g-3">
@@ -157,6 +161,13 @@ else
         r.Avisos.ObrasSinTecnica > 0 || r.Avisos.ObrasSinRubro > 0
         || r.Avisos.RetirosVencidos > 0 || r.Avisos.AlquileresSinFechaRecupero > 0
         || r.TotalArtistasConDeuda > 0;
+
+    // Cuenta de renglones del panel (no de piezas/artistas individuales) — es "cuántas cosas
+    // distintas necesitan tu atención", no "cuántas obras/artistas hay en total".
+    private static int TotalPendientes(ResumenDashboard r) =>
+        (r.Avisos.ObrasSinTecnica > 0 ? 1 : 0) + (r.Avisos.ObrasSinRubro > 0 ? 1 : 0)
+        + (r.Avisos.RetirosVencidos > 0 ? 1 : 0) + (r.Avisos.AlquileresSinFechaRecupero > 0 ? 1 : 0)
+        + (r.TotalArtistasConDeuda > 0 ? 1 : 0);
 
     private static string Antiguedad(DateOnly? ultimaLiquidacion)
     {

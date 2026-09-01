@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
-    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="@Version("app.css")" />
     <link rel="stylesheet" href="Galeria.Web.styles.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <HeadOutlet @rendermode="RenderModeForPage" />
@@ -15,7 +15,7 @@
 <body>
     <Routes @rendermode="RenderModeForPage" />
     <script src="_framework/blazor.web.js"></script>
-    <script src="app.js"></script>
+    <script src="@Version("app.js")"></script>
 </body>
 
 </html>
@@ -24,7 +24,21 @@
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
 
+    [Inject]
+    private IWebHostEnvironment Env { get; set; } = default!;
+
     private IComponentRenderMode? RenderModeForPage => HttpContext.Request.Path.StartsWithSegments("/Account")
         ? null
         : InteractiveServer;
+
+    // Cache-busting real (no manual): sin esto, el navegador puede quedarse con una copia vieja
+    // de app.css/app.js indefinidamente después de publicar una actualización — ni el cliente ni
+    // nosotros mismos en dev notaríamos que el estilo no cambió. El query string cambia solo
+    // cuando el archivo cambia de verdad (hora de modificación), no en cada request.
+    private string Version(string archivo)
+    {
+        var ruta = Path.Combine(Env.WebRootPath, archivo);
+        var version = File.Exists(ruta) ? File.GetLastWriteTimeUtc(ruta).Ticks : 0;
+        return $"{archivo}?v={version}";
+    }
 }
