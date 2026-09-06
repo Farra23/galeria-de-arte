@@ -25,6 +25,7 @@ public class Obra
     public decimal? LargoCm { get; set; }
     public string? Observaciones { get; set; }
     public string? ImagenPrincipalPath { get; set; }
+    public DateOnly? FechaEtiquetaImpresa { get; set; }
 
     public Artista Artista { get; set; } = null!;
     public Serie? Serie { get; set; }

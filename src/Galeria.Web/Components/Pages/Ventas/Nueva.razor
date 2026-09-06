@@ -1,4 +1,5 @@
 @page "/ventas/nueva"
+@page "/ventas/rapida"
 @attribute [Authorize]
 @using System.ComponentModel.DataAnnotations
 @using Galeria.Application.Obras
@@ -8,13 +9,13 @@
 @inject NavigationManager NavigationManager
 @inject IWebHostEnvironment WebHostEnvironment
 
-<PageTitle>Nueva venta</PageTitle>
+<PageTitle>@(modoRapido ? "Venta rápida" : "Nueva venta")</PageTitle>
 <HeadContent>
-    <meta name="description" content="Registrar la venta de una obra: busca la pieza, confirmá cantidad y precio." />
+    <meta name="description" content="@(modoRapido ? "Vender escaneando el código de barras de la obra." : "Registrar la venta de una obra: busca la pieza, confirmá cantidad y precio.")" />
 </HeadContent>
 
 <div class="page-form">
-<h1>Nueva venta</h1>
+<h1>@(modoRapido ? "Venta rápida" : "Nueva venta")</h1>
 
 @if (error is not null)
 {
@@ -24,8 +25,8 @@
 @if (obra is null)
 {
     <div class="mb-3">
-        <label class="form-label">Buscar obra por código, nombre o artista</label>
-        <input class="form-control" @bind="texto" @bind:event="oninput" @bind:after="BuscarAsync" autofocus />
+        <label class="form-label">@(modoRapido ? "Escaneá el código de barras de la obra" : "Buscar obra por código, nombre o artista")</label>
+        <input class="form-control" @bind="texto" @bind:event="oninput" @bind:after="BuscarAsync" autofocus placeholder="@(modoRapido ? "Esperando escaneo..." : "")" />
     </div>
 
     @if (resultados is not null)
@@ -145,10 +146,14 @@ else
     private string? error;
     private int guardandoFlag;
     private bool guardando => guardandoFlag != 0;
+    private bool modoRapido;
     private InputModel Input { get; set; } = new();
     private ConfirmModal confirmModal = default!;
     private IBrowserFile? imagenSeleccionada;
     private string? imagenError;
+
+    protected override void OnInitialized() =>
+        modoRapido = NavigationManager.Uri.Contains("/ventas/rapida", StringComparison.OrdinalIgnoreCase);
 
     private void SeleccionarImagen(InputFileChangeEventArgs e)
     {
@@ -156,7 +161,22 @@ else
         ImagenObraHelper.EsValida(e.File, out imagenError);
     }
 
-    private async Task BuscarAsync() => resultados = await VentaService.BuscarObrasDisponiblesAsync(texto);
+    private async Task BuscarAsync()
+    {
+        resultados = await VentaService.BuscarObrasDisponiblesAsync(texto);
+
+        // Venta rápida (Adenda 1, escaneo de código de barras): un lector de código de barras
+        // "tipea" el código completo de una y listo — si matchea exacto una sola obra disponible,
+        // se salta el paso de elegir de la lista y va directo a la confirmación.
+        if (modoRapido && !string.IsNullOrWhiteSpace(texto))
+        {
+            var match = resultados.FirstOrDefault(o => string.Equals(o.CodigoVisible, texto.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (match is not null)
+            {
+                await SeleccionarAsync(match.Id);
+            }
+        }
+    }
 
     private async Task SeleccionarAsync(int obraId)
     {

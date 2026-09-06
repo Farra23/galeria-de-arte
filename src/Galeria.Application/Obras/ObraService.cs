@@ -223,6 +223,31 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
         }
     }
 
+    // Etiquetas adhesivas con código de barras: se marca al momento de generar el PDF (mismo
+    // criterio que "Descargar PDF" en Certificado/Liquidación, no hay forma de confirmar que la
+    // impresión física salió bien, así que "se generó el PDF" es la señal disponible).
+    public async Task MarcarEtiquetaImpresaAsync(int obraId, CancellationToken ct = default)
+    {
+        var ficha = await obras.ObtenerFichaAsync(obraId, ct);
+
+        await obras.MarcarEtiquetaImpresaAsync(obraId, ct);
+        await obras.GuardarCambiosAsync(ct);
+
+        if (ficha is not null)
+        {
+            await auditoria.RegistrarAsync(new RegistrarAuditoriaRequest(
+                Pantalla: "Obras",
+                TipoOperacion: "Modificacion",
+                Tabla: "Obra",
+                Columna: "EtiquetaImpresa",
+                ValorAnterior: ficha.FechaEtiquetaImpresa?.ToString("dd/MM/yyyy"),
+                ValorNuevo: DateOnly.FromDateTime(DateTime.Now).ToString("dd/MM/yyyy"),
+                ArtistaId: ficha.ArtistaId,
+                ObraId: obraId,
+                EntidadId: obraId.ToString()), ct);
+        }
+    }
+
     public Task<List<MovimientoItem>> ObtenerMovimientosAsync(int obraId, CancellationToken ct = default) =>
         obras.ObtenerMovimientosAsync(obraId, ct);
 

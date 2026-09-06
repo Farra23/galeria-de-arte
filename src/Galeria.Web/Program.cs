@@ -70,6 +70,7 @@ builder.Services.AddScoped<IObraRepository, ObraRepository>();
 builder.Services.AddScoped<IParametroRepository, ParametroRepository>();
 builder.Services.AddScoped<ICatalogoRepository, CatalogoRepository>();
 builder.Services.AddScoped<IAuditoriaRepository, AuditoriaRepository>();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IVentaRepository, VentaRepository>();
 builder.Services.AddScoped<ICertificadoRepository, CertificadoRepository>();
@@ -428,6 +429,22 @@ app.MapGet("/retiros/{id:int}/pdf", async (int id, RetiroService retiros, IParam
 
     var pdf = RetiroPdfGenerator.Generar(retiro, nombreGaleria);
     return Results.File(pdf, "application/pdf", $"retiro-{id}.pdf");
+}).RequireAuthorization();
+
+// Adenda 1 al contrato (etiquetas con código de barras): se marca la obra como "etiqueta
+// impresa" en el mismo momento en que se genera el PDF — no hay forma de confirmar que la
+// impresión física salió bien, mismo criterio que "Descargar PDF" en el resto de los documentos.
+app.MapGet("/obras/{id:int}/etiqueta.pdf", async (int id, ObraService obras) =>
+{
+    var ficha = await obras.ObtenerFichaAsync(id);
+    if (ficha is null)
+    {
+        return Results.NotFound();
+    }
+
+    var pdf = EtiquetaPdfGenerator.Generar(ficha);
+    await obras.MarcarEtiquetaImpresaAsync(id);
+    return Results.File(pdf, "application/pdf", $"etiqueta-{ficha.CodigoVisible}.pdf");
 }).RequireAuthorization();
 
 app.Run();

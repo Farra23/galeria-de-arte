@@ -36,6 +36,11 @@ public interface IObraRepository
     // para los dos casos, la diferencia es solo cuándo se lo llama.
     Task ActualizarImagenAsync(int obraId, string? rutaRelativa, CancellationToken ct = default);
 
+    // Etiquetas adhesivas con código de barras: solo importa la última vez que se imprimió, para
+    // poder armar una cola de "obras pendientes de etiqueta" y permitir reimprimir en cualquier
+    // momento (misma idea que ActualizarImagenAsync, un campo suelto que no pasa por el EditForm).
+    Task MarcarEtiquetaImpresaAsync(int obraId, CancellationToken ct = default);
+
     // Entidad rastreada (no DTO): la usan otros módulos (Ventas, Retiros, Alquileres, Devoluciones)
     // que necesitan mutar Existencia/Estado como parte de su propia operación. Obra sigue siendo
     // dueña de su propia persistencia — los demás módulos no tocan la tabla Obras directamente.

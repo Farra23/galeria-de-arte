@@ -92,7 +92,8 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.PagoContado,
                 o.SerieId,
                 o.Serie != null ? o.Serie.Nombre : null,
-                o.ImagenPrincipalPath))
+                o.ImagenPrincipalPath,
+                o.FechaEtiquetaImpresa))
             .ToListAsync(ct);
 
         // El texto libre compara contra el código visible (Artista.Codigo + NumeroObra, ej.
@@ -216,7 +217,8 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.Serie != null ? o.Serie.Nombre : null,
                 o.Serie != null ? o.Serie.Obras.Count(x => x.NumeroObra <= o.NumeroObra) : (int?)null,
                 o.Serie != null ? o.Serie.Obras.Count() : (int?)null,
-                o.ImagenPrincipalPath))
+                o.ImagenPrincipalPath,
+                o.FechaEtiquetaImpresa))
             .FirstOrDefaultAsync(ct);
 
     // Moneda y Existencia quedan afuera a propósito (ver ObraDtos.cs): no se tocan desde acá.
@@ -247,6 +249,12 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
     {
         var obra = await db.Obras.FirstAsync(o => o.Id == obraId, ct);
         obra.ImagenPrincipalPath = rutaRelativa;
+    }
+
+    public async Task MarcarEtiquetaImpresaAsync(int obraId, CancellationToken ct = default)
+    {
+        var obra = await db.Obras.FirstAsync(o => o.Id == obraId, ct);
+        obra.FechaEtiquetaImpresa = DateOnly.FromDateTime(DateTime.Now);
     }
 
     public Task<Obra?> ObtenerEntidadAsync(int id, CancellationToken ct = default) =>

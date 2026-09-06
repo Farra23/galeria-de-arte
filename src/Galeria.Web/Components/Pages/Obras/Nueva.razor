@@ -23,6 +23,10 @@
 {
     <div class="alert alert-success alert-dismissible">
         @mensaje
+        @if (ultimaObraId is not null)
+        {
+            <a class="btn btn-sm btn-outline-secondary ms-2" href="@($"obras/{ultimaObraId}/etiqueta.pdf")" target="_blank">Imprimir etiqueta</a>
+        }
         <button type="button" class="btn-close" @onclick="() => mensaje = null"></button>
     </div>
 }
@@ -256,6 +260,7 @@ else
         set => Input.LargoCm = unidadMm ? value / 10 : value;
     }
     private string? mensaje;
+    private int? ultimaObraId;
     private int formResetKey;
     private bool precioEditadoManualmente;
     private IBrowserFile? imagenSeleccionada;
@@ -388,14 +393,17 @@ else
                 Input.PagoContado,
                 Input.Observaciones);
 
+            ultimaObraId = null;
+
             if (Input.CantidadEnSerie > 1)
             {
                 await ObraService.CrearSerieAsync(request, Input.CantidadEnSerie, Input.NombreSerie ?? Input.Titulo);
-                mensaje = $"Serie \"{request.Titulo}\" agregada ({Input.CantidadEnSerie} piezas). Podés seguir cargando obras.";
+                mensaje = $"Serie \"{request.Titulo}\" agregada ({Input.CantidadEnSerie} piezas). Las etiquetas de cada pieza se imprimen desde su Ficha.";
             }
             else
             {
                 var obraId = await ObraService.CrearAsync(request);
+                ultimaObraId = obraId;
 
                 if (imagenSeleccionada is not null && imagenError is null)
                 {

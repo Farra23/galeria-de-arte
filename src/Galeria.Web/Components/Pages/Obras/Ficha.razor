@@ -42,6 +42,16 @@ else
                 <dd class="col-sm-3"><span class="badge bg-secondary">@Formato.Estado(ficha.Estado)</span></dd>
                 <dt class="col-sm-3">Fecha de ingreso</dt>
                 <dd class="col-sm-3">@ficha.FechaIngreso.ToString("dd/MM/yyyy")</dd>
+                <dt class="col-sm-3">Etiqueta</dt>
+                <dd class="col-sm-9">
+                    <span class="text-body-secondary">
+                        @(ficha.FechaEtiquetaImpresa is null ? "Sin imprimir" : $"Impresa el {ficha.FechaEtiquetaImpresa:dd/MM/yyyy}")
+                    </span>
+                    <a class="btn btn-sm btn-outline-secondary ms-2" href="@($"obras/{Id}/etiqueta.pdf")" target="_blank"
+                       @onclick="() => ficha = ficha with { FechaEtiquetaImpresa = DateOnly.FromDateTime(DateTime.Now) }">
+                        @(ficha.FechaEtiquetaImpresa is null ? "Imprimir etiqueta" : "Reimprimir etiqueta")
+                    </a>
+                </dd>
                 @if (ficha.SerieNombre is not null)
                 {
                     <dt class="col-sm-3">Serie</dt>
