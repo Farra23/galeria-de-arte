@@ -17,6 +17,9 @@ public class VentaService(IVentaRepository ventas, IObraRepository obras, IParam
     public Task<List<VentaListItem>> BuscarAsync(VentaFiltro filtro, CancellationToken ct = default) =>
         ventas.BuscarAsync(filtro, ct);
 
+    public Task<List<VentaListItem>> ObtenerUltimasAsync(int cantidad, CancellationToken ct = default) =>
+        ventas.ObtenerUltimasAsync(cantidad, ct);
+
     // Punto único donde una venta afecta el stock (requerimiento 0.5: la obra pasa a Sin stock
     // cuando la existencia llega a 0) y deja rastro en el libro de movimientos y en Auditoría.
     public async Task<int> RegistrarAsync(RegistrarVentaRequest request, CancellationToken ct = default)

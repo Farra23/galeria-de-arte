@@ -57,7 +57,11 @@ public class AlquilerService(IAlquilerRepository alquileres, IObraRepository obr
         await alquileres.GuardarCambiosAsync(ct);
 
         obra.Existencia -= 1;
-        obra.Estado = EstadoObra.Alquilada;
+
+        // Mismo criterio que Ventas y Retiros: si quedan más unidades del mismo código en stock,
+        // no bloquearlas -- antes esto marcaba toda la obra como "Alquilada" aunque quedaran
+        // unidades disponibles (ej. alquilar 1 de 4 dejaba las otras 3 invisibles para vender).
+        obra.Estado = obra.Existencia > 0 ? EstadoObra.Disponible : EstadoObra.Alquilada;
 
         await obras.RegistrarMovimientoAsync(new Movimiento
         {

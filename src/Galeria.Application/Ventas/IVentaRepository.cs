@@ -9,5 +9,8 @@ public interface IVentaRepository
 
     Task<List<VentaListItem>> BuscarAsync(VentaFiltro filtro, CancellationToken ct = default);
 
+    // Las N más recientes por fecha, ya limitadas en la consulta -- ver comentario en el repositorio.
+    Task<List<VentaListItem>> ObtenerUltimasAsync(int cantidad, CancellationToken ct = default);
+
     Task GuardarCambiosAsync(CancellationToken ct = default);
 }

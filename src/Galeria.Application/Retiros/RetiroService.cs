@@ -49,7 +49,14 @@ public class RetiroService(IRetiroRepository retiros, IObraRepository obras, Aud
         await retiros.GuardarCambiosAsync(ct);
 
         obra.Existencia -= request.Cantidad;
-        obra.Estado = request.Tipo == TipoRetiro.Temporal ? EstadoObra.RetiradaTemporal : EstadoObra.RetiradaDefinitiva;
+
+        // Si la obra tiene varias unidades bajo el mismo código (Existencia > 1), retirar solo
+        // parte del lote no debe bloquear las que quedan -- mismo criterio que ya usa Ventas
+        // (EstadoObra.SinStock recién cuando Existencia llega a 0). Antes esto pisaba el estado
+        // sin mirar Existencia: retirar 1 de 4 dejaba las otras 3 marcadas como no disponibles.
+        obra.Estado = obra.Existencia > 0
+            ? EstadoObra.Disponible
+            : request.Tipo == TipoRetiro.Temporal ? EstadoObra.RetiradaTemporal : EstadoObra.RetiradaDefinitiva;
 
         await obras.RegistrarMovimientoAsync(new Movimiento
         {

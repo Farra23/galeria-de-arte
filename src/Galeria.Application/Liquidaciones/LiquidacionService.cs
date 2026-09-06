@@ -18,6 +18,9 @@ public class LiquidacionService(ILiquidacionRepository repositorio, IArtistaRepo
     public Task<DateOnly?> ObtenerUltimaFechaAsync(int artistaId, CancellationToken ct = default) =>
         repositorio.ObtenerUltimaFechaAsync(artistaId, ct);
 
+    public Task<Dictionary<int, DateOnly>> ObtenerUltimasFechasAsync(IReadOnlyCollection<int> artistaIds, CancellationToken ct = default) =>
+        repositorio.ObtenerUltimasFechasAsync(artistaIds, ct);
+
     // La Agenda de pagos (requerimiento 11) necesita el mismo detalle línea por línea que la
     // vista previa de Liquidación, para partirlo entre "este mes" y "meses anteriores" (11.1).
     public Task<List<LineaPendiente>> ObtenerPendientesAsync(int artistaId, Moneda moneda, CancellationToken ct = default) =>

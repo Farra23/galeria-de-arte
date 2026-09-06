@@ -16,6 +16,30 @@ public class VentaRepository(GaleriaDbContext db) : IVentaRepository
     public Task<Venta?> ObtenerEntidadAsync(int id, CancellationToken ct = default) =>
         db.Ventas.FirstOrDefaultAsync(v => v.Id == id, ct);
 
+    // Para el Resumen: a diferencia de BuscarAsync (que trae todo el historial filtrado y ordena
+    // en memoria por el tema de ORDER BY sobre decimal), acá se ordena por Fecha directo en SQL
+    // -- no es una columna decimal, así que sí se traduce -- y se corta con Take antes de traer
+    // filas de más. Con miles de ventas ya cargadas, pedir "todas" solo para mostrar 5 en el
+    // dashboard era el cuello de botella real de esa pantalla.
+    public async Task<List<VentaListItem>> ObtenerUltimasAsync(int cantidad, CancellationToken ct = default) =>
+        await db.Ventas.AsNoTracking()
+            .Include(v => v.Obra).ThenInclude(o => o.Artista)
+            .Include(v => v.Certificado)
+            .OrderByDescending(v => v.Fecha)
+            .ThenByDescending(v => v.Id)
+            .Take(cantidad)
+            .Select(v => new VentaListItem(
+                v.Id,
+                v.Fecha,
+                v.Obra.Artista.Codigo.ToString("D3") + v.Obra.NumeroObra.ToString("D3"),
+                v.Obra.Titulo,
+                v.Obra.Artista.Apellido + ", " + v.Obra.Artista.Nombre,
+                v.Cantidad,
+                v.Moneda,
+                v.PrecioVenta,
+                v.Certificado != null))
+            .ToListAsync(ct);
+
     public async Task<List<VentaListItem>> BuscarAsync(VentaFiltro filtro, CancellationToken ct = default)
     {
         var query = db.Ventas.AsNoTracking()

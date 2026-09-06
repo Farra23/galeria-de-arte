@@ -31,20 +31,24 @@ public class ResumenService(
             ventasDelMesList.Where(v => v.Moneda == Moneda.Pesos).Sum(v => v.PrecioVenta),
             ventasDelMesList.Where(v => v.Moneda == Moneda.USD).Sum(v => v.PrecioVenta));
 
-        var todasLasVentas = await ventas.BuscarAsync(new VentaFiltro(), ct);
-        var ultimasVentas = todasLasVentas.Take(5).ToList();
+        var ultimasVentas = await ventas.ObtenerUltimasAsync(5, ct);
 
         var todosLosArtistas = await artistas.BuscarAsync(new ArtistaFiltro(), ct);
         var conDeuda = todosLosArtistas.Where(a => a.SaldoPesos > 0 || a.SaldoDolares > 0).ToList();
 
         // La señal de "a este llamalo ya" (0.1 "+"): hace cuánto que no cobra, los más viejos
         // arriba — un artista que nunca cobró (null) es el caso más urgente, va primero.
-        var artistasConDeuda = new List<ArtistaConDeuda>();
-        foreach (var artista in conDeuda)
-        {
-            var ultimaFecha = await liquidaciones.ObtenerUltimaFechaAsync(artista.Id, ct);
-            artistasConDeuda.Add(new ArtistaConDeuda(artista.Id, artista.NombreCompleto, artista.SaldoPesos, artista.SaldoDolares, ultimaFecha));
-        }
+        // Una sola consulta agrupada para todos en vez de una por artista (antes era un
+        // round-trip a la base por cada artista con deuda, en cada carga del Resumen).
+        var ultimasFechas = await liquidaciones.ObtenerUltimasFechasAsync(conDeuda.Select(a => a.Id).ToList(), ct);
+        var artistasConDeuda = conDeuda
+            .Select(artista => new ArtistaConDeuda(
+                artista.Id,
+                artista.NombreCompleto,
+                artista.SaldoPesos,
+                artista.SaldoDolares,
+                ultimasFechas.TryGetValue(artista.Id, out var fecha) ? fecha : null))
+            .ToList();
 
         artistasConDeuda = artistasConDeuda
             .OrderBy(a => a.UltimaLiquidacion.HasValue)

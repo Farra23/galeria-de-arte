@@ -95,6 +95,13 @@ public class LiquidacionRepository(GaleriaDbContext db) : ILiquidacionRepository
             .Select(l => (DateOnly?)l.Fecha)
             .FirstOrDefaultAsync(ct);
 
+    public async Task<Dictionary<int, DateOnly>> ObtenerUltimasFechasAsync(IReadOnlyCollection<int> artistaIds, CancellationToken ct = default) =>
+        await db.Liquidaciones.AsNoTracking()
+            .Where(l => artistaIds.Contains(l.ArtistaId))
+            .GroupBy(l => l.ArtistaId)
+            .Select(g => new { ArtistaId = g.Key, Fecha = g.Max(l => l.Fecha) })
+            .ToDictionaryAsync(x => x.ArtistaId, x => x.Fecha, ct);
+
     public async Task<int> ProximoNumeroAsync(CancellationToken ct = default)
     {
         var maximo = await db.Liquidaciones.MaxAsync(l => (int?)l.NumeroCorrelativo, ct);

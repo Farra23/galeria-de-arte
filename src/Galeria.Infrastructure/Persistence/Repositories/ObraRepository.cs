@@ -280,16 +280,36 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
             // Por palabra en vez de comparar el texto entero de una: si el artista figura como
             // "García, Marcos" y alguien busca "Marcos García" (orden natural, sin la coma), el
             // texto completo nunca matchea aunque las dos palabras estén — así cada palabra se
-            // busca por separado en código+título+artista, sin importar el orden.
-            var palabras = texto.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            // busca por separado en código+título+artista, sin importar el orden. Sin tildes de
+            // los dos lados también, para que "Garcia" (como lo tipea la mayoría) encuentre a
+            // "García" igual.
+            var palabras = QuitarAcentos(texto).Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             resultado = resultado.Where(o =>
             {
-                var haystack = $"{o.CodigoVisible} {o.Titulo} {o.ArtistaNombre}";
+                var haystack = QuitarAcentos($"{o.CodigoVisible} {o.Titulo} {o.ArtistaNombre}");
                 return palabras.All(p => haystack.Contains(p, StringComparison.OrdinalIgnoreCase));
             });
         }
 
         return resultado.OrderBy(o => o.Titulo).Take(15).ToList();
+    }
+
+    // Normaliza a Unicode NFD (separa la letra de su acento) y descarta las marcas diacríticas --
+    // así "Garcia" (como lo tipea la mayoría, sin tilde) encuentra a "García" en la base.
+    private static string QuitarAcentos(string texto)
+    {
+        var normalizado = texto.Normalize(System.Text.NormalizationForm.FormD);
+        var builder = new System.Text.StringBuilder(normalizado.Length);
+
+        foreach (var c in normalizado)
+        {
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                builder.Append(c);
+            }
+        }
+
+        return builder.ToString().Normalize(System.Text.NormalizationForm.FormC);
     }
 
     public async Task<ObraParaOperacion?> ObtenerParaOperacionAsync(int id, CancellationToken ct = default) =>
