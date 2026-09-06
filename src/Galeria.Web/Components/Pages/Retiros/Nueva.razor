@@ -31,7 +31,10 @@
     {
         @if (resultados.Count == 0)
         {
-            <p class="mt-3">No se encontraron obras disponibles con ese criterio.</p>
+            <p class="mt-3">
+                No se encontraron obras disponibles con ese criterio.
+                <span class="text-body-secondary">Puede que el artista no tenga obras en existencia.</span>
+            </p>
         }
         else
         {
@@ -84,11 +87,11 @@ else
             <div class="row">
                 <div class="col-md-3 mb-3">
                     <label class="form-label">Cantidad (por obra)</label>
-                    <InputNumber class="form-control" @bind-Value="Input.Cantidad" />
+                    <InputNumber class="form-control" @bind-Value="Input.Cantidad" ParsingErrorMessage="Ese valor no es un número válido." />
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">Fecha</label>
-                    <InputDate class="form-control" @bind-Value="Input.Fecha" />
+                    <InputDate class="form-control" @bind-Value="Input.Fecha" ParsingErrorMessage="Esa fecha no es válida." />
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">Tipo</label>
@@ -101,7 +104,7 @@ else
                 {
                     <div class="col-md-3 mb-3">
                         <label class="form-label">Devolución estimada</label>
-                        <InputDate class="form-control" @bind-Value="Input.FechaEstimadaDevolucion" />
+                        <InputDate class="form-control" @bind-Value="Input.FechaEstimadaDevolucion" ParsingErrorMessage="Esa fecha no es válida." />
                     </div>
                 }
             </div>
@@ -112,7 +115,7 @@ else
             </div>
 
             <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : seleccion.Count > 1 ? $"Confirmar {seleccion.Count} retiros" : "Confirmar retiro")</button>
-            <button type="button" class="btn btn-link text-danger" @onclick="Cancelar">Cancelar</button>
+            <button type="button" class="btn btn-outline-danger" @onclick="Cancelar">Cancelar</button>
         </EditForm>
     </div>
 }

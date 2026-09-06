@@ -30,7 +30,10 @@
     {
         @if (resultados.Count == 0)
         {
-            <p class="mt-3">No se encontraron obras disponibles con ese criterio.</p>
+            <p class="mt-3">
+                No se encontraron obras disponibles con ese criterio.
+                <span class="text-body-secondary">Puede que el artista no tenga obras en existencia.</span>
+            </p>
         }
         else
         {
@@ -74,19 +77,19 @@ else
             <div class="row">
                 <div class="col-md-3 mb-3">
                     <label class="form-label">Fecha de inicio</label>
-                    <InputDate class="form-control" @bind-Value="Input.FechaInicio" />
+                    <InputDate class="form-control" @bind-Value="Input.FechaInicio" ParsingErrorMessage="Esa fecha no es válida." />
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">Recupero previsto</label>
-                    <InputDate class="form-control" @bind-Value="Input.FechaRecupero" />
+                    <InputDate class="form-control" @bind-Value="Input.FechaRecupero" ParsingErrorMessage="Esa fecha no es válida." />
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">% de alquiler (sobre precio de venta)</label>
-                    <InputNumber TValue="decimal" class="form-control" Value="Input.PorcentajeAlquiler" ValueChanged="OnPorcentajeAlquilerChanged" ValueExpression="() => Input.PorcentajeAlquiler" />
+                    <InputNumber TValue="decimal" class="form-control" Value="Input.PorcentajeAlquiler" ValueChanged="OnPorcentajeAlquilerChanged" ValueExpression="() => Input.PorcentajeAlquiler" ParsingErrorMessage="Ese valor no es un número válido." />
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">% que le toca al artista</label>
-                    <InputNumber TValue="decimal" class="form-control" Value="Input.PorcentajeArtista" ValueChanged="OnPorcentajeArtistaChanged" ValueExpression="() => Input.PorcentajeArtista" />
+                    <InputNumber TValue="decimal" class="form-control" Value="Input.PorcentajeArtista" ValueChanged="OnPorcentajeArtistaChanged" ValueExpression="() => Input.PorcentajeArtista" ParsingErrorMessage="Ese valor no es un número válido." />
                 </div>
             </div>
 
@@ -115,7 +118,7 @@ else
             </div>
 
             <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : seleccion.Count > 1 ? $"Confirmar {seleccion.Count} alquileres" : "Confirmar alquiler")</button>
-            <button type="button" class="btn btn-link text-danger" @onclick="Cancelar">Cancelar</button>
+            <button type="button" class="btn btn-outline-danger" @onclick="Cancelar">Cancelar</button>
         </EditForm>
     </div>
 }

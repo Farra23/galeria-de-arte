@@ -277,11 +277,16 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
         IEnumerable<ObraParaOperacion> resultado = disponibles;
         if (!string.IsNullOrWhiteSpace(texto))
         {
-            var valor = texto.Trim();
+            // Por palabra en vez de comparar el texto entero de una: si el artista figura como
+            // "García, Marcos" y alguien busca "Marcos García" (orden natural, sin la coma), el
+            // texto completo nunca matchea aunque las dos palabras estén — así cada palabra se
+            // busca por separado en código+título+artista, sin importar el orden.
+            var palabras = texto.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             resultado = resultado.Where(o =>
-                o.CodigoVisible.Contains(valor, StringComparison.OrdinalIgnoreCase) ||
-                o.Titulo.Contains(valor, StringComparison.OrdinalIgnoreCase) ||
-                o.ArtistaNombre.Contains(valor, StringComparison.OrdinalIgnoreCase));
+            {
+                var haystack = $"{o.CodigoVisible} {o.Titulo} {o.ArtistaNombre}";
+                return palabras.All(p => haystack.Contains(p, StringComparison.OrdinalIgnoreCase));
+            });
         }
 
         return resultado.OrderBy(o => o.Titulo).Take(15).ToList();

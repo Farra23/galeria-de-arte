@@ -171,18 +171,24 @@ else
                     </div>
                 </div>
 
+                <div class="d-flex justify-content-end mb-1">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn @(unidadMm ? "btn-outline-secondary" : "btn-secondary")" @onclick="() => unidadMm = false">cm</button>
+                        <button type="button" class="btn @(unidadMm ? "btn-secondary" : "btn-outline-secondary")" @onclick="() => unidadMm = true">mm</button>
+                    </div>
+                </div>
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Alto (cm)</label>
-                        <InputNumber class="form-control" @bind-Value="Input.AltoCm" />
+                        <label class="form-label">Alto (@(unidadMm ? "mm" : "cm"))</label>
+                        <InputNumber TValue="decimal?" class="form-control" Value="AltoMostrado" ValueChanged="v => AltoMostrado = v" ValueExpression="() => AltoMostrado" ParsingErrorMessage="Ese valor no es un número válido." />
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Ancho (cm)</label>
-                        <InputNumber class="form-control" @bind-Value="Input.AnchoCm" />
+                        <label class="form-label">Ancho (@(unidadMm ? "mm" : "cm"))</label>
+                        <InputNumber TValue="decimal?" class="form-control" Value="AnchoMostrado" ValueChanged="v => AnchoMostrado = v" ValueExpression="() => AnchoMostrado" ParsingErrorMessage="Ese valor no es un número válido." />
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Largo (cm)</label>
-                        <InputNumber class="form-control" @bind-Value="Input.LargoCm" />
+                        <label class="form-label">Largo (@(unidadMm ? "mm" : "cm"))</label>
+                        <InputNumber TValue="decimal?" class="form-control" Value="LargoMostrado" ValueChanged="v => LargoMostrado = v" ValueExpression="() => LargoMostrado" ParsingErrorMessage="Ese valor no es un número válido." />
                     </div>
                 </div>
 
@@ -196,15 +202,15 @@ else
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Costo (artista)</label>
-                        <InputNumber TValue="decimal" class="form-control" Value="Input.Costo" ValueChanged="OnCostoChanged" ValueExpression="() => Input.Costo" />
+                        <InputNumber TValue="decimal" class="form-control" Value="Input.Costo" ValueChanged="OnCostoChanged" ValueExpression="() => Input.Costo" ParsingErrorMessage="Ese valor no es un número válido." />
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Utilidad (%)</label>
-                        <InputNumber TValue="decimal" class="form-control" Value="Input.Utilidad" ValueChanged="OnUtilidadChanged" ValueExpression="() => Input.Utilidad" />
+                        <InputNumber TValue="decimal" class="form-control" Value="Input.Utilidad" ValueChanged="OnUtilidadChanged" ValueExpression="() => Input.Utilidad" ParsingErrorMessage="Ese valor no es un número válido." />
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label" title="Calculado automático a partir de Costo/Utilidad/IVA — se puede ajustar a mano.">Precio de venta ⓘ</label>
-                        <InputNumber TValue="decimal" class="form-control fw-bold" Value="Input.PrecioVenta" ValueChanged="OnPrecioVentaChanged" ValueExpression="() => Input.PrecioVenta" />
+                        <InputNumber TValue="decimal" class="form-control fw-bold" Value="Input.PrecioVenta" ValueChanged="OnPrecioVentaChanged" ValueExpression="() => Input.PrecioVenta" ParsingErrorMessage="Ese valor no es un número válido." />
                     </div>
                 </div>
 
@@ -223,7 +229,7 @@ else
         </div>
 
         <button type="submit" class="btn btn-primary" disabled="@guardando">@(guardando ? "Guardando…" : "Guardar")</button>
-        <a href="obras" class="btn btn-link text-danger">Cancelar</a>
+        <a href="obras" class="btn btn-outline-danger">Cancelar</a>
     </EditForm>
     }
     </div>
@@ -248,6 +254,28 @@ else
     private string? imagenError;
     private int guardandoFlag;
     private bool guardando => guardandoFlag != 0;
+    private bool unidadMm;
+
+    // Alterna cm/mm solo para lo que se ve y se tipea acá — la obra siempre se guarda en cm
+    // (misma unidad de siempre en el dominio). Sirve en particular para corregir piezas que
+    // se cargaron mal en su momento (ej. una medida en milímetros guardada como si fuera cm).
+    private decimal? AltoMostrado
+    {
+        get => unidadMm ? Input.AltoCm * 10 : Input.AltoCm;
+        set => Input.AltoCm = unidadMm ? value / 10 : value;
+    }
+
+    private decimal? AnchoMostrado
+    {
+        get => unidadMm ? Input.AnchoCm * 10 : Input.AnchoCm;
+        set => Input.AnchoCm = unidadMm ? value / 10 : value;
+    }
+
+    private decimal? LargoMostrado
+    {
+        get => unidadMm ? Input.LargoCm * 10 : Input.LargoCm;
+        set => Input.LargoCm = unidadMm ? value / 10 : value;
+    }
 
     protected override async Task OnInitializedAsync()
     {

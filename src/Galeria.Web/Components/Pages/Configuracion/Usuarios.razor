@@ -84,7 +84,7 @@
                                 <input type="password" class="form-control form-control-sm d-inline-block" style="width:10rem"
                                        placeholder="Nueva contraseña" @bind="nuevaPassword" />
                                 <button class="btn btn-sm btn-primary" @onclick="() => ConfirmarRestablecerAsync(usuario.Id)">Guardar</button>
-                                <button class="btn btn-sm btn-link text-danger" @onclick="() => restableciendoId = null">Cancelar</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => restableciendoId = null">Cancelar</button>
                             }
                             else
                             {

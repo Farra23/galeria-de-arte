@@ -70,14 +70,14 @@
         </select>
     </div>
     <div class="col-md-2">
-        <select class="form-select" value="@(TieneIVA?.ToString() ?? "")" @onchange='e => IrA("iva", ParseBoolOrNull(e.Value))'>
+        <select class="form-select" value="@(TieneIVA is null ? "" : TieneIVA.Value ? "true" : "false")" @onchange='e => IrA("iva", ParseBoolOrNull(e.Value))'>
             <option value="">IVA: cualquiera</option>
             <option value="true">Con IVA</option>
             <option value="false">Exento</option>
         </select>
     </div>
     <div class="col-md-2">
-        <select class="form-select" value="@(SoloConStock?.ToString() ?? "")" @onchange='e => IrA("stock", ParseBoolOrNull(e.Value))'>
+        <select class="form-select" value="@(SoloConStock is null ? "" : SoloConStock.Value ? "true" : "false")" @onchange='e => IrA("stock", ParseBoolOrNull(e.Value))'>
             <option value="">Existencia: cualquiera</option>
             <option value="true">Con existencia</option>
             <option value="false">Sin existencia</option>
