@@ -9,6 +9,9 @@ Datos/
 # no código fuente. La carpeta se crea sola la primera vez que alguien sube una imagen.
 src/Galeria.Web/wwwroot/uploads/
 
+# PDF generados desde los .md de docs/ (artefactos de build — se regeneran con docs/generar-pdf.py)
+docs/pdf/
+
 # .NET
 bin/
 obj/
