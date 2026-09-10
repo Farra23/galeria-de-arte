@@ -53,6 +53,10 @@ else if (ventas.Count == 0)
 }
 else
 {
+    @if (ventas.Count >= Galeria.Application.Common.Listados.Tope)
+    {
+        <p class="text-body-secondary">Mostrando las primeras @Galeria.Application.Common.Listados.Tope ventas que coinciden — acotá con los filtros para ver el resto.</p>
+    }
     <div class="table-responsive">
     <table class="table table-striped">
         <thead>
@@ -119,7 +123,10 @@ else
     {
         texto = TextoLibre;
         var filtro = new VentaFiltro(TextoLibre, ArtistaId, MonedaFiltro, Orden: OrdenActual, OrdenDescendente: DescActual);
-        ventas = await VentaService.BuscarAsync(filtro);
+        // Tope de filas para no colgar el navegador con el histórico completo (~14.000). Red de
+        // seguridad, no paginación real. El endpoint /ventas/exportar.csv no tiene este tope.
+        ventas = (await VentaService.BuscarAsync(filtro))
+            .Take(Galeria.Application.Common.Listados.Tope).ToList();
     }
 
     private void IrA(string clave, object? valor) =>

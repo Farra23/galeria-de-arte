@@ -63,7 +63,7 @@ public class AuditoriaRepository(GaleriaDbContext db) : IAuditoriaRepository
         }
 
         return await Ordenar(query, filtro)
-            .Take(500)
+            .Take(Galeria.Application.Common.Listados.Tope)
             .Select(a => new AuditoriaListItem(
                 a.Id,
                 a.Timestamp,

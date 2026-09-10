@@ -91,9 +91,9 @@ else
         </tbody>
     </table>
     </div>
-    @if (registros.Count == 500)
+    @if (registros.Count >= Galeria.Application.Common.Listados.Tope)
     {
-        <p class="text-body-secondary">Mostrando los 500 registros más recientes que coinciden con el filtro — acotá la búsqueda para ver más precisión.</p>
+        <p class="text-body-secondary">Mostrando los @Galeria.Application.Common.Listados.Tope registros más recientes que coinciden con el filtro — acotá la búsqueda para ver más precisión.</p>
     }
 }
 

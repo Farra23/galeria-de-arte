@@ -150,6 +150,10 @@ else if (obras.Count == 0)
 }
 else
 {
+    @if (obras.Count >= Galeria.Application.Common.Listados.Tope)
+    {
+        <p class="text-body-secondary">Mostrando las primeras @Galeria.Application.Common.Listados.Tope obras que coinciden — acotá con los filtros para ver el resto.</p>
+    }
     <div class="table-responsive">
     <table class="table table-striped">
         <thead>
@@ -269,7 +273,11 @@ else
             OrdenActual,
             DescActual);
 
-        obras = await ObraService.BuscarAsync(filtro);
+        // Tope de filas para no colgar el navegador con el catálogo completo (~15.000). Es una
+        // red de seguridad, no paginación real (ver Galeria.Application.Common.Listados). La
+        // exportación CSV pasa por el endpoint /obras/exportar.csv, que no tiene este tope.
+        obras = (await ObraService.BuscarAsync(filtro))
+            .Take(Galeria.Application.Common.Listados.Tope).ToList();
     }
 
     // GetUriWithQueryParameter tiene sobrecargas por tipo concreto (bool, int, string...) y no
