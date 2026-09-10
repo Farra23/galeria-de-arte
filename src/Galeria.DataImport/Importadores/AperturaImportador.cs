@@ -50,6 +50,7 @@ public sealed class AperturaImportador : IImportador
 
         var liquidacionesCreadas = 0;
         var ajustes = 0;
+        var procesados = new HashSet<(int, Moneda)>();
 
         var porArtista = ventas.GroupBy(v => v.Obra.ArtistaId);
         foreach (var grupoArtista in porArtista)
@@ -67,6 +68,7 @@ public sealed class AperturaImportador : IImportador
                     continue;
                 }
 
+                procesados.Add((artistaId, moneda));
                 var objetivo = objetivos.GetValueOrDefault((artistaId, moneda), 0m);
                 var (pendientes, pagadas, acumulado) = Repartir(delArtista, objetivo);
 
@@ -114,6 +116,29 @@ public sealed class AperturaImportador : IImportador
                 await contexto.Db.SaveChangesAsync();
                 contexto.Db.ChangeTracker.Clear();
             }
+        }
+
+        // Artistas con saldo objetivo (normalmente por corrección manual) pero sin ninguna venta
+        // para dejar pendiente — el saldo entra como un Ajuste a favor.
+        foreach (var ((artistaId, moneda), objetivo) in objetivos)
+        {
+            if (objetivo <= 0 || procesados.Contains((artistaId, moneda)))
+            {
+                continue;
+            }
+
+            contexto.Db.Adelantos.Add(new Adelanto
+            {
+                ArtistaId = artistaId,
+                Fecha = cutoff,
+                Importe = objetivo,
+                Moneda = moneda,
+                Tipo = TipoAdelanto.AjusteAFavor,
+                Observaciones = "Saldo de apertura (migración — el artista no figuraba en 'Listado Ventas').",
+            });
+            ajustes++;
+            await contexto.Db.SaveChangesAsync();
+            contexto.Db.ChangeTracker.Clear();
         }
 
         informe.Importados("Liquidaciones de apertura", liquidacionesCreadas);
@@ -221,7 +246,54 @@ public sealed class AperturaImportador : IImportador
             }
         }
 
+        AplicarCorrecciones(fuentes, contexto, informe, objetivos);
         return objetivos;
+    }
+
+    /// <summary>
+    /// Correcciones manuales de saldo, cargadas después de hablar con el cliente. Archivo opcional
+    /// <c>correcciones-saldo.csv</c> en la carpeta de origen, una línea por (artista, moneda):
+    /// <code>codigo ; Pesos|USD ; saldo</code>  (saldo 0 = ya cobró todo, nada pendiente).
+    /// Pisa lo que diga "Listado Ventas", y sirve también para artistas que no figuran ahí.
+    /// </summary>
+    private static void AplicarCorrecciones(
+        Fuentes fuentes, Contexto contexto, Informe informe, Dictionary<(int, Moneda), decimal> objetivos)
+    {
+        var ruta = Path.Combine(fuentes.CarpetaOrigen, "correcciones-saldo.csv");
+        if (!File.Exists(ruta))
+        {
+            return;
+        }
+
+        var aplicadas = 0;
+        foreach (var linea in File.ReadAllLines(ruta))
+        {
+            var texto = linea.Trim();
+            if (texto.Length == 0 || texto.StartsWith('#'))
+            {
+                continue;
+            }
+
+            var partes = texto.Split([';', ','], StringSplitOptions.TrimEntries);
+            if (partes.Length < 3
+                || !int.TryParse(partes[0], out var codigo)
+                || !contexto.ArtistaPorCodigo.TryGetValue(codigo, out var artistaId)
+                || !decimal.TryParse(partes[2], System.Globalization.NumberStyles.Any,
+                       System.Globalization.CultureInfo.InvariantCulture, out var saldo))
+            {
+                informe.Rechazo("Correcciones de saldo", $"línea ilegible: {texto}");
+                continue;
+            }
+
+            var moneda = Texto.Clave(partes[1]) is "usd" or "dolares" or "dolar" ? Moneda.USD : Moneda.Pesos;
+            objetivos[(artistaId, moneda)] = Math.Max(0, saldo);
+            aplicadas++;
+        }
+
+        if (aplicadas > 0)
+        {
+            informe.Aviso($"Correcciones de saldo aplicadas desde correcciones-saldo.csv: {aplicadas}.");
+        }
     }
 
     private static string Recortar(string valor, int max) => valor.Length > max ? valor[..max] : valor;

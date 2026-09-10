@@ -15,8 +15,11 @@ public interface IImportador
 }
 
 /// <summary>Los libros de Excel de origen, por rol. Alguno puede faltar.</summary>
-public sealed class Fuentes(LibroExcel principal, LibroExcel? control, LibroExcel? liquidaciones)
+public sealed class Fuentes(LibroExcel principal, LibroExcel? control, LibroExcel? liquidaciones, string carpetaOrigen)
 {
+    /// <summary>Carpeta con las planillas — para archivos auxiliares como correcciones-saldo.csv.</summary>
+    public string CarpetaOrigen { get; } = carpetaOrigen;
+
     /// <summary>"Acatràs sin los for next.xlsm": artistas, obras, movimientos, ventas, rubros, técnicas, parámetros.</summary>
     public LibroExcel Principal { get; } = principal;
 

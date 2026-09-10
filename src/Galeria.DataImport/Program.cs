@@ -52,7 +52,7 @@ await contexto.RecargarMapasAsync();
 using var principal = new LibroExcel(archivoPrincipal);
 using var control = AbrirOpcional(opciones.CarpetaOrigen, "Control.xlsx");
 using var liquidaciones = AbrirOpcional(opciones.CarpetaOrigen, "Liquidaciones.xlsm");
-var fuentes = new Fuentes(principal, control, liquidaciones);
+var fuentes = new Fuentes(principal, control, liquidaciones, opciones.CarpetaOrigen);
 
 IImportador[] importadores =
 [
