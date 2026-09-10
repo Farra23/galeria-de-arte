@@ -49,10 +49,17 @@ public sealed class VentasImportador : IImportador
             }
 
             var fecha = fila.Fecha(ColFecha);
-            if (fecha is null || fecha.Value.Year is < 2000 or > 2030)
+            if (fecha is null || fecha.Value.Year < 2000)
             {
                 sinFecha++;
                 informe.Rechazo(Nombre, "venta con fecha inválida o imposible");
+                continue;
+            }
+
+            if (fecha.Value > DateOnly.FromDateTime(DateTime.Today).AddDays(2))
+            {
+                sinFecha++;
+                informe.Rechazo(Nombre, "venta con fecha futura (año mal tipeado en el Excel)");
                 continue;
             }
 

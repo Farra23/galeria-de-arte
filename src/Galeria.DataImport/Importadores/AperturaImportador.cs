@@ -32,9 +32,13 @@ public sealed class AperturaImportador : IImportador
     {
         var objetivos = LeerObjetivos(fuentes, contexto, informe);
 
-        var cutoff = await contexto.Db.Ventas.AnyAsync()
-            ? await contexto.Db.Ventas.MaxAsync(v => v.Fecha)
-            : DateOnly.FromDateTime(DateTime.Today);
+        // Fecha de la última venta real, ignorando fechas futuras sueltas (el Excel tiene alguna
+        // venta tipeada con año equivocado) — si no, todas las liquidaciones de apertura quedan
+        // fechadas en el futuro.
+        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        var cutoff = await contexto.Db.Ventas.Where(v => v.Fecha <= hoy).AnyAsync()
+            ? await contexto.Db.Ventas.Where(v => v.Fecha <= hoy).MaxAsync(v => v.Fecha)
+            : hoy;
 
         var ventas = await contexto.Db.Ventas
             .Include(v => v.Obra).ThenInclude(o => o.Artista)
