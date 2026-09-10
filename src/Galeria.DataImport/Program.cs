@@ -62,6 +62,7 @@ IImportador[] importadores =
     new VentasImportador(),
     new AdelantosImportador(),
     new PreciosImportador(),
+    new FusionArtistasImportador(),
     new AperturaImportador(),
 ];
 

@@ -25,6 +25,7 @@ public sealed class ArtistasImportador : IImportador
         [564] = ("Ni gatos ni limones", ""),   // estaba partido: "gatos ni limones" / "Ni"
         [997] = ("Pastorino", "Sandra"),        // estaba: "Pastorino Sandra" / ""
         [998] = ("Esposito", "Lorena"),         // estaba: "Lorena Esposito" / ""
+        [958] = ("Umpierrez", "Silvia"),        // estaba al revés: "Silvia" / "Umpierrez" (canónico de la fusión con 670)
     };
 
     public async Task EjecutarAsync(Fuentes fuentes, Contexto contexto, Informe informe)
