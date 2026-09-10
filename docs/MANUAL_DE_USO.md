@@ -114,6 +114,9 @@ Todas las listas (Obras, Ventas, Artistas, etc.) se comportan igual:
   otra persona y verá la misma lista filtrada.
 - **Exportar CSV**: botón que baja la lista tal como está filtrada, para abrir en Excel. El
   archivo respeta las tildes.
+- **Listas muy largas**: Obras y Ventas muestran hasta 500 filas por vez. Si hay más, aparece un
+  aviso "mostrando las primeras 500" — usá el buscador o los filtros para acotar. La exportación
+  a CSV sí incluye todo.
 
 ---
 

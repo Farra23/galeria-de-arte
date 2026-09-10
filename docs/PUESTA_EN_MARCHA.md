@@ -43,10 +43,20 @@ El proyecto es **.NET 8**. Necesitás el **SDK** (no solo el runtime) porque vas
 dotnet --list-sdks
 ```
 
-> Si solo tenés instalado el SDK de .NET 10 (o cualquier versión mayor), podés compilar igual
-> **siempre que esté instalado el _targeting pack_ / runtime de .NET 8**. Si `dotnet build` se
-> queja de que le falta `Microsoft.NETCore.App` 8.0 o el targeting pack de `net8.0`, instalá el
-> SDK de .NET 8 y listo. Tener los dos instalados no molesta.
+> **Sobre el runtime (importante en esta PC):** el `dotnet` que está primero en el `PATH` es el
+> de .NET 10 (`C:\Users\fpero\.dotnet`), y ése **no** encuentra el runtime 8. El runtime 8.0.25/
+> 8.0.26 sí está instalado, en `C:\Program Files\dotnet`. Consecuencias:
+>
+> - `dotnet build` y `dotnet test` funcionan con cualquiera (compilan `net8.0` sin problema).
+> - Todo lo que **ejecuta** la app (`dotnet run`, `dotnet ef database update`, `deploy\publicar.ps1`)
+>   tiene que usar el dotnet de `Program Files`. La forma más simple es anteponerlo al `PATH` en
+>   la sesión de PowerShell:
+>   ```powershell
+>   $env:Path = "C:\Program Files\dotnet;" + $env:Path
+>   ```
+>   (o instalar el **SDK de .NET 8** completo, que deja todo resuelto sin tocar el PATH).
+> - El importador (`src/Galeria.DataImport`) ya tiene `RollForward=Major`, así que corre con
+>   cualquier dotnet aunque solo esté el 10.
 
 ### 1.2 Instalar la herramienta `dotnet-ef` 8
 
@@ -98,40 +108,70 @@ datos-origen/
 > `datos-origen/` está en `.gitignore` — nunca se sube al repo (son datos personales de cientos
 > de artistas).
 
-### 2.2 Correr el importador
+### 2.2 Qué hace el importador
+
+`src/Galeria.DataImport` es un proyecto de consola de un solo uso. Lee las planillas con
+ClosedXML y escribe en la base con EF Core (el esquema real del ERP). Carga, en orden:
+
+1. **Parámetros** del negocio (IVA, redondeos), **rubros** y **técnicas** — deduplicando las
+   variantes del Excel ("Acrilico S/lienzo" y "Acrilico s/ Lienzo" son una sola).
+2. **Artistas** (~265; descarta las ranuras de código sin nombre).
+3. **Obras** (~14.800) con su stock, costo, precio, rubro y técnica; estado Disponible o Sin stock
+   según la existencia.
+4. **Ventas** (~14.100) — toda la historia. Para las ventas viejas cuya obra ya no está en el
+   catálogo, crea una "obra fantasma" (existencia 0) con los datos de la propia venta.
+5. **Adelantos** que todavía no fueron descontados (los que afectan el saldo actual).
+6. **Historial de precios** desde `Control.xlsx` (~1.300 cambios) → pestaña "Historial de precios"
+   de cada obra.
+7. **Liquidaciones de apertura**: toma de la hoja `Listado Ventas` el saldo real que se le debe
+   hoy a cada artista, deja pendientes sus ventas más nuevas hasta ese monto, y marca todo lo
+   anterior como pagado con una liquidación de apertura confirmada. Así los saldos arrancan
+   exactos sin arrastrar 17 años de ventas ya cobradas.
+
+Parámetros:
+
+- `--origen <carpeta>` — dónde están los `.xlsm/.xlsx` (default `datos-origen`).
+- `--salida <archivo>` — la base SQLite destino.
+- `--recrear` — borra la base y crea **solo el esquema del dominio** desde cero. Útil para
+  iterar en desarrollo; **no** deja las tablas de login, así que con una base así no se puede
+  entrar a la app.
+
+Al terminar deja `datos-origen/informe-importacion.txt` con los registros que entraron, las
+filas rechazadas agrupadas por motivo, y **avisos para revisar con el cliente**: obras sin
+moneda (van como Pesos), rubros/técnicas parecidos que quizás sean lo mismo, y los artistas
+cuyo saldo hay que confirmar a mano (nombre partido, o saldo + adelantos abiertos a la vez).
+
+### 2.3 Cargar y verificar en desarrollo
+
+Como `--recrear` no crea las tablas de login, para probar en tu PC conviene armar una base con
+los **dos** esquemas y después importar encima:
 
 ```powershell
+$env:Path = "C:\Program Files\dotnet;" + $env:Path
 Set-Location "C:\Users\fpero\Desktop\Galería de arte"
-dotnet run --project src/Galeria.DataImport -- --origen datos-origen --salida src/Galeria.Web/Datos/app.db --recrear
-```
 
-El importador:
+# base nueva con los dos DbContext
+$conn = "DataSource=$PWD\src\Galeria.Web\Datos\app.db;Cache=Shared"
+Remove-Item src\Galeria.Web\Datos\app.db* -ErrorAction SilentlyContinue
+dotnet ef database update --project src/Galeria.Infrastructure --startup-project src/Galeria.Web --context GaleriaDbContext --connection $conn
+dotnet ef database update --project src/Galeria.Web --context ApplicationDbContext --connection $conn
 
-1. **Recrea la base** desde cero (aplica las migraciones sobre un `app.db` vacío) si le pasás
-   `--recrear`. Sin ese parámetro, agrega sobre la base existente.
-2. Carga, en orden: parámetros del negocio → rubros → técnicas → artistas → obras (con su stock)
-   → ventas → adelantos → alquileres → retiros → cambios de precio → liquidaciones históricas.
-3. Al terminar deja un **informe** (`datos-origen/informe-importacion.txt`) con:
-   - cuántos registros entraron de cada tipo;
-   - los registros que **no** se pudieron cargar y por qué (fechas imposibles, moneda faltante,
-     artista con el nombre escrito de varias formas, códigos duplicados, etc.).
+# cargar los datos reales (sin --recrear: agrega sobre la base recién migrada)
+dotnet run --project src/Galeria.DataImport -- --origen datos-origen --salida src\Galeria.Web\Datos\app.db
 
-**Revisá ese informe.** Los casos que el importador no puede resolver solo necesitan una
-decisión del cliente o una corrección a mano en la planilla; después se vuelve a correr.
-
-### 2.3 Verificar los datos cargados
-
-```powershell
+# levantar la app para revisar
 dotnet run --project src/Galeria.Web
 ```
 
 Entrá a <http://localhost:5121>, logueá con el admin de desarrollo (ver 2.4) y revisá:
 
-- **Obras**: el total y algunas fichas conocidas (costo, precio, stock, artista).
-- **Artistas**: los saldos de un par de artistas contra la última liquidación real del Excel.
-- **Resumen**: que los totales adeudados tengan sentido.
+- **Resumen**: el total adeudado a artistas y la lista de artistas con saldo — tienen que
+  coincidir con la hoja `Listado Ventas` del Excel.
+- **Obras** / **Artistas**: buscá un artista conocido y contrastá su saldo, sus obras y precios.
+- El **informe** de la importación, punto por punto.
 
-Si algo no cierra, corregí el importador o la planilla y volvé a correr con `--recrear`.
+Si algo no cierra, se corrige el importador o la planilla y se vuelve a empezar desde
+`Remove-Item`.
 
 ### 2.4 Usuario admin en desarrollo
 
@@ -162,22 +202,24 @@ Esto:
   `ApplicationDbContext` del login) sobre la base en la carpeta publicada.
 - **Nunca** copia la base de desarrollo (esa copia solo pasa en compilación Debug).
 
-### 3.1 Poner la base con los datos reales en la carpeta publicada
+### 3.1 Cargar los datos reales en la base publicada
 
-`publicar.ps1` deja una base **limpia** (solo el esquema, sin datos). Copiá encima la base que
-generaste en el paso 2:
-
-```powershell
-Copy-Item "C:\Users\fpero\Desktop\Galería de arte\src\Galeria.Web\Datos\app.db" `
-          "C:\GaleriaACATRAS\app\Datos\app.db" -Force
-```
-
-Si en el paso 2 se generaron imágenes de obras, copiá también esa carpeta:
+`publicar.ps1` deja en `C:\GaleriaACATRAS\app\Datos\app.db` una base **limpia**, con los dos
+esquemas (dominio + login) ya migrados y **sin datos**. Corré el importador apuntándolo a esa
+base, **sin** `--recrear` (así conserva las tablas de login):
 
 ```powershell
-Copy-Item "C:\Users\fpero\Desktop\Galería de arte\src\Galeria.Web\wwwroot\uploads" `
-          "C:\GaleriaACATRAS\app\wwwroot\uploads" -Recurse -Force
+$env:Path = "C:\Program Files\dotnet;" + $env:Path
+Set-Location "C:\Users\fpero\Desktop\Galería de arte"
+dotnet run --project src/Galeria.DataImport -- `
+    --origen datos-origen --salida "C:\GaleriaACATRAS\app\Datos\app.db"
 ```
+
+Revisá el informe (`datos-origen/informe-importacion.txt`) una vez más antes de seguir.
+
+> No hace falta copiar ninguna base entre carpetas: la publicada ya queda con los datos adentro.
+> Las imágenes de obras (`wwwroot/uploads/`) el cliente todavía no las tiene — se van cargando
+> desde la app a medida que las saca.
 
 ### 3.2 Si la galería es otra PC
 
@@ -297,6 +339,22 @@ Antes de irte, dejale por escrito (o en un papel pegado a la PC):
   falta, `Restart-Service GaleriaACATRAS` desde PowerShell como Administrador.
 - El **manual de uso** (`docs/MANUAL_DE_USO.md`, o su PDF).
 
+### Pendientes conocidos (contarle al cliente, y anotar para después)
+
+- **Listas grandes con tope de 500 filas.** Obras (~15.000) y Ventas (~14.000) muestran las
+  primeras 500 y avisan "filtrá para ver el resto". Con cualquier filtro (artista, texto, rango)
+  andan perfecto. La paginación de verdad (página 1, 2, 3…) queda pendiente. La exportación a
+  CSV sí trae todo.
+- **Saldos de apertura a confirmar.** El informe de importación marca ~4 artistas cuyo saldo hay
+  que revisar a mano con el cliente (nombre escrito de varias formas, o saldo pendiente y
+  adelantos abiertos a la vez). "Victoria Gibbs / Taller Govinda" en particular no matcheó
+  ningún artista del maestro: su saldo hay que cargarlo desde la app.
+- **Historial de liquidaciones no detallado.** Las liquidaciones viejas entraron como una sola
+  "liquidación de apertura" por artista, no una por una. El detalle fino sigue en el Excel.
+- **Rubros y técnicas con variantes.** El Excel trae "Ensamble/Ensamblajes/Esamblajes" y
+  similares. El informe las lista; conviene una pasada de limpieza desde
+  *Configuración → Rubros y técnicas*.
+
 ---
 
 ## 9. Actualizar a una versión nueva (más adelante)
@@ -321,7 +379,8 @@ Antes de irte, dejale por escrito (o en un papel pegado a la PC):
 | Backup ahora | `.\deploy\hacer-backup.ps1 -DestinoBackups "D:\BackupsGaleria"` |
 | Publicar nueva versión | `.\deploy\publicar.ps1` |
 | Reinstalar servicio | `.\deploy\instalar-servicio.ps1` (Admin) |
-| Cargar datos de nuevo | `dotnet run --project src/Galeria.DataImport -- --origen datos-origen --salida src/Galeria.Web/Datos/app.db --recrear` |
+| Cargar datos en la base publicada | `dotnet run --project src/Galeria.DataImport -- --origen datos-origen --salida "C:\GaleriaACATRAS\app\Datos\app.db"` |
+| Rearmar la base de desarrollo | ver §2.3 (migrar los dos DbContext + importar sin `--recrear`) |
 
 ---
 
