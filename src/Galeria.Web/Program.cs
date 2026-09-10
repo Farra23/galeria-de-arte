@@ -54,8 +54,26 @@ builder.Services.AddAuthentication(options =>
     .AddIdentityCookies();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+// Como Servicio de Windows la app arranca con el directorio de trabajo en C:\Windows\System32,
+// así que un DataSource relativo (Datos\app.db) no se encuentra y el servicio no levanta. Se
+// resuelve contra la carpeta del ejecutable (ContentRootPath), que UseWindowsService() ya fijó ahí.
+connectionString = HacerRutaAbsolutaDeSqlite(connectionString, builder.Environment.ContentRootPath);
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
+
+static string HacerRutaAbsolutaDeSqlite(string cadena, string carpetaBase)
+{
+    var b = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(cadena);
+    if (!string.IsNullOrWhiteSpace(b.DataSource) && !Path.IsPathRooted(b.DataSource)
+        && !b.DataSource.StartsWith(":memory:", StringComparison.Ordinal))
+    {
+        b.DataSource = Path.GetFullPath(Path.Combine(carpetaBase, b.DataSource));
+    }
+
+    return b.ToString();
+}
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // Mismo archivo .db que Identity (decisión de stack: un solo archivo = un solo backup para el cliente),
