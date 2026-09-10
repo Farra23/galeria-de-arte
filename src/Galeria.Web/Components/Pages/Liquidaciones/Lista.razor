@@ -42,6 +42,10 @@ else if (liquidaciones.Count == 0)
 }
 else
 {
+    @if (liquidaciones.Count >= Galeria.Application.Common.Listados.Tope)
+    {
+        <p class="text-body-secondary">Mostrando las primeras @Galeria.Application.Common.Listados.Tope — filtrá por artista para ver el resto.</p>
+    }
     <div class="table-responsive">
     <table class="table table-striped">
         <thead>
@@ -83,7 +87,10 @@ else
         artistas = await ArtistaService.ListarParaSeleccionAsync();
 
     protected override async Task OnParametersSetAsync() =>
-        liquidaciones = await LiquidacionService.BuscarAsync(new LiquidacionFiltro(ArtistaId, Orden: OrdenActual, OrdenDescendente: DescActual));
+        // Tope de filas (la migración crea una liquidación de apertura por artista y año — pueden
+        // ser miles). Con filtro por artista se ve todo. Ver Galeria.Application.Common.Listados.
+        liquidaciones = (await LiquidacionService.BuscarAsync(new LiquidacionFiltro(ArtistaId, Orden: OrdenActual, OrdenDescendente: DescActual)))
+            .Take(Galeria.Application.Common.Listados.Tope).ToList();
 
     private void IrA(string clave, object? valor) =>
         NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { [clave] = valor }), replace: true);

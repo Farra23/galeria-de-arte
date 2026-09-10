@@ -12,8 +12,9 @@ namespace Galeria.DataImport.Importadores;
 ///  1. Toma de la hoja "Listado Ventas" el saldo real que la galería le debe hoy a cada artista.
 ///  2. Deja pendientes las ventas más recientes de cada artista hasta llegar a ese monto
 ///     (el saldo se calcula sobre el <b>costo</b> de la obra, que es lo que cobra el artista).
-///  3. Marca todo lo anterior como pagado, con una única "liquidación de apertura" por
-///     artista y moneda (Estado = Confirmada, fecha de corte).
+///  3. Marca todo lo anterior como pagado, con una "liquidación de apertura" por artista, moneda
+///     y año (Estado = Confirmada, fechada el 31/12 de cada año). Una por año en vez de una sola
+///     enorme: así cada monto es creíble y la ficha del artista muestra su historia año a año.
 ///  4. Si queda una diferencia chica contra el objetivo, la salda con un ajuste.
 ///
 /// El historial viejo no queda detallado liquidación por liquidación (decisión tomada con el
@@ -72,9 +73,12 @@ public sealed class AperturaImportador : IImportador
                 var objetivo = objetivos.GetValueOrDefault((artistaId, moneda), 0m);
                 var (pendientes, pagadas, acumulado) = Repartir(delArtista, objetivo);
 
-                if (pagadas.Count > 0)
+                // Una liquidación de apertura por AÑO (no una sola con 17 años adentro): así el
+                // monto de cada una es creíble y la ficha del artista muestra su historia por año.
+                foreach (var porAño in pagadas.GroupBy(v => v.Fecha.Year).OrderBy(g => g.Key))
                 {
-                    contexto.Db.Liquidaciones.Add(CrearApertura(artistaId, moneda, cutoff, pagadas));
+                    var fechaLiq = porAño.Key >= cutoff.Year ? cutoff : new DateOnly(porAño.Key, 12, 31);
+                    contexto.Db.Liquidaciones.Add(CrearApertura(artistaId, moneda, fechaLiq, porAño.ToList()));
                     liquidacionesCreadas++;
                 }
 
@@ -173,7 +177,7 @@ public sealed class AperturaImportador : IImportador
         return (pendientes, pagadas, acumulado);
     }
 
-    private Liquidacion CrearApertura(int artistaId, Moneda moneda, DateOnly cutoff, List<Venta> pagadas)
+    private Liquidacion CrearApertura(int artistaId, Moneda moneda, DateOnly fecha, List<Venta> pagadas)
     {
         var lineas = pagadas.Select(v => new LineaLiquidacion
         {
@@ -195,9 +199,9 @@ public sealed class AperturaImportador : IImportador
         {
             ArtistaId = artistaId,
             NumeroCorrelativo = _proximoNumero++,
-            Fecha = cutoff,
-            PeriodoAnio = cutoff.Year,
-            PeriodoMes = cutoff.Month,
+            Fecha = fecha,
+            PeriodoAnio = fecha.Year,
+            PeriodoMes = fecha.Month,
             Moneda = moneda,
             Estado = EstadoLiquidacion.Confirmada,
             TotalBruto = total,

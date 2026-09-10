@@ -1,4 +1,5 @@
 using Galeria.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace Galeria.DataImport.Importadores;
 
@@ -86,7 +87,49 @@ public sealed class ArtistasImportador : IImportador
             informe.Aviso($"Nombres de artista corregidos (apellido repetía el nombre, o taller partido): {corregidos}.");
         }
 
+        await DesactivarAsync(fuentes, contexto, informe);
         ReportarPosiblesDuplicados(contexto, informe);
+    }
+
+    /// <summary>
+    /// Marca como inactivos los artistas listados en <c>datos-origen/artistas-inactivos.csv</c>
+    /// (un código por línea). Un artista inactivo deja de aparecer en los desplegables y en la
+    /// lista de Artistas, pero conserva toda su historia. Se usa para el duplicado que el cliente
+    /// confirma que no va más (el "bueno" queda activo).
+    /// </summary>
+    private static async Task DesactivarAsync(Fuentes fuentes, Contexto contexto, Informe informe)
+    {
+        var ruta = Path.Combine(fuentes.CarpetaOrigen, "artistas-inactivos.csv");
+        if (!File.Exists(ruta))
+        {
+            return;
+        }
+
+        var desactivados = 0;
+        foreach (var linea in File.ReadAllLines(ruta))
+        {
+            var texto = linea.Split('#')[0].Trim();
+            if (texto.Length == 0 || !int.TryParse(texto, out var codigo))
+            {
+                continue;
+            }
+
+            var artista = await contexto.Db.Artistas.FirstOrDefaultAsync(a => a.Codigo == codigo);
+            if (artista is null)
+            {
+                informe.Rechazo("Artistas inactivos", $"código {codigo} no existe");
+                continue;
+            }
+
+            artista.Activo = false;
+            desactivados++;
+        }
+
+        if (desactivados > 0)
+        {
+            await contexto.Db.SaveChangesAsync();
+            informe.Aviso($"Artistas marcados como inactivos (no aparecen en los desplegables): {desactivados}.");
+        }
     }
 
     /// <summary>

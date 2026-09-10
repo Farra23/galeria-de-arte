@@ -29,21 +29,24 @@ public sealed class ObrasImportador : IImportador
     private readonly Dictionary<string, int> _rubros = [];
     private readonly Dictionary<string, int> _tecnicas = [];
 
+    private sealed record FilaObra(
+        int ArtistaId, int CodArtista, int NumObra, string Titulo, Moneda? Moneda, decimal Costo,
+        decimal Utilidad, bool Iva, decimal PrecioVenta, int Existencia, bool PagoContado,
+        DateOnly Fecha, decimal? Alto, decimal? Ancho, decimal? Largo, string? Obs, int? RubroId, int? TecnicaId);
+
     public async Task EjecutarAsync(Fuentes fuentes, Contexto contexto, Informe informe)
     {
         await AsegurarCatalogosAsync(fuentes, contexto);
 
-        var claves = new HashSet<(int Artista, int Obra)>();
-        var importados = 0;
-        var sinMoneda = 0;
+        // ── Pasada 1: leer y parsear todas las filas válidas ──────────────────────────────────
+        var filas = new List<FilaObra>(15000);
+        var monedaPorArtista = new Dictionary<int, Dictionary<Moneda, int>>();
         var sinFecha = 0;
-        var pendientes = new List<Obra>(TamañoLote);
 
         foreach (var fila in fuentes.Principal.Filas("Obras", filasEncabezado: 2))
         {
             var (codArtista, numObra) = ResolverCodigos(fila);
             var titulo = fila.Texto(ColTitulo);
-
             if (titulo is null)
             {
                 informe.Rechazo(Nombre, "obra sin nombre");
@@ -63,16 +66,11 @@ public sealed class ObrasImportador : IImportador
                 continue;
             }
 
-            if (!claves.Add((artistaId.Value, numObra.Value)))
-            {
-                informe.Rechazo(Nombre, "código de obra duplicado (mismo artista + número)");
-                continue;
-            }
-
             var moneda = LeerMoneda(fila.Texto(ColMoneda));
-            if (moneda is null)
+            if (moneda is not null)
             {
-                sinMoneda++;
+                var conteo = monedaPorArtista.TryGetValue(codArtista ?? 0, out var d) ? d : monedaPorArtista[codArtista ?? 0] = [];
+                conteo[moneda.Value] = conteo.GetValueOrDefault(moneda.Value) + 1;
             }
 
             var fecha = fila.Fecha(ColFechaIngreso);
@@ -82,34 +80,91 @@ public sealed class ObrasImportador : IImportador
                 fecha = FechaIngresoPorDefecto;
             }
 
-            var existencia = Math.Max(0, fila.Entero(ColExistencia) ?? 0);
+            filas.Add(new FilaObra(
+                artistaId.Value, codArtista ?? 0, numObra.Value, Recortar(titulo, 200)!, moneda,
+                Math.Max(0, fila.Decimal(ColCosto) ?? 0), fila.Decimal(ColUtilidad) ?? 50,
+                fila.Booleano(ColIva) ?? false, Math.Max(0, fila.Decimal(ColPrecioVenta) ?? 0),
+                Math.Max(0, fila.Entero(ColExistencia) ?? 0), fila.Booleano(ColPagoContado) ?? false,
+                fecha.Value, Positivo(fila.Decimal(ColAlto)), Positivo(fila.Decimal(ColAncho)),
+                Positivo(fila.Decimal(ColLargo)), Recortar(fila.Texto(ColObs), 2000),
+                BuscarCatalogo(_rubros, fila.Texto(ColRubro)), BuscarCatalogo(_tecnicas, fila.Texto(ColTecnica))));
+        }
 
-            pendientes.Add(new Obra
-            {
-                ArtistaId = artistaId.Value,
-                NumeroObra = numObra.Value,
-                Titulo = Recortar(titulo, 200)!,
-                Moneda = moneda ?? Moneda.Pesos,
-                Costo = Math.Max(0, fila.Decimal(ColCosto) ?? 0),
-                Utilidad = fila.Decimal(ColUtilidad) ?? 50,
-                TieneIVA = fila.Booleano(ColIva) ?? false,
-                PrecioVenta = Math.Max(0, fila.Decimal(ColPrecioVenta) ?? 0),
-                Existencia = existencia,
-                PagoContado = fila.Booleano(ColPagoContado) ?? false,
-                FechaIngreso = fecha.Value,
-                Estado = existencia > 0 ? EstadoObra.Disponible : EstadoObra.SinStock,
-                AltoCm = Positivo(fila.Decimal(ColAlto)),
-                AnchoCm = Positivo(fila.Decimal(ColAncho)),
-                LargoCm = Positivo(fila.Decimal(ColLargo)),
-                Observaciones = Recortar(fila.Texto(ColObs), 2000),
-                RubroId = BuscarCatalogo(_rubros, fila.Texto(ColRubro)),
-                TecnicaId = BuscarCatalogo(_tecnicas, fila.Texto(ColTecnica)),
-            });
-            importados++;
+        // Moneda dominante de cada artista (para las obras que vienen sin moneda).
+        var monedaDominante = monedaPorArtista.ToDictionary(
+            p => p.Key, p => p.Value.OrderByDescending(x => x.Value).First().Key);
 
-            if (pendientes.Count >= TamañoLote)
+        // Próximo número de obra libre por artista (para recodificar colisiones con stock).
+        var proximoNumero = filas.GroupBy(f => f.ArtistaId)
+            .ToDictionary(g => g.Key, g => g.Max(f => f.NumObra) + 1);
+
+        // ── Pasada 2: resolver colisiones de código y persistir ───────────────────────────────
+        var importados = 0;
+        var sinMoneda = 0;
+        var recodificadas = 0;
+        var descartadasSinStock = 0;
+        var pendientes = new List<Obra>(TamañoLote);
+
+        foreach (var grupo in filas.GroupBy(f => (f.ArtistaId, f.NumObra)))
+        {
+            var ordenadas = grupo.OrderByDescending(f => f.Existencia).ThenByDescending(f => f.PrecioVenta).ToList();
+            for (var i = 0; i < ordenadas.Count; i++)
             {
-                await GuardarAsync(contexto, pendientes);
+                var f = ordenadas[i];
+                var numero = f.NumObra;
+                string? notaColision = null;
+
+                if (i > 0)
+                {
+                    // Colisión: la primera (más stock) se queda con el código; el resto…
+                    if (f.Existencia == 0)
+                    {
+                        descartadasSinStock++;
+                        informe.Rechazo(Nombre,
+                            $"código {f.CodArtista:D3}{f.NumObra:D3} repetido y sin stock — se quedó «{ordenadas[0].Titulo}», se descartó «{f.Titulo}»");
+                        continue;
+                    }
+
+                    numero = proximoNumero[f.ArtistaId]++;
+                    recodificadas++;
+                    notaColision = $"Código reasignado por colisión en la migración (era {f.CodArtista:D3}{f.NumObra:D3}).";
+                    informe.Rechazo(Nombre,
+                        $"código {f.CodArtista:D3}{f.NumObra:D3} repetido, la otra tenía stock — «{f.Titulo}» se recodificó a {f.CodArtista:D3}{numero:D3}");
+                }
+
+                var moneda = f.Moneda ?? monedaDominante.GetValueOrDefault(f.CodArtista, Moneda.Pesos);
+                if (f.Moneda is null)
+                {
+                    sinMoneda++;
+                }
+
+                pendientes.Add(new Obra
+                {
+                    ArtistaId = f.ArtistaId,
+                    NumeroObra = numero,
+                    Titulo = f.Titulo,
+                    Moneda = moneda,
+                    Costo = f.Costo,
+                    Utilidad = f.Utilidad,
+                    TieneIVA = f.Iva,
+                    PrecioVenta = f.PrecioVenta,
+                    Existencia = f.Existencia,
+                    PagoContado = f.PagoContado,
+                    FechaIngreso = f.Fecha,
+                    Estado = f.Existencia > 0 ? EstadoObra.Disponible : EstadoObra.SinStock,
+                    AltoCm = f.Alto,
+                    AnchoCm = f.Ancho,
+                    LargoCm = f.Largo,
+                    Observaciones = notaColision is null ? f.Obs : Recortar($"{notaColision} {f.Obs}".Trim(), 2000),
+                    RubroId = f.RubroId,
+                    TecnicaId = f.TecnicaId,
+                });
+                importados++;
+
+                if (pendientes.Count >= TamañoLote)
+                {
+                    await GuardarAsync(contexto, pendientes);
+                }
             }
         }
 
@@ -126,7 +181,19 @@ public sealed class ObrasImportador : IImportador
         informe.Importados(Nombre, importados);
         if (sinMoneda > 0)
         {
-            informe.Aviso($"Obras sin moneda en el Excel: {sinMoneda} — se cargaron como Pesos (revisar con el cliente).");
+            informe.Aviso($"Obras sin moneda en el Excel: {sinMoneda} — se les puso la moneda que más usa ese artista " +
+                          "en sus otras obras (o Pesos si no había otra). El cliente puede corregir las que no correspondan.");
+        }
+
+        if (recodificadas > 0)
+        {
+            informe.Aviso($"Obras con código repetido pero con stock: {recodificadas} — se les dio un código nuevo del " +
+                          "mismo artista para no perder el stock (ver detalle en 'filas no importadas'). Hay que reimprimir esas etiquetas.");
+        }
+
+        if (descartadasSinStock > 0)
+        {
+            informe.Aviso($"Obras con código repetido y sin stock descartadas: {descartadasSinStock} — son históricas, no afectan el inventario.");
         }
 
         if (sinFecha > 0)
