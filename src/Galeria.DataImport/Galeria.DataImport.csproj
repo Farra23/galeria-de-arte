@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Galeria.DataImport</RootNamespace>
+    <!-- Herramienta de migración de datos de un solo uso: no es parte del sistema que corre en
+         producción, se ejecuta a mano en la PC de desarrollo (ver docs/PUESTA_EN_MARCHA.md §2). -->
+    <!-- Si en la PC solo está instalado un runtime mayor (.NET 9/10), que el importador corra
+         igual — es una utilidad interna, no el binario que se le entrega al cliente. -->
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Galeria.Infrastructure\Galeria.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lectura de .xlsx/.xlsm sin Excel instalado. ClosedXML devuelve el valor cacheado de las
+         celdas con fórmula (las planillas de origen tienen muchas). -->
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+    <!-- Migrate() en runtime necesita el proveedor; Design trae el pipeline de migraciones. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.25">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
