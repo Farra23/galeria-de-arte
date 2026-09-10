@@ -34,7 +34,7 @@ $ErrorActionPreference = "Stop"
 $carpetaDatos = Join-Path $RutaApp "Datos"
 $baseDatos = Join-Path $carpetaDatos "app.db"
 if (-not (Test-Path $baseDatos)) {
-    throw "No se encontró $baseDatos. Revisá -RutaApp, o si la base todavía no se creó (ver docs/DESPLIEGUE.md)."
+    throw "No se encontró $baseDatos. Revisá -RutaApp, o si la base todavía no se creó (ver docs/INSTALACION_PASO_A_PASO.md)."
 }
 
 if (-not (Test-Path $DestinoBackups)) {

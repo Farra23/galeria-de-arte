@@ -14,7 +14,7 @@
 
     Requiere el SDK de .NET 8 (no solo el Runtime) porque usa `dotnet ef` — se corre en la PC
     de desarrollo, después se copia la carpeta ya publicada (con la base lista) a la PC de la
-    galería, que solo necesita el Runtime. Ver docs/DESPLIEGUE.md.
+    galería, que solo necesita el Runtime. Ver docs/INSTALACION_PASO_A_PASO.md.
 
 .PARAMETRO Destino
     Carpeta donde queda la app publicada. Por defecto una carpeta fuera del repo
@@ -70,5 +70,5 @@ Invoke-MigracionConReintento "Aplicando migraciones de ApplicationDbContext (log
     @("database", "update", "--project", $proyecto, "--context", "ApplicationDbContext", "--configuration", "Release", "--connection", $cadenaConexion)
 
 Write-Host "Listo. Publicado y migrado en $Destino." -ForegroundColor Green
-Write-Host "La primera vez, hace falta además crear el usuario admin (ver docs/DESPLIEGUE.md)." -ForegroundColor Yellow
+Write-Host "La primera vez, hace falta además crear el usuario admin (ver docs/INSTALACION_PASO_A_PASO.md)." -ForegroundColor Yellow
 Write-Host "Próximo paso: copiar esta carpeta a la PC de la galería (si es otra máquina) y correr .\deploy\instalar-servicio.ps1 ahí, como Administrador." -ForegroundColor Cyan
