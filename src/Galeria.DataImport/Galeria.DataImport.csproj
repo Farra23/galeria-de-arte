@@ -22,7 +22,7 @@
          celdas con fórmula (las planillas de origen tienen muchas). -->
     <PackageReference Include="ClosedXML" Version="0.104.2" />
     <!-- Migrate() en runtime necesita el proveedor; Design trae el pipeline de migraciones. -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
