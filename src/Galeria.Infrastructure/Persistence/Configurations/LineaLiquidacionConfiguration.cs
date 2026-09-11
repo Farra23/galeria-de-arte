@@ -23,5 +23,10 @@ public class LineaLiquidacionConfiguration : IEntityTypeConfiguration<LineaLiqui
             .HasForeignKey(l => l.ObraId);
 
         builder.HasIndex(l => l.LiquidacionId);
+
+        // Sostiene el anti-join "esto ya se liquidó" de ArtistaRepository.BuscarAsync y
+        // LiquidacionRepository.BuscarPendientesAsync. Sin el índice, el NOT EXISTS recorre
+        // LineasLiquidacion entera por cada venta y alquiler evaluado.
+        builder.HasIndex(l => new { l.Tipo, l.ReferenciaId });
     }
 }

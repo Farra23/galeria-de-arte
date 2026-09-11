@@ -3,6 +3,7 @@ using System;
 using Galeria.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Galeria.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(GaleriaDbContext))]
-    partial class GaleriaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260911143000_IndiceLineasLiquidacionTipoReferencia")]
+    partial class IndiceLineasLiquidacionTipoReferencia
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.25");

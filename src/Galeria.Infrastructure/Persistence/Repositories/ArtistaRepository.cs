@@ -37,27 +37,26 @@ public class ArtistaRepository(GaleriaDbContext db) : IArtistaRepository
         // Saldo pendiente por artista y moneda (columna "saldo a pagar" del requerimiento 4.1):
         // misma lógica que el motor de Liquidaciones (ver LiquidacionRepository.BuscarPendientesAsync)
         // pero en tres consultas agregadas para toda la lista en vez de un N+1 por artista.
-        var ventaIdsLiquidados = await db.LineasLiquidacion
-            .Where(l => (l.Tipo == TipoLinea.Venta || l.Tipo == TipoLinea.PagoContado || l.Tipo == TipoLinea.Devolucion)
-                && l.ReferenciaId != null)
-            .Select(l => l.ReferenciaId!.Value)
-            .ToListAsync(ct);
-
-        var alquilerIdsLiquidados = await db.LineasLiquidacion
-            .Where(l => l.Tipo == TipoLinea.Alquiler && l.ReferenciaId != null)
-            .Select(l => l.ReferenciaId!.Value)
-            .ToListAsync(ct);
+        //
+        // Lo ya liquidado se descarta con un NOT EXISTS contra LineasLiquidacion, no trayendo los
+        // ids a memoria: sobre la base real son ~14.000 referencias, y EF las incrustaba como
+        // ~14.000 parámetros en un NOT IN que tardaba 1,1 s en cada carga de la lista de artistas.
+        // El índice (Tipo, ReferenciaId) de LineaLiquidacionConfiguration es el que sostiene este
+        // anti-join; si se lo saca, vuelve a recorrer la tabla entera por cada venta y alquiler.
 
         // El SUM de SQLite no soporta decimal en la traducción de EF Core — se trae el detalle
         // (sin agregar) y se agrupa/suma en memoria, mismo criterio que ya usa el motor de
         // Liquidaciones (LiquidacionRepository.BuscarPendientesAsync + CalcularTotales).
         var ventasCandidatas = await db.Ventas.AsNoTracking()
-            .Where(v => !ventaIdsLiquidados.Contains(v.Id) && !v.Obra.PagoContado && v.Devolucion == null)
+            .Where(v => !db.LineasLiquidacion.Any(l =>
+                    (l.Tipo == TipoLinea.Venta || l.Tipo == TipoLinea.PagoContado || l.Tipo == TipoLinea.Devolucion)
+                    && l.ReferenciaId == v.Id)
+                && !v.Obra.PagoContado && v.Devolucion == null)
             .Select(v => new { v.Obra.ArtistaId, v.Moneda, Monto = v.Obra.Costo * v.Cantidad })
             .ToListAsync(ct);
 
         var alquileresCandidatos = await db.Alquileres.AsNoTracking()
-            .Where(a => !alquilerIdsLiquidados.Contains(a.Id))
+            .Where(a => !db.LineasLiquidacion.Any(l => l.Tipo == TipoLinea.Alquiler && l.ReferenciaId == a.Id))
             .Select(a => new { a.Obra.ArtistaId, a.Moneda, Monto = a.MontoArtista })
             .ToListAsync(ct);
 
@@ -66,25 +65,27 @@ public class ArtistaRepository(GaleriaDbContext db) : IArtistaRepository
             .Select(ad => new { ad.ArtistaId, ad.Moneda, ad.Tipo, ad.Importe })
             .ToListAsync(ct);
 
+        // Indexado por (artista, moneda) en vez de recorrer las tres listas por cada artista y
+        // moneda: con la lista completa eso eran seis barridos por fila de la grilla.
         var saldoVentas = ventasCandidatas
             .GroupBy(v => (v.ArtistaId, v.Moneda))
-            .Select(g => new { ArtistaId = g.Key.ArtistaId, g.Key.Moneda, Monto = g.Sum(v => v.Monto) })
-            .ToList();
+            .ToDictionary(g => g.Key, g => g.Sum(v => v.Monto));
 
         var saldoAlquileres = alquileresCandidatos
             .GroupBy(a => (a.ArtistaId, a.Moneda))
-            .Select(g => new { ArtistaId = g.Key.ArtistaId, g.Key.Moneda, Monto = g.Sum(a => a.Monto) })
-            .ToList();
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.Monto));
 
         var saldoAdelantos = adelantosCandidatos
             .GroupBy(ad => (ad.ArtistaId, ad.Moneda))
-            .Select(g => new { ArtistaId = g.Key.ArtistaId, g.Key.Moneda, Monto = g.Sum(ad => ad.Tipo == TipoAdelanto.Adelanto ? -ad.Importe : ad.Importe) })
-            .ToList();
+            .ToDictionary(g => g.Key, g => g.Sum(ad => ad.Tipo == TipoAdelanto.Adelanto ? -ad.Importe : ad.Importe));
 
-        decimal Saldo(int artistaId, Moneda moneda) =>
-            saldoVentas.Where(s => s.ArtistaId == artistaId && s.Moneda == moneda).Sum(s => s.Monto) +
-            saldoAlquileres.Where(s => s.ArtistaId == artistaId && s.Moneda == moneda).Sum(s => s.Monto) +
-            saldoAdelantos.Where(s => s.ArtistaId == artistaId && s.Moneda == moneda).Sum(s => s.Monto);
+        decimal Saldo(int artistaId, Moneda moneda)
+        {
+            var clave = (artistaId, moneda);
+            return saldoVentas.GetValueOrDefault(clave)
+                + saldoAlquileres.GetValueOrDefault(clave)
+                + saldoAdelantos.GetValueOrDefault(clave);
+        }
 
         var resultado = artistas
             .Select(a => new ArtistaListItem(

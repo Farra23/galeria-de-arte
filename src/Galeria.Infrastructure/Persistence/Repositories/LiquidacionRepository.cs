@@ -9,25 +9,21 @@ public class LiquidacionRepository(GaleriaDbContext db) : ILiquidacionRepository
 {
     public async Task<List<LineaPendiente>> BuscarPendientesAsync(int artistaId, Moneda moneda, CancellationToken ct = default)
     {
-        // Cualquier venta que ya haya salido en una liquidación anterior (como Venta, PagoContado
-        // o Devolución) no se vuelve a ofrecer — mismo criterio para alquileres.
-        var ventaIdsYaLiquidadas = await db.LineasLiquidacion
-            .Where(l => (l.Tipo == TipoLinea.Venta || l.Tipo == TipoLinea.PagoContado || l.Tipo == TipoLinea.Devolucion)
-                && l.ReferenciaId != null)
-            .Select(l => l.ReferenciaId!.Value)
-            .ToListAsync(ct);
-
-        var alquilerIdsYaLiquidados = await db.LineasLiquidacion
-            .Where(l => l.Tipo == TipoLinea.Alquiler && l.ReferenciaId != null)
-            .Select(l => l.ReferenciaId!.Value)
-            .ToListAsync(ct);
-
         var lineas = new List<LineaPendiente>();
 
+        // Cualquier venta que ya haya salido en una liquidación anterior (como Venta, PagoContado
+        // o Devolución) no se vuelve a ofrecer — mismo criterio para alquileres. El descarte va
+        // como NOT EXISTS dentro de la consulta y no como una lista de ids traída a memoria:
+        // sobre la base real esa lista son ~14.000 referencias que EF incrustaba como ~14.000
+        // parámetros en un NOT IN. Lo sostiene el índice (Tipo, ReferenciaId) declarado en
+        // LineaLiquidacionConfiguration.
         var ventas = await db.Ventas.AsNoTracking()
             .Include(v => v.Obra).ThenInclude(o => o.Artista)
             .Include(v => v.Devolucion)
-            .Where(v => v.Obra.ArtistaId == artistaId && v.Moneda == moneda && !ventaIdsYaLiquidadas.Contains(v.Id))
+            .Where(v => v.Obra.ArtistaId == artistaId && v.Moneda == moneda
+                && !db.LineasLiquidacion.Any(l =>
+                    (l.Tipo == TipoLinea.Venta || l.Tipo == TipoLinea.PagoContado || l.Tipo == TipoLinea.Devolucion)
+                    && l.ReferenciaId == v.Id))
             .ToListAsync(ct);
 
         foreach (var venta in ventas)
@@ -63,7 +59,8 @@ public class LiquidacionRepository(GaleriaDbContext db) : ILiquidacionRepository
 
         var alquileres = await db.Alquileres.AsNoTracking()
             .Include(a => a.Obra).ThenInclude(o => o.Artista)
-            .Where(a => a.Obra.ArtistaId == artistaId && a.Moneda == moneda && !alquilerIdsYaLiquidados.Contains(a.Id))
+            .Where(a => a.Obra.ArtistaId == artistaId && a.Moneda == moneda
+                && !db.LineasLiquidacion.Any(l => l.Tipo == TipoLinea.Alquiler && l.ReferenciaId == a.Id))
             .ToListAsync(ct);
 
         foreach (var alquiler in alquileres)
