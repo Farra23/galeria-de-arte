@@ -4,7 +4,7 @@
 
 .DESCRIPCION
     Envoltura de `dotnet run --project src/Galeria.DataImport` para no tener que tipear la línea
-    larga a mano. Corre desde la PC de desarrollo, con .NET 8 disponible
+    larga a mano. Corre desde la PC de desarrollo, con .NET 10 disponible
     (ver docs/INSTALACION_PASO_A_PASO.md).
 
     Por defecto AGREGA sobre una base recién publicada y vacía (la que deja publicar.ps1).
