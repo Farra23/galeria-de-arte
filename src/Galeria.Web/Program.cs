@@ -631,6 +631,12 @@ app.MapGet("/obras/{id:int}/etiqueta.pdf", async (int id, ObraService obras) =>
 
 app.Run();
 
+// El arranque normal termina en 0. Hace falta explícito porque la rama `--migrar` de más arriba
+// devuelve un código de salida, y eso convierte a todo el entry point en uno que devuelve int:
+// sin este return, el compilador rechaza el archivo con CS0161 (no todas las rutas devuelven un
+// valor). El código de salida es lo que mira el script que corra la migración.
+return 0;
+
 // Encoder mínimo de CSV — no hace falta una librería para esto.
 static class CsvHelper
 {
