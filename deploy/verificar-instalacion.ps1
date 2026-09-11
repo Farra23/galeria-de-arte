@@ -90,19 +90,32 @@ $baseDatos = Join-Path $RutaApp "Datos\app.db"
 if (-not (Test-Path $baseDatos)) {
     Resultado "ERROR" "No se encontro la base $baseDatos."
 } else {
+    # Se abre compartiendo lectura Y escritura: con el servicio andando, la app tiene la base
+    # abierta para escribir, y un OpenRead (que pide share=Read, o sea niega la escritura ajena)
+    # falla. Ese fallo no dice nada sobre el contenido del archivo, asi que no puede tratarse como
+    # "corrupta" — llegar a decirle a alguien que restaure un backup sobre una base sana es peor
+    # que no chequear nada.
     $cabeceraOk = $false
+    $noSePudoLeer = $null
     try {
-        $fs = [System.IO.File]::OpenRead($baseDatos)
+        $fs = [System.IO.File]::Open($baseDatos, [System.IO.FileMode]::Open,
+                                     [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
         try {
             $buffer = New-Object byte[] 16
             if ($fs.Read($buffer, 0, 16) -eq 16) {
                 $cabeceraOk = ([System.Text.Encoding]::ASCII.GetString($buffer, 0, 15) -eq "SQLite format 3")
+            } else {
+                $noSePudoLeer = "el archivo tiene menos de 16 bytes"
             }
         } finally { $fs.Dispose() }
-    } catch { }
+    } catch {
+        $noSePudoLeer = $_.Exception.Message
+    }
 
     $mb = (Get-Item $baseDatos).Length / 1MB
-    if (-not $cabeceraOk) {
+    if ($noSePudoLeer) {
+        Resultado "WARN" "No se pudo leer la cabecera de la base." "$noSePudoLeer - No significa que este corrupta: puede estar tomada por otro proceso."
+    } elseif (-not $cabeceraOk) {
         Resultado "ERROR" "La base existe pero no tiene cabecera SQLite valida." "Puede estar corrupta. NO sigas cargando datos: restaura un backup."
     } else {
         Resultado "OK" "Base de datos correcta." ("{0:N1} MB" -f $mb)
