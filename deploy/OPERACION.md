@@ -131,19 +131,35 @@ Stop-Service GaleriaACATRAS
 
 # 5. Comparar appsettings.json con el guardado y reponer lo que sea propio de esta instalación
 
-# 6. Reinstalar el servicio para que tome los binarios nuevos
+# 6. Actualizar el esquema de la base, desde la carpeta de la app
+cd C:\GaleriaACATRAS\app
+.\Galeria.Web.exe --migrar
+
+# 7. Reinstalar el servicio para que tome los binarios nuevos
 .\deploy\instalar-servicio.ps1
 
-# 7. Verificar
+# 8. Verificar
 .\deploy\verificar-instalacion.ps1
 ```
+
+### Sobre el paso 6
+
+`Galeria.Web.exe --migrar` aplica las migraciones pendientes y termina, sin levantar el sitio.
+**No necesita que la PC tenga .NET instalado**: la app se publica autocontenida, así que el
+runtime que usa viene adentro de la propia carpeta.
+
+Informa una por una las migraciones que aplica. Si alguna falla, dice cuáles alcanzaron a
+aplicarse antes del error — en ese caso la base quedó a medio actualizar y lo que corresponde es
+**restaurar el backup del paso 1**, no volver a intentar sobre la base rota.
+
+Si no hay nada pendiente lo dice y no toca nada, así que es seguro correrlo de más.
 
 > ⚠️ **`appsettings.json` se sobrescribe al copiar la carpeta nueva.** Todo lo que se haya
 > ajustado a mano en la PC de la galería (el puerto en `Urls`, el usuario admin inicial en
 > `AdminSeed`, cualquier ruta) vuelve al valor del repositorio. Por eso los pasos 2 y 5.
 
-Si la app no arranca y el log dice **"La base de datos no está actualizada"**, faltó aplicar
-las migraciones: corré `publicar.ps1` apuntando a la instalación. La app se niega a arrancar
+Si la app no arranca y el log dice **"La base de datos no está actualizada"**, faltó el paso 6:
+entrá a `C:\GaleriaACATRAS\app` y corré `.\Galeria.Web.exe --migrar`. La app se niega a arrancar
 con el esquema desactualizado a propósito — es preferible a que falle más tarde, en medio del
 trabajo, con un error incomprensible.
 

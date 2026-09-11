@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Galeria.Application.Adelantos;
 using Galeria.Application.Agenda;
 using Galeria.Application.Alquileres;
@@ -30,7 +32,20 @@ using Galeria.Web.Components.Account;
 using Galeria.Web.Data;
 using Galeria.Web.Pdf;
 
-var builder = WebApplication.CreateBuilder(args);
+// La PC de la galería no tiene el SDK de .NET y no se le va a instalar: la app se publica
+// autocontenida (el runtime viaja adentro de la carpeta). Por eso la actualización del esquema
+// no puede depender de `dotnet ef`, que es una herramienta de desarrollo. Entra por acá:
+//     Galeria.Web.exe --migrar
+// aplica las migraciones pendientes usando el runtime que ya está en la carpeta, informa qué
+// hizo y termina sin levantar el sitio. El portón de PrepararBaseAsync sigue igual de estricto:
+// esto no migra a ciegas, lo corre una persona a propósito y en un paso aparte.
+var migrarYSalir = args.Any(a => string.Equals(a, "--migrar", StringComparison.OrdinalIgnoreCase));
+
+// El flag se saca de los args del host: AddCommandLine espera pares `--clave valor` y un flag
+// suelto al final lo hace fallar con un error de formato que no dice nada útil.
+var argsDelHost = args.Where(a => !string.Equals(a, "--migrar", StringComparison.OrdinalIgnoreCase)).ToArray();
+
+var builder = WebApplication.CreateBuilder(argsDelHost);
 
 // Permite que la app corra como Servicio de Windows en la PC de la galería (arranque automático,
 // sobrevive a un reinicio). Es un no-op cuando NO corre como servicio (ej. `dotnet run` en
@@ -187,11 +202,84 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 var app = builder.Build();
 
+if (migrarYSalir)
+{
+    return await MigrarYSalirAsync(app);
+}
+
 // Antes de atender la primera request: verificar que el esquema esté al día y poner la base en
 // modo WAL. Ver PrepararBaseAsync, más abajo.
 await PrepararBaseAsync(app);
 
 await IdentitySeeder.SeedAdminAsync(app.Services);
+
+// Actualiza el esquema de las dos bases y termina, sin levantar el sitio. Es lo que se corre en
+// la PC de la galería después de copiar una versión nueva (ver deploy\OPERACION.md, sección 4).
+static async Task<int> MigrarYSalirAsync(WebApplication aplicacion)
+{
+    using var scope = aplicacion.Services.CreateScope();
+    var log = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Migracion");
+
+    var bases = new (string Nombre, DatabaseFacade Db)[]
+    {
+        ("galería (obras, ventas, liquidaciones)", scope.ServiceProvider.GetRequiredService<GaleriaDbContext>().Database),
+        ("login", scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database),
+    };
+
+    // Se lleva la cuenta de lo aplicado para poder decir exactamente dónde quedó todo si algo
+    // falla a mitad de camino: EF aplica las migraciones de a una, así que un error en la
+    // tercera deja las dos primeras puestas. Decir "no se tocó nada" ahí sería mentira, y es
+    // justo el dato que hace falta para decidir entre reintentar o restaurar el backup.
+    var aplicadas = new List<string>();
+
+    foreach (var (nombre, db) in bases)
+    {
+        List<string> pendientes;
+        try
+        {
+            pendientes = (await db.GetPendingMigrationsAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            log.LogCritical(ex, "No se pudo leer el estado de la base de {Nombre}. No se aplicó ningún cambio.", nombre);
+            return 1;
+        }
+
+        if (pendientes.Count == 0)
+        {
+            log.LogInformation("Base de {Nombre}: ya estaba al día, no hay nada que aplicar.", nombre);
+            continue;
+        }
+
+        log.LogInformation("Base de {Nombre}: aplicando {Cantidad} migración(es): {Lista}",
+            nombre, pendientes.Count, string.Join(", ", pendientes));
+
+        foreach (var migracion in pendientes)
+        {
+            try
+            {
+                await db.GetService<IMigrator>().MigrateAsync(migracion);
+                aplicadas.Add(migracion);
+                log.LogInformation("  OK  {Migracion}", migracion);
+            }
+            catch (Exception ex)
+            {
+                log.LogCritical(ex,
+                    "Falló la migración {Migracion} sobre la base de {Nombre}. " +
+                    "Aplicadas hasta acá: {Aplicadas}. La base quedó a medio actualizar: " +
+                    "restaurá el último backup antes de volver a intentar.",
+                    migracion, nombre, aplicadas.Count == 0 ? "ninguna" : string.Join(", ", aplicadas));
+                return 1;
+            }
+        }
+    }
+
+    log.LogInformation(aplicadas.Count == 0
+        ? "No había nada pendiente: las dos bases ya estaban al día. Podés iniciar el servicio."
+        : $"Listo: se aplicaron {aplicadas.Count} migración(es). Ya podés iniciar el servicio.");
+
+    return 0;
+}
 
 // El parámetro NO se puede llamar `app`: ya hay un `app` en el ámbito de las top-level statements
 // y C# rechaza el nombre repetido (CS0136), aunque la función local sea static.
@@ -216,7 +304,9 @@ static async Task PrepararBaseAsync(WebApplication aplicacion)
     {
         var mensaje =
             $"La base de datos no está actualizada: faltan aplicar {pendientes.Count} migración(es) " +
-            $"({string.Join(", ", pendientes)}). Corré deploy\\publicar.ps1 sobre esta instalación. " +
+            $"({string.Join(", ", pendientes)}). Hacé un backup y después, en esta misma carpeta y " +
+            "como Administrador, corré:  Galeria.Web.exe --migrar  (no hace falta tener .NET " +
+            "instalado: el runtime viene adentro de esta carpeta). " +
             "La app no arranca en este estado a propósito: con el esquema viejo, la primera pantalla " +
             "que use una columna nueva fallaría con un error incomprensible.";
 
