@@ -1,5 +1,6 @@
 using Galeria.Application.Artistas;
 using Galeria.Application.Auditorias;
+using Galeria.Application.Common;
 using Galeria.Domain.Entities;
 using Galeria.Domain.Enums;
 
@@ -7,7 +8,7 @@ namespace Galeria.Application.Liquidaciones;
 
 // El motor de liquidación (requerimiento 10): junta todo lo pendiente de un artista en una
 // moneda, calcula el total neto y, recién al confirmar, lo vuelca a un comprobante inmutable.
-public class LiquidacionService(ILiquidacionRepository repositorio, IArtistaRepository artistas, AuditoriaService auditoria)
+public class LiquidacionService(ILiquidacionRepository repositorio, IArtistaRepository artistas, AuditoriaService auditoria, IUnitOfWork unitOfWork)
 {
     public Task<List<LiquidacionListItem>> BuscarAsync(LiquidacionFiltro filtro, CancellationToken ct = default) =>
         repositorio.BuscarAsync(filtro, ct);
@@ -87,7 +88,13 @@ public class LiquidacionService(ILiquidacionRepository repositorio, IArtistaRepo
     // Irreversible a propósito (decisión del requerimiento 10.4, la más segura de las dos
     // opciones que planteaba el pedido original): una vez confirmada, la liquidación no se anula
     // desde acá. Auditoría deja el rastro completo igual.
-    public async Task<int> ConfirmarAsync(int artistaId, Moneda moneda, CancellationToken ct = default)
+    public Task<int> ConfirmarAsync(int artistaId, Moneda moneda, CancellationToken ct = default) =>
+        unitOfWork.EjecutarEnTransaccionAsync(token => ConfirmarInternoAsync(artistaId, moneda, token), ct);
+
+    // Dentro de una transacción: entre el alta de la liquidación y el marcado de los adelantos
+    // como descontados no puede quedar un estado intermedio. Si quedaba, esos adelantos se
+    // volvían a descontar en la liquidación siguiente — y una liquidación no se puede anular.
+    private async Task<int> ConfirmarInternoAsync(int artistaId, Moneda moneda, CancellationToken ct)
     {
         var lineas = await repositorio.BuscarPendientesAsync(artistaId, moneda, ct);
 

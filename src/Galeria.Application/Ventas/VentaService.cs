@@ -1,4 +1,5 @@
 using Galeria.Application.Auditorias;
+using Galeria.Application.Common;
 using Galeria.Application.Obras;
 using Galeria.Application.Parametros;
 using Galeria.Domain.Entities;
@@ -6,7 +7,7 @@ using Galeria.Domain.Enums;
 
 namespace Galeria.Application.Ventas;
 
-public class VentaService(IVentaRepository ventas, IObraRepository obras, IParametroRepository parametros, AuditoriaService auditoria)
+public class VentaService(IVentaRepository ventas, IObraRepository obras, IParametroRepository parametros, AuditoriaService auditoria, IUnitOfWork unitOfWork)
 {
     public Task<List<ObraParaOperacion>> BuscarObrasDisponiblesAsync(string? texto, CancellationToken ct = default) =>
         obras.BuscarDisponiblesAsync(texto, ct);
@@ -22,7 +23,13 @@ public class VentaService(IVentaRepository ventas, IObraRepository obras, IParam
 
     // Punto único donde una venta afecta el stock (requerimiento 0.5: la obra pasa a Sin stock
     // cuando la existencia llega a 0) y deja rastro en el libro de movimientos y en Auditoría.
-    public async Task<int> RegistrarAsync(RegistrarVentaRequest request, CancellationToken ct = default)
+    // Todo el cuerpo va dentro de una transacción: la venta se guarda primero para obtener su Id,
+    // y recién después se descuenta el stock y se asienta el movimiento. Si eso segundo falla, sin
+    // transacción quedaba la venta registrada y el stock intacto.
+    public Task<int> RegistrarAsync(RegistrarVentaRequest request, CancellationToken ct = default) =>
+        unitOfWork.EjecutarEnTransaccionAsync(token => RegistrarInternoAsync(request, token), ct);
+
+    private async Task<int> RegistrarInternoAsync(RegistrarVentaRequest request, CancellationToken ct)
     {
         var obra = await obras.ObtenerEntidadAsync(request.ObraId, ct)
             ?? throw new InvalidOperationException("La obra no existe.");

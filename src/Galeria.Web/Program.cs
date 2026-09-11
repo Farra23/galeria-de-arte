@@ -72,6 +72,12 @@ static string HacerRutaAbsolutaDeSqlite(string cadena, string carpetaBase)
         b.DataSource = Path.GetFullPath(Path.Combine(carpetaBase, b.DataSource));
     }
 
+    // Explícito aunque coincida con el default de Microsoft.Data.Sqlite: es cuánto espera un
+    // comando a que se libere la base si otra conexión está escribiendo (el backup nocturno, dos
+    // pestañas abiertas) antes de tirar "database is locked". Dejarlo a la vista evita que alguien
+    // lo baje sin querer al tocar la cadena de conexión.
+    b.DefaultTimeout = 30;
+
     return b.ToString();
 }
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -83,6 +89,7 @@ builder.Services.AddDbContext<GaleriaDbContext>(options =>
 
 // Repositorios (Infrastructure implementa las interfaces que define Application — DIP)
 // y servicios de aplicación, uno por caso de uso.
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IArtistaRepository, ArtistaRepository>();
 builder.Services.AddScoped<IObraRepository, ObraRepository>();
 builder.Services.AddScoped<IParametroRepository, ParametroRepository>();
@@ -169,7 +176,50 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 var app = builder.Build();
 
+// Antes de atender la primera request: verificar que el esquema esté al día y poner la base en
+// modo WAL. Ver PrepararBaseAsync, más abajo.
+await PrepararBaseAsync(app);
+
 await IdentitySeeder.SeedAdminAsync(app.Services);
+
+static async Task PrepararBaseAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var log = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Arranque");
+
+    var galeria = scope.ServiceProvider.GetRequiredService<GaleriaDbContext>();
+    var identidad = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    // Portón de migraciones. Las migraciones se aplican desde deploy\publicar.ps1, no acá (no se
+    // migra a ciegas la base del cliente). Pero hasta ahora, si alguien actualizaba copiando la
+    // carpeta a mano, o el `dotnet ef` del script fallaba y se pasaba por alto, la app arrancaba
+    // igual con el esquema viejo y reventaba con "SQLite Error 1: no such column" recién al abrir
+    // la pantalla que usara la columna nueva — un error incomprensible, en medio del trabajo, y
+    // difícil de relacionar con la actualización. Mejor no arrancar y decir exactamente qué pasa.
+    var pendientes = (await galeria.Database.GetPendingMigrationsAsync()).ToList();
+    pendientes.AddRange(await identidad.Database.GetPendingMigrationsAsync());
+
+    if (pendientes.Count > 0)
+    {
+        var mensaje =
+            $"La base de datos no está actualizada: faltan aplicar {pendientes.Count} migración(es) " +
+            $"({string.Join(", ", pendientes)}). Corré deploy\\publicar.ps1 sobre esta instalación. " +
+            "La app no arranca en este estado a propósito: con el esquema viejo, la primera pantalla " +
+            "que use una columna nueva fallaría con un error incomprensible.";
+
+        log.LogCritical("{Mensaje}", mensaje);
+        throw new InvalidOperationException(mensaje);
+    }
+
+    // WAL (Write-Ahead Logging): con el modo por defecto, cualquier escritura bloquea a los
+    // lectores. Con WAL, leer y escribir dejan de pelearse — que es la diferencia entre que el
+    // backup nocturno (o una segunda persona en el mostrador) provoque un "database is locked"
+    // o no. Es una propiedad que queda guardada en el archivo .db, pero se re-aplica en cada
+    // arranque para que una base restaurada de un backup viejo también quede en WAL.
+    await galeria.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+
+    log.LogInformation("Base de datos lista: esquema al día y journal_mode=WAL.");
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
