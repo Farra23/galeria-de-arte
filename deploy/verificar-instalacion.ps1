@@ -119,8 +119,18 @@ if (-not (Test-Path $baseDatos)) {
 }
 
 # --- Backups ---
+# Se mira primero la copia local del estado: si el destino es un disco externo desconectado, es la
+# unica que sobrevive, y es justo el caso que hay que detectar.
+$estadoLocal = Join-Path $PSScriptRoot "ESTADO-BACKUP.txt"
+if (Test-Path $estadoLocal) {
+    $lineaResultado = (Select-String -Path $estadoLocal -Pattern "^Resultado" -ErrorAction SilentlyContinue | Select-Object -First 1).Line
+    if ($lineaResultado -and $lineaResultado -notmatch "OK") {
+        Resultado "ERROR" "La ultima corrida del backup no termino bien." "$lineaResultado  (detalle en $estadoLocal)"
+    }
+}
+
 if (-not (Test-Path $DestinoBackups)) {
-    Resultado "ERROR" "No existe la carpeta de backups $DestinoBackups." "Corre .\deploy\instalar-tarea-backup.ps1"
+    Resultado "ERROR" "No existe o no se puede acceder a la carpeta de backups $DestinoBackups." "Si es un disco externo, revisa que este conectado. Si nunca se configuro: .\deploy\instalar-tarea-backup.ps1"
 } else {
     $copias = @(Get-ChildItem -Path $DestinoBackups -Filter "backup-*.zip" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
     if ($copias.Count -eq 0) {

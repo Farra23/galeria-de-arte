@@ -51,13 +51,25 @@ $carpetaDatos = Join-Path $RutaApp "Datos"
 $baseDatos = Join-Path $carpetaDatos "app.db"
 $archivoLog = Join-Path $DestinoBackups "backups.log"
 
+# La bitacora y el estado se escriben SIEMPRE tambien al lado de este script, en el disco interno.
+# Si -DestinoBackups apunta a un disco externo o a una carpeta de red y ese destino no esta
+# disponible (alguien desenchufo el disco, se cayo la sincronizacion), el aviso de que el backup
+# fallo no se puede dejar en el destino: justamente no se puede escribir ahi. Sin esta copia local,
+# ese fallo seria completamente invisible y el backup podria quedar caido durante meses.
+$carpetaLocal = $PSScriptRoot
+$archivoLogLocal = Join-Path $carpetaLocal "backups.log"
+
 function Escribir-Bitacora {
     param([string]$Nivel, [string]$Mensaje)
     $linea = "{0}  {1,-5}  {2}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $Nivel, $Mensaje
+
+    try { Add-Content -Path $archivoLogLocal -Value $linea -Encoding UTF8 } catch { }
+
     try {
         if (-not (Test-Path $DestinoBackups)) { New-Item -ItemType Directory -Path $DestinoBackups -Force | Out-Null }
         Add-Content -Path $archivoLog -Value $linea -Encoding UTF8
     } catch { }
+
     if ($Nivel -eq "ERROR") { Write-Host $Mensaje -ForegroundColor Red }
     else { Write-Host $Mensaje -ForegroundColor Cyan }
 }
@@ -88,9 +100,15 @@ function Escribir-Estado {
             $lineas += "Copias guardadas : NINGUNA"
         }
         $lineas += ""
+        $lineas += ("Destino configurado : {0}" -f $DestinoBackups)
+        $lineas += ("Destino accesible   : {0}" -f $(if (Test-Path $DestinoBackups) { "SI" } else { "NO - revisar que el disco este conectado" }))
+        $lineas += ""
         $lineas += "Si 'Resultado' no dice OK, o si 'Ultima corrida' tiene mas de 2 dias,"
         $lineas += "el backup automatico dejo de funcionar. Ver backups.log."
-        Set-Content -Path (Join-Path $DestinoBackups "ESTADO-BACKUP.txt") -Value $lineas -Encoding UTF8
+
+        # Local primero: es el que sigue existiendo aunque el destino se haya vuelto inalcanzable.
+        try { Set-Content -Path (Join-Path $carpetaLocal "ESTADO-BACKUP.txt") -Value $lineas -Encoding UTF8 } catch { }
+        try { Set-Content -Path (Join-Path $DestinoBackups "ESTADO-BACKUP.txt") -Value $lineas -Encoding UTF8 } catch { }
     } catch { }
 }
 
@@ -132,7 +150,16 @@ if (-not (Test-Path $baseDatos)) {
 }
 
 if (-not (Test-Path $DestinoBackups)) {
-    New-Item -ItemType Directory -Path $DestinoBackups -Force | Out-Null
+    try {
+        New-Item -ItemType Directory -Path $DestinoBackups -Force -ErrorAction Stop | Out-Null
+    } catch {
+        # Caso tipico: -DestinoBackups es un disco externo que alguien desenchufo, o una unidad de
+        # red caida. Se corta aca, pero queda constancia en la copia local de la bitacora y del
+        # estado; sin eso el backup podia estar caido meses sin que nadie se enterara.
+        Escribir-Bitacora "ERROR" "No se pudo acceder a $DestinoBackups. Si es un disco externo, revisa que este conectado."
+        Escribir-Estado "FALLO" "Destino de backups inaccesible: $DestinoBackups"
+        exit 1
+    }
 }
 
 # Espacio libre. Se calcula fuera de cualquier try/catch que pudiera tragarse el exit, y se mide
