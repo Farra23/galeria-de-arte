@@ -142,7 +142,11 @@ if (Test-Path $estadoLocal) {
     }
 }
 
-if (-not (Test-Path $DestinoBackups)) {
+# -ErrorAction SilentlyContinue porque si lo que falta es la unidad entera (disco externo
+# desenchufado), Test-Path ademas de devolver false escupe un error crudo de PowerShell al lado
+# del mensaje. El caso ya esta contemplado abajo y explicado en castellano; el error suelto solo
+# confunde a quien esta leyendo el chequeo.
+if (-not (Test-Path $DestinoBackups -ErrorAction SilentlyContinue)) {
     Resultado "ERROR" "No existe o no se puede acceder a la carpeta de backups $DestinoBackups." "Si es un disco externo, revisa que este conectado. Si nunca se configuro: .\deploy\instalar-tarea-backup.ps1"
 } else {
     $copias = @(Get-ChildItem -Path $DestinoBackups -Filter "backup-*.zip" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
