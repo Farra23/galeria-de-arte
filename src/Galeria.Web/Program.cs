@@ -72,10 +72,21 @@ static string HacerRutaAbsolutaDeSqlite(string cadena, string carpetaBase)
         b.DataSource = Path.GetFullPath(Path.Combine(carpetaBase, b.DataSource));
     }
 
-    // Explícito aunque coincida con el default de Microsoft.Data.Sqlite: es cuánto espera un
-    // comando a que se libere la base si otra conexión está escribiendo (el backup nocturno, dos
-    // pestañas abiertas) antes de tirar "database is locked". Dejarlo a la vista evita que alguien
-    // lo baje sin querer al tocar la cadena de conexión.
+    // Cache=Shared se fuerza a Default a propósito, y se hace ACÁ (no solo en appsettings.json)
+    // para que también corrija instalaciones que ya tienen la cadena vieja en disco.
+    //
+    // En modo shared cache, las conexiones del mismo proceso — acá hay dos sobre el mismo archivo,
+    // GaleriaDbContext e Identity — se bloquean entre sí a nivel de TABLA y el error que devuelven
+    // es SQLITE_LOCKED. El timeout de abajo reintenta ante SQLITE_BUSY, pero NO ante SQLITE_LOCKED:
+    // ese falla en el acto. Combinado con WAL (ver PrepararBaseAsync) el problema empeora, así que
+    // habilitar WAL sin sacar esto habría sido peor que no tocar nada. Con cache privado, que es lo
+    // que recomienda Microsoft.Data.Sqlite, los bloqueos vuelven a ser SQLITE_BUSY y el timeout sí
+    // los cubre.
+    b.Cache = Microsoft.Data.Sqlite.SqliteCacheMode.Default;
+
+    // Cuánto espera un comando a que se libere la base si otra conexión está escribiendo (el backup
+    // nocturno, dos pestañas abiertas) antes de tirar "database is locked". Explícito aunque
+    // coincida con el default, para que nadie lo baje sin querer al tocar la cadena de conexión.
     b.DefaultTimeout = 30;
 
     return b.ToString();
@@ -182,9 +193,11 @@ await PrepararBaseAsync(app);
 
 await IdentitySeeder.SeedAdminAsync(app.Services);
 
-static async Task PrepararBaseAsync(WebApplication app)
+// El parámetro NO se puede llamar `app`: ya hay un `app` en el ámbito de las top-level statements
+// y C# rechaza el nombre repetido (CS0136), aunque la función local sea static.
+static async Task PrepararBaseAsync(WebApplication aplicacion)
 {
-    using var scope = app.Services.CreateScope();
+    using var scope = aplicacion.Services.CreateScope();
     var log = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Arranque");
 
     var galeria = scope.ServiceProvider.GetRequiredService<GaleriaDbContext>();
@@ -216,9 +229,20 @@ static async Task PrepararBaseAsync(WebApplication app)
     // backup nocturno (o una segunda persona en el mostrador) provoque un "database is locked"
     // o no. Es una propiedad que queda guardada en el archivo .db, pero se re-aplica en cada
     // arranque para que una base restaurada de un backup viejo también quede en WAL.
-    await galeria.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
-
-    log.LogInformation("Base de datos lista: esquema al día y journal_mode=WAL.");
+    //
+    // A diferencia del portón de migraciones, esto NO es motivo para no arrancar: es una mejora de
+    // concurrencia, y la app funciona sin ella. Dejar que tumbe el arranque sería cambiar una falla
+    // rara y molesta por una que deja al cliente sin sistema.
+    try
+    {
+        await galeria.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+        log.LogInformation("Base de datos lista: esquema al día y journal_mode=WAL.");
+    }
+    catch (Exception ex)
+    {
+        log.LogWarning(ex, "No se pudo activar journal_mode=WAL. La app arranca igual, pero puede " +
+            "aparecer 'database is locked' si dos personas la usan a la vez o durante el backup.");
+    }
 }
 
 // Configure the HTTP request pipeline.

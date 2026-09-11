@@ -35,7 +35,7 @@ if (opciones.Recrear && File.Exists(opciones.ArchivoSalida))
 
 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(opciones.ArchivoSalida))!);
 
-var conexion = $"DataSource={opciones.ArchivoSalida};Cache=Shared";
+var conexion = $"DataSource={opciones.ArchivoSalida}";
 var dbOptions = new DbContextOptionsBuilder<GaleriaDbContext>()
     .UseSqlite(conexion)
     .Options;

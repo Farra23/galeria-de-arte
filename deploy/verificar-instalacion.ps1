@@ -42,11 +42,31 @@ Write-Host ("Fecha: {0}    PC: {1}" -f (Get-Date -Format "dd/MM/yyyy HH:mm"), $e
 Write-Host ""
 
 # --- Servicio ---
+# Cuando el servicio no levanta, el motivo esta en el Visor de eventos y nadie lo va a ir a
+# buscar. Se muestra aca mismo: casi siempre alcanza para saber si es la base, un permiso o un
+# puerto ocupado, sin tener que entrar a la PC.
+function Mostrar-UltimosErrores {
+    try {
+        $errores = Get-EventLog -LogName Application -EntryType Error -Newest 300 -ErrorAction SilentlyContinue |
+            Where-Object { $_.Source -like "*Galeria*" -or $_.Message -like "*Galeria*" } |
+            Select-Object -First 2
+        if ($errores) {
+            Write-Host "         Ultimos errores registrados por Windows:" -ForegroundColor Gray
+            foreach ($e in $errores) {
+                $texto = ($e.Message -split "`n")[0]
+                if ($texto.Length -gt 160) { $texto = $texto.Substring(0, 160) + "..." }
+                Write-Host ("           {0:dd/MM HH:mm}  {1}" -f $e.TimeGenerated, $texto) -ForegroundColor Gray
+            }
+        }
+    } catch { }
+}
+
 $servicio = Get-Service -Name $NombreServicio -ErrorAction SilentlyContinue
 if (-not $servicio) {
     Resultado "ERROR" "El servicio '$NombreServicio' no existe." "Corre .\deploy\instalar-servicio.ps1 como Administrador."
 } elseif ($servicio.Status -ne "Running") {
     Resultado "ERROR" "El servicio existe pero esta $($servicio.Status)." "Arrancalo con: Start-Service $NombreServicio"
+    Mostrar-UltimosErrores
 } else {
     $inicio = (Get-CimInstance Win32_Service -Filter "Name='$NombreServicio'" -ErrorAction SilentlyContinue).StartMode
     if ($inicio -ne "Auto") {
@@ -147,7 +167,7 @@ try {
     } elseif ($libreGb -lt 5) {
         Resultado "WARN" ("Quedan {0:N1} GB libres en {1}:." -f $libreGb, $unidad) "Conviene liberar espacio o mover los backups a otro disco."
     } else {
-        Resultado "OK" ("Espacio en disco suficiente." ) ("{0:N1} GB libres en {1}:" -f $libreGb, $unidad)
+        Resultado "OK" "Espacio en disco suficiente." ("{0:N1} GB libres en {1}:" -f $libreGb, $unidad)
     }
 } catch { }
 
@@ -169,6 +189,7 @@ try {
         Resultado "OK" "La aplicacion responde en $url" ("HTTP {0} (redirige al login, es lo esperado)" -f $codigo)
     } else {
         Resultado "ERROR" "La aplicacion NO responde en $url" $_.Exception.Message
+        Mostrar-UltimosErrores
     }
 }
 

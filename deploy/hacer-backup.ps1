@@ -15,8 +15,14 @@
        haya quedado con contenido. Un backup que nadie verifica no es un backup.
     3. RETENCION: borra los .zip mas viejos que -RetenerDias, pero NUNCA baja de -RetenerMinimo
        copias. Sin esto la carpeta crece para siempre y termina llenando el disco.
-    4. BITACORA: deja una linea por corrida en backups.log, con resultado y tamanio. Es lo que
-       se mira para saber si el backup viene corriendo de verdad.
+    3b. IMAGENES APARTE: el .zip lleva solo la base. Las imagenes de obras se mantienen en una
+       copia espejo incremental (<DestinoBackups>\imagenes) que robocopy actualiza con lo que
+       cambio. Meterlas en el .zip significaba recomprimir varios GB todas las noches y guardar
+       ese volumen multiplicado por la cantidad de copias retenidas.
+    4. BITACORA: deja una linea por corrida en backups.log, con resultado y tamanio, y reescribe
+       ESTADO-BACKUP.txt con un resumen de una pantalla. Si -DestinoBackups apunta a una carpeta
+       sincronizada (OneDrive/Drive), ese archivo se puede mirar desde otra PC: es la forma de
+       enterarse de que el backup dejo de correr sin depender de que alguien avise.
 
     RECOMENDACION: apunta -DestinoBackups a un disco externo o a una carpeta de OneDrive/Google
     Drive. Un backup en el mismo disco que la base no sirve si el disco se rompe.
@@ -56,6 +62,38 @@ function Escribir-Bitacora {
     else { Write-Host $Mensaje -ForegroundColor Cyan }
 }
 
+# Resumen en texto plano, reescrito en cada corrida. La bitacora (backups.log) crece y hay que
+# leerla; esto es una sola pantalla que dice si el backup esta sano. Si -DestinoBackups apunta a
+# una carpeta de OneDrive/Drive, se puede mirar desde otra PC sin molestar al cliente ni esperar
+# a que alguien avise que algo dejo de andar.
+function Escribir-Estado {
+    param([string]$Resultado, [string]$Detalle)
+    try {
+        $copias = @(Get-ChildItem -Path $DestinoBackups -Filter "backup-*.zip" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
+        $lineas = @(
+            "ESTADO DEL BACKUP - ERP Galeria ACATRAS",
+            "=======================================",
+            "",
+            ("Ultima corrida : {0}" -f (Get-Date -Format "dd/MM/yyyy HH:mm")),
+            ("Resultado      : {0}" -f $Resultado),
+            ("Detalle        : {0}" -f $Detalle),
+            ("PC             : {0}" -f $env:COMPUTERNAME),
+            ""
+        )
+        if ($copias.Count -gt 0) {
+            $lineas += ("Copias guardadas : {0}" -f $copias.Count)
+            $lineas += ("Mas reciente     : {0}  ({1:N1} MB)" -f $copias[0].Name, ($copias[0].Length / 1MB))
+            $lineas += ("Mas antigua      : {0}" -f $copias[$copias.Count - 1].Name)
+        } else {
+            $lineas += "Copias guardadas : NINGUNA"
+        }
+        $lineas += ""
+        $lineas += "Si 'Resultado' no dice OK, o si 'Ultima corrida' tiene mas de 2 dias,"
+        $lineas += "el backup automatico dejo de funcionar. Ver backups.log."
+        Set-Content -Path (Join-Path $DestinoBackups "ESTADO-BACKUP.txt") -Value $lineas -Encoding UTF8
+    } catch { }
+}
+
 # La cabecera de todo archivo SQLite valido son los bytes "SQLite format 3" + 0x00. Si la copia
 # quedo truncada o es basura, esto lo detecta ahora y no el dia de la restauracion.
 function Test-CabeceraSqlite {
@@ -70,6 +108,24 @@ function Test-CabeceraSqlite {
     } catch { return $false }
 }
 
+# Que el SCM diga "Stopped" no garantiza que el proceso ya haya soltado el archivo. Lo que
+# importa no es el estado del servicio sino poder abrir la base en exclusiva: eso se prueba
+# directamente, en vez de dormir una cantidad fija de segundos y cruzar los dedos.
+function Esperar-BaseLiberada {
+    param([string]$Ruta, [int]$SegundosMaximo = 60)
+    $limite = (Get-Date).AddSeconds($SegundosMaximo)
+    while ((Get-Date) -lt $limite) {
+        try {
+            $fs = [System.IO.File]::Open($Ruta, 'Open', 'ReadWrite', 'None')
+            $fs.Dispose()
+            return $true
+        } catch {
+            Start-Sleep -Milliseconds 500
+        }
+    }
+    return $false
+}
+
 if (-not (Test-Path $baseDatos)) {
     Escribir-Bitacora "ERROR" "No se encontro $baseDatos. Revisa -RutaApp."
     exit 1
@@ -79,16 +135,20 @@ if (-not (Test-Path $DestinoBackups)) {
     New-Item -ItemType Directory -Path $DestinoBackups -Force | Out-Null
 }
 
-# Espacio libre: necesito al menos 3x el tamanio de la base (copia temporal + zip + margen).
+# Espacio libre. Se calcula fuera de cualquier try/catch que pudiera tragarse el exit, y se mide
+# contra la base (lo unico que entra al .zip): las imagenes van por separado, ver mas abajo.
 $tamanioBase = (Get-Item $baseDatos).Length
+$libre = $null
 try {
     $unidad = (Get-Item $DestinoBackups).PSDrive.Name
     $libre = (Get-PSDrive -Name $unidad).Free
-    if ($libre -lt ($tamanioBase * 3)) {
-        Escribir-Bitacora "ERROR" ("Espacio insuficiente en {0}: quedan {1:N0} MB y la base pesa {2:N0} MB." -f $unidad, ($libre / 1MB), ($tamanioBase / 1MB))
-        exit 1
-    }
 } catch { }
+
+if ($null -ne $libre -and $libre -lt ($tamanioBase * 3)) {
+    Escribir-Bitacora "ERROR" ("Espacio insuficiente en {0}: quedan {1:N0} MB y la base pesa {2:N0} MB (hacen falta 3x para la copia temporal y el .zip)." -f $unidad, ($libre / 1MB), ($tamanioBase / 1MB))
+    Escribir-Estado "FALLO" "Espacio insuficiente en disco."
+    exit 1
+}
 
 $servicio = Get-Service -Name $NombreServicio -ErrorAction SilentlyContinue
 $habiaQueArrancar = $false
@@ -103,7 +163,13 @@ try {
         # puede quedar detenido igual, y el finally tiene que intentar levantarlo lo mismo.
         $habiaQueArrancar = $true
         Stop-Service -Name $NombreServicio -Force
-        Start-Sleep -Seconds 3
+        try {
+            (Get-Service -Name $NombreServicio).WaitForStatus('Stopped', (New-TimeSpan -Seconds 60))
+        } catch { }
+
+        if (-not (Esperar-BaseLiberada $baseDatos 60)) {
+            throw "El servicio se detuvo pero la base sigue tomada por otro proceso. No se copia: un backup en ese estado puede salir inconsistente."
+        }
     } elseif ($SinParar) {
         Escribir-Bitacora "INFO" "Modo -SinParar: copia en caliente (puede quedar inconsistente)."
     }
@@ -122,13 +188,6 @@ try {
         throw "La copia de app.db no tiene cabecera SQLite valida - backup abortado."
     }
 
-    $carpetaImagenes = Join-Path $RutaApp "wwwroot\uploads\obras"
-    if (Test-Path $carpetaImagenes) {
-        $destinoImagenes = Join-Path $carpetaTemporal "uploads\obras"
-        New-Item -ItemType Directory -Path $destinoImagenes -Force | Out-Null
-        Copy-Item (Join-Path $carpetaImagenes "*") -Destination $destinoImagenes -Recurse -ErrorAction SilentlyContinue
-    }
-
     $zip = Join-Path $DestinoBackups ("backup-" + (Get-Date -Format "yyyy-MM-dd_HHmm") + ".zip")
     Compress-Archive -Path (Join-Path $carpetaTemporal "*") -DestinationPath $zip -Force
 }
@@ -142,7 +201,12 @@ finally {
     if ($habiaQueArrancar) {
         try {
             Start-Service -Name $NombreServicio
-            Start-Sleep -Seconds 2
+            # Esperar a Running de verdad: el arranque verifica migraciones y abre la base, asi que
+            # tarda mas que un par de segundos. Con un Start-Sleep fijo, la bitacora reportaba
+            # "no arranco" casi todas las noches aunque hubiera arrancado bien un momento despues.
+            try {
+                (Get-Service -Name $NombreServicio).WaitForStatus('Running', (New-TimeSpan -Seconds 120))
+            } catch { }
             $estado = (Get-Service -Name $NombreServicio).Status
             Escribir-Bitacora "INFO" "Servicio '$NombreServicio' reiniciado: $estado"
             if ($estado -ne "Running") {
@@ -157,21 +221,47 @@ finally {
 
 if ($errorDeCopia) {
     Escribir-Bitacora "ERROR" "Fallo el backup: $errorDeCopia"
+    Escribir-Estado "FALLO" $errorDeCopia
     exit 1
 }
 
 if (-not $zip -or -not (Test-Path $zip)) {
     Escribir-Bitacora "ERROR" "El .zip no se genero."
+    Escribir-Estado "FALLO" "El .zip no se genero."
     exit 1
 }
 
 $tamanioZip = (Get-Item $zip).Length
 if ($tamanioZip -lt 1024) {
     Escribir-Bitacora "ERROR" "El .zip quedo vacio o corrupto ($tamanioZip bytes): $zip"
+    Escribir-Estado "FALLO" "El .zip quedo vacio o corrupto ($tamanioZip bytes)."
     exit 1
 }
 
 Escribir-Bitacora "OK" ("Backup creado: {0} ({1:N1} MB)" -f $zip, ($tamanioZip / 1MB))
+
+# Las imagenes NO van adentro del .zip, a proposito. Son la parte que crece sin techo (una foto
+# por obra, y hay miles): comprimirlas enteras todas las noches y guardar 10 copias multiplica
+# por diez una carpeta que sola ya puede llegar a varios GB, y termina llenando el disco - con el
+# agravante de que el que se llena es el disco donde estan los backups.
+# Se mantiene UNA copia espejo, actualizada de forma incremental: robocopy solo transfiere lo que
+# cambio. /E copia subcarpetas pero NO borra en el destino, asi que un borrado accidental del lado
+# de la app no se propaga al respaldo.
+$carpetaImagenes = Join-Path $RutaApp "wwwroot\uploads\obras"
+if (Test-Path $carpetaImagenes) {
+    $espejoImagenes = Join-Path $DestinoBackups "imagenes"
+    robocopy $carpetaImagenes $espejoImagenes /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+
+    # robocopy usa 0-7 para "todo bien" (0 = sin cambios, 1 = copio archivos, etc.) y 8 o mas
+    # para error real. No es un exit code comun y conviene no confundirlo con un fallo.
+    if ($LASTEXITCODE -ge 8) {
+        Escribir-Bitacora "ERROR" "Fallo la copia de imagenes (robocopy devolvio $LASTEXITCODE). La base SI quedo respaldada."
+    } else {
+        $cantidad = @(Get-ChildItem -Path $espejoImagenes -File -Recurse -ErrorAction SilentlyContinue).Count
+        Escribir-Bitacora "INFO" "Imagenes sincronizadas: $cantidad archivo(s) en $espejoImagenes"
+    }
+    $global:LASTEXITCODE = 0
+}
 
 # Retencion: borra lo viejo, pero nunca deja menos de $RetenerMinimo copias. El minimo manda
 # sobre los dias — si el backup estuvo caido un mes, no quiero quedarme sin nada por antiguedad.
@@ -186,4 +276,5 @@ if ($todos.Count -gt $RetenerMinimo) {
 }
 
 Escribir-Bitacora "INFO" ("Copias guardadas: {0}" -f @(Get-ChildItem -Path $DestinoBackups -Filter "backup-*.zip").Count)
+Escribir-Estado "OK" ("{0} ({1:N1} MB)" -f (Split-Path $zip -Leaf), ($tamanioZip / 1MB))
 exit 0

@@ -46,6 +46,22 @@ if (-not $esAdmin) {
     exit 1
 }
 
+function Esperar-BaseLiberada {
+    param([string]$Ruta, [int]$SegundosMaximo = 60)
+    if (-not (Test-Path $Ruta)) { return $true }
+    $limite = (Get-Date).AddSeconds($SegundosMaximo)
+    while ((Get-Date) -lt $limite) {
+        try {
+            $fs = [System.IO.File]::Open($Ruta, 'Open', 'ReadWrite', 'None')
+            $fs.Dispose()
+            return $true
+        } catch {
+            Start-Sleep -Milliseconds 500
+        }
+    }
+    return $false
+}
+
 function Test-CabeceraSqlite {
     param([string]$Ruta)
     try {
@@ -104,7 +120,14 @@ try {
     if ($servicio -and $servicio.Status -eq "Running") {
         Write-Host "Deteniendo el servicio '$NombreServicio'..." -ForegroundColor Cyan
         Stop-Service -Name $NombreServicio -Force
-        Start-Sleep -Seconds 3
+        try {
+            (Get-Service -Name $NombreServicio).WaitForStatus('Stopped', (New-TimeSpan -Seconds 60))
+        } catch { }
+
+        # Pisar el .db mientras el proceso todavia lo tiene abierto deja la base a medio escribir.
+        if (-not (Esperar-BaseLiberada (Join-Path $carpetaDatos "app.db") 60)) {
+            throw "El servicio se detuvo pero la base sigue tomada por otro proceso. NO se restauro nada: cerra la app / reinicia la PC y proba de nuevo."
+        }
     }
 
     # Red de seguridad: si el backup elegido resulta ser el equivocado, esto permite volver.
@@ -128,18 +151,50 @@ try {
     Copy-Item $baseEnZip -Destination (Join-Path $carpetaDatos "app.db") -Force
     Write-Host "Base restaurada." -ForegroundColor Green
 
+    # Las imagenes pueden venir de dos lados:
+    #   - del .zip, si es un backup del formato viejo (las incluia adentro);
+    #   - del espejo <DestinoBackups>\imagenes, que es donde van ahora (ver hacer-backup.ps1).
+    # Se prueban en ese orden: lo que traiga el .zip es de la misma fecha que la base restaurada,
+    # asi que tiene prioridad sobre el espejo, que siempre refleja el estado mas reciente.
+    $destinoImagenes = Join-Path $RutaApp "wwwroot\uploads\obras"
+    $origenImagenes = $null
     $imagenesEnZip = Join-Path $temporal "uploads\obras"
-    if (Test-Path $imagenesEnZip) {
-        $destinoImagenes = Join-Path $RutaApp "wwwroot\uploads\obras"
+    $espejoImagenes = Join-Path $DestinoBackups "imagenes"
+
+    if (Test-Path $imagenesEnZip) { $origenImagenes = $imagenesEnZip }
+    elseif (Test-Path $espejoImagenes) { $origenImagenes = $espejoImagenes }
+
+    if ($origenImagenes) {
         New-Item -ItemType Directory -Path $destinoImagenes -Force | Out-Null
-        Copy-Item (Join-Path $imagenesEnZip "*") -Destination $destinoImagenes -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Host "Imagenes restauradas." -ForegroundColor Green
+        robocopy $origenImagenes $destinoImagenes /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+        if ($LASTEXITCODE -ge 8) {
+            Write-Host "AVISO: fallo la copia de imagenes (robocopy $LASTEXITCODE). La base SI se restauro." -ForegroundColor Yellow
+        } else {
+            $cantidad = @(Get-ChildItem -Path $destinoImagenes -File -Recurse -ErrorAction SilentlyContinue).Count
+            Write-Host "Imagenes restauradas desde $origenImagenes ($cantidad archivo(s))." -ForegroundColor Green
+        }
+        $global:LASTEXITCODE = 0
+    } else {
+        Write-Host "No se encontraron imagenes para restaurar (ni en el .zip ni en $espejoImagenes)." -ForegroundColor Yellow
     }
 
     if ($servicio) {
         Start-Service -Name $NombreServicio
-        Start-Sleep -Seconds 3
-        Write-Host "Servicio '$NombreServicio': $((Get-Service -Name $NombreServicio).Status)" -ForegroundColor Green
+        try {
+            (Get-Service -Name $NombreServicio).WaitForStatus('Running', (New-TimeSpan -Seconds 120))
+        } catch { }
+        $estadoFinal = (Get-Service -Name $NombreServicio).Status
+        Write-Host "Servicio '$NombreServicio': $estadoFinal" -ForegroundColor Green
+
+        if ($estadoFinal -ne "Running") {
+            Write-Host ""
+            Write-Host "El servicio no arranco. La causa mas probable al restaurar un backup VIEJO:" -ForegroundColor Yellow
+            Write-Host "esa base es anterior a una actualizacion del programa, asi que le faltan" -ForegroundColor Yellow
+            Write-Host "migraciones y la app se niega a arrancar a proposito. Se arregla corriendo" -ForegroundColor Yellow
+            Write-Host "deploy\publicar.ps1 apuntando a esta instalacion (no se pierden datos)." -ForegroundColor Yellow
+            Write-Host "Para ver el error exacto:" -ForegroundColor Yellow
+            Write-Host "    Get-EventLog -LogName Application -Source '$NombreServicio' -Newest 5 | Format-List" -ForegroundColor White
+        }
     }
 
     Write-Host ""
