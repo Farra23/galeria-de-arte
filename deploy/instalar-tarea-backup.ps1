@@ -1,30 +1,36 @@
 ﻿<#
 .SINOPSIS
-    Programa una Tarea de Windows que corre .\hacer-backup.ps1 una vez al mes, de madrugada.
+    Programa el backup automatico DIARIO de la base y las imagenes.
 
 .DESCRIPCION
-    Requiere PowerShell como Administrador. Usa schtasks.exe (disponible en cualquier Windows,
-    sin depender de una versión particular de PowerShell) para crear un disparador mensual.
+    Reemplaza la tarea mensual anterior. Tres cambios, los tres importantes:
 
-    Un backup mensual es lo que pidió el cliente para arrancar simple, pero en un sistema donde
-    entran ventas y adelantos todos los días, si el disco falla justo antes del backup del mes
-    se puede perder hasta un mes de movimientos. Si más adelante quieren más frecuencia, cambiar
-    "/SC MONTHLY /D 1" más abajo por "/SC WEEKLY /D SUN" (o correr .\deploy\hacer-backup.ps1 a
-    mano cuando quieran, no hace falta esperar a la tarea programada).
+    1. DIARIA en vez de mensual. Antes, la ventana de perdida era de hasta 31 dias: un mes entero
+       de ventas, altas de obra y liquidaciones. Ahora es de un dia como maximo.
 
-.PARAMETRO RutaApp
-    Carpeta de la app publicada (se la pasa a hacer-backup.ps1).
+    2. -StartWhenAvailable: si la PC estaba apagada a la hora programada, la tarea corre apenas
+       se prende. La version anterior usaba schtasks.exe sin esta opcion, asi que en una PC de
+       mostrador que se apaga a la noche el backup simplemente no corria NUNCA - y nadie se
+       enteraba, porque una tarea que no se ejecuta no da error.
 
-.PARAMETRO DestinoBackups
-    Carpeta donde se guardan los .zip (se la pasa a hacer-backup.ps1).
+    3. Se registra con el modulo ScheduledTasks (Register-ScheduledTask) en vez de schtasks.exe,
+       que es lo que permite configurar el punto 2 y un limite de duracion.
+
+    La tarea corre como SYSTEM, asi que anda con la sesion cerrada y sin nadie logueado.
+
+.PARAMETRO Hora
+    Hora de la corrida diaria, formato HH:mm. Por defecto 03:00 (de madrugada, con la galeria
+    cerrada: el backup detiene el servicio unos segundos).
 
 .EJEMPLO
     .\deploy\instalar-tarea-backup.ps1
+    .\deploy\instalar-tarea-backup.ps1 -DestinoBackups "D:\BackupsGaleria" -Hora "02:30"
 #>
 param(
     [string]$RutaApp = "C:\GaleriaACATRAS\app",
     [string]$DestinoBackups = "C:\GaleriaACATRAS\backups",
-    [string]$NombreTarea = "GaleriaACATRAS-Backup"
+    [string]$NombreTarea = "GaleriaACATRAS-Backup",
+    [string]$Hora = "03:00"
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,30 +38,52 @@ $ErrorActionPreference = "Stop"
 $esAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
 if (-not $esAdmin) {
     Write-Host "Este script necesita PowerShell como Administrador." -ForegroundColor Red
+    Write-Host "Click derecho sobre PowerShell -> 'Ejecutar como administrador'." -ForegroundColor Yellow
     exit 1
 }
 
 $scriptBackup = Join-Path $PSScriptRoot "hacer-backup.ps1"
 if (-not (Test-Path $scriptBackup)) {
-    throw "No se encontró $scriptBackup."
+    throw "No se encontro $scriptBackup (tiene que estar en la misma carpeta que este script)."
+}
+
+try {
+    $horaParseada = [datetime]::ParseExact($Hora, "HH:mm", $null)
+} catch {
+    throw "-Hora tiene que tener formato HH:mm (ej. 03:00). Recibi: '$Hora'."
 }
 
 $existente = Get-ScheduledTask -TaskName $NombreTarea -ErrorAction SilentlyContinue
 if ($existente) {
-    Write-Host "Ya existe la tarea '$NombreTarea', la borro y la vuelvo a crear..." -ForegroundColor Yellow
-    schtasks.exe /Delete /TN $NombreTarea /F | Out-Null
+    Write-Host "Ya existe la tarea '$NombreTarea' - la borro y la vuelvo a crear con la configuracion nueva..." -ForegroundColor Yellow
+    Unregister-ScheduledTask -TaskName $NombreTarea -Confirm:$false
 }
 
-$argumentos = "-NoProfile -ExecutionPolicy Bypass -File `"$scriptBackup`" -RutaApp `"$RutaApp`" -DestinoBackups `"$DestinoBackups`""
-$comando = "powershell.exe $argumentos"
+$argumentos = '-NoProfile -ExecutionPolicy Bypass -File "{0}" -RutaApp "{1}" -DestinoBackups "{2}"' -f $scriptBackup, $RutaApp, $DestinoBackups
 
-Write-Host "Programando '$NombreTarea': el 1 de cada mes a las 03:00..." -ForegroundColor Cyan
-schtasks.exe /Create /SC MONTHLY /D 1 /ST 03:00 /TN $NombreTarea /TR $comando /RU SYSTEM /RL HIGHEST /F | Out-Null
+$accion = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $argumentos
+$disparador = New-ScheduledTaskTrigger -Daily -At $horaParseada
+$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+
+$config = New-ScheduledTaskSettingsSet `
+    -StartWhenAvailable `
+    -DontStopIfGoingOnBatteries `
+    -AllowStartIfOnBatteries `
+    -MultipleInstances IgnoreNew `
+    -ExecutionTimeLimit (New-TimeSpan -Hours 2)
+
+Write-Host "Programando '$NombreTarea': todos los dias a las $Hora..." -ForegroundColor Cyan
+Register-ScheduledTask -TaskName $NombreTarea -Action $accion -Trigger $disparador `
+    -Principal $principal -Settings $config `
+    -Description "Backup diario de la base y las imagenes del ERP de la galeria." | Out-Null
 
 $tarea = Get-ScheduledTask -TaskName $NombreTarea -ErrorAction SilentlyContinue
-if ($tarea) {
-    Write-Host "Tarea '$NombreTarea' creada. Estado: $($tarea.State)" -ForegroundColor Green
-    Write-Host "Podés probarla ahora mismo con: Start-ScheduledTask -TaskName '$NombreTarea'" -ForegroundColor Cyan
-} else {
-    throw "La tarea no quedó registrada — revisá el mensaje de schtasks.exe arriba."
+if (-not $tarea) {
+    throw "La tarea no quedo registrada."
 }
+
+Write-Host "Tarea '$NombreTarea' creada. Estado: $($tarea.State)" -ForegroundColor Green
+Write-Host ""
+Write-Host "IMPORTANTE: probala AHORA, no te vayas sin ver un .zip generado:" -ForegroundColor Yellow
+Write-Host "    Start-ScheduledTask -TaskName '$NombreTarea'" -ForegroundColor White
+Write-Host "    Get-ChildItem '$DestinoBackups'" -ForegroundColor White
