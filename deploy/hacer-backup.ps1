@@ -59,6 +59,17 @@ $archivoLog = Join-Path $DestinoBackups "backups.log"
 $carpetaLocal = $PSScriptRoot
 $archivoLogLocal = Join-Path $carpetaLocal "backups.log"
 
+# Test-Path falla con error cuando lo que no existe es la UNIDAD entera, no la carpeta: "No se
+# encuentra la unidad". Con $ErrorActionPreference = "Stop" ese error corta el script. Y que
+# desaparezca la letra de unidad es exactamente lo que pasa cuando alguien desenchufa el disco
+# externo — el caso que la copia local de la bitacora existe para hacer visible. Sin esta
+# envoltura el backup moria antes de poder avisar nada, que es el peor de los dos mundos: caido
+# y en silencio.
+function Test-RutaDisponible {
+    param([string]$Ruta)
+    try { return [bool](Test-Path -Path $Ruta -ErrorAction SilentlyContinue) } catch { return $false }
+}
+
 function Escribir-Bitacora {
     param([string]$Nivel, [string]$Mensaje)
     $linea = "{0}  {1,-5}  {2}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $Nivel, $Mensaje
@@ -66,7 +77,7 @@ function Escribir-Bitacora {
     try { Add-Content -Path $archivoLogLocal -Value $linea -Encoding UTF8 } catch { }
 
     try {
-        if (-not (Test-Path $DestinoBackups)) { New-Item -ItemType Directory -Path $DestinoBackups -Force | Out-Null }
+        if (-not (Test-RutaDisponible $DestinoBackups)) { New-Item -ItemType Directory -Path $DestinoBackups -Force | Out-Null }
         Add-Content -Path $archivoLog -Value $linea -Encoding UTF8
     } catch { }
 
@@ -101,7 +112,7 @@ function Escribir-Estado {
         }
         $lineas += ""
         $lineas += ("Destino configurado : {0}" -f $DestinoBackups)
-        $lineas += ("Destino accesible   : {0}" -f $(if (Test-Path $DestinoBackups) { "SI" } else { "NO - revisar que el disco este conectado" }))
+        $lineas += ("Destino accesible   : {0}" -f $(if (Test-RutaDisponible $DestinoBackups) { "SI" } else { "NO - revisar que el disco este conectado" }))
         $lineas += ""
         $lineas += "Si 'Resultado' no dice OK, o si 'Ultima corrida' tiene mas de 2 dias,"
         $lineas += "el backup automatico dejo de funcionar. Ver backups.log."
@@ -149,7 +160,7 @@ if (-not (Test-Path $baseDatos)) {
     exit 1
 }
 
-if (-not (Test-Path $DestinoBackups)) {
+if (-not (Test-RutaDisponible $DestinoBackups)) {
     try {
         New-Item -ItemType Directory -Path $DestinoBackups -Force -ErrorAction Stop | Out-Null
     } catch {
