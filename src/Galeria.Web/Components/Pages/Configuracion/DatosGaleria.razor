@@ -43,6 +43,9 @@
         <h2 class="h5">Plantillas de mail</h2>
         <p class="text-body-secondary">
             Podés usar <code>[nombre]</code>, <code>[monto]</code> y <code>[fecha]</code> — se reemplazan al enviar.
+            Estos mensajes abren tu correo o WhatsApp ya escritos, pero no adjuntan el PDF solos:
+            evitá prometer un adjunto en el texto ("te mando adjunto...") — hay que bajarlo aparte
+            con "Descargar PDF" y agregarlo a mano antes de enviar.
         </p>
 
         <div class="mb-3">
@@ -90,7 +93,7 @@
         plantillaAviso = valores.GetValueOrDefault(Parametro.Claves.PlantillaAviso,
             "Estimado [nombre], usted tiene [monto] para retirar. La fecha pactada sería el [fecha]. Recuerde confirmar al teléfono de la galería.");
         plantillaLiquidacion = valores.GetValueOrDefault(Parametro.Claves.PlantillaLiqui,
-            "Estimado [nombre], adjuntamos su liquidación por [monto], emitida el [fecha].");
+            "Estimado [nombre], le enviamos su liquidación por [monto], emitida el [fecha].");
         plantillaCertificado = valores.GetValueOrDefault(Parametro.Claves.PlantillaCertif,
             "Estimado [nombre], adjuntamos el certificado de autenticidad de su pieza.");
 

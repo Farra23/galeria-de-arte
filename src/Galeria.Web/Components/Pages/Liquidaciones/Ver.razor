@@ -40,6 +40,11 @@ else
             <a class="btn btn-link" href="liquidaciones">Volver a Liquidaciones</a>
         </div>
 
+        <p class="text-body-secondary d-print-none small">
+            "✉ Mail" y "WA" abren tu correo o WhatsApp con el mensaje ya escrito, pero no adjuntan
+            el PDF solos — bajalo primero con "Descargar PDF" y adjuntalo vos antes de mandarlo.
+        </p>
+
         <div class="border rounded p-4">
             <div class="d-flex justify-content-between">
                 <div>
@@ -106,7 +111,10 @@ else
     private string nombreGaleria = "Galería ACATRAS";
     private string? direccionGaleria;
     private string? telefonoGaleria;
-    private string plantilla = "Estimado [nombre], adjuntamos su liquidación por [monto], emitida el [fecha].";
+    // No dice "adjuntamos": ni el mailto: ni el link de WhatsApp adjuntan el PDF solos (ver
+    // comentario de ArmarMensaje más abajo) -- decir "adjuntamos" cuando en realidad no se adjunta
+    // nada era justo la confusión del cliente en el testeo (item 3/4: "el envío no funciona").
+    private string plantilla = "Estimado [nombre], le enviamos su liquidación por [monto], emitida el [fecha].";
 
     protected override async Task OnInitializedAsync()
     {

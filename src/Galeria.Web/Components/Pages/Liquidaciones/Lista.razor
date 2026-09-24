@@ -13,6 +13,12 @@
 
 <h1>Liquidaciones</h1>
 
+<div class="alert alert-info py-2">
+    Este listado es el historial de liquidaciones ya confirmadas.
+    Para ver qué artistas tienen plata pendiente de cobrar (y avisarles por mail o WhatsApp),
+    andá a <a href="agenda" class="alert-link">Agenda de pagos</a>.
+</div>
+
 <div class="row mb-3 g-2">
     <div class="col-md-4">
         <select class="form-select" value="@(ArtistaId?.ToString() ?? "")" @onchange='e => IrA("artista", ParseIntOrNull(e.Value))'>
