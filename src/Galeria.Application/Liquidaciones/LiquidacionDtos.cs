@@ -31,7 +31,11 @@ public record VistaPreviaLiquidacion(
     // cierre del mes anterior. FechaCorte es el último día incluido; CantidadExcluidasDelMes
     // cuenta lo que quedó afuera por eso, para que la vista previa lo pueda avisar.
     DateOnly FechaCorte,
-    int CantidadExcluidasDelMes);
+    int CantidadExcluidasDelMes,
+    // Item 2 del testeo del cliente: para poder imprimir/enviar una vista previa sin confirmar,
+    // hacen falta los mismos datos de contacto que ya usa la liquidación confirmada (Ver.razor).
+    string? ArtistaCorreo,
+    string? ArtistaCelular);
 
 public record LiquidacionListItem(
     int Id,

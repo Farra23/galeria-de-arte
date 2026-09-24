@@ -2,8 +2,11 @@
 @attribute [Authorize]
 @using Galeria.Application.Artistas
 @using Galeria.Application.Liquidaciones
+@using Galeria.Application.Parametros
+@using Galeria.Domain.Entities
 @inject LiquidacionService LiquidacionService
 @inject ArtistaService ArtistaService
+@inject IParametroRepository ParametroRepository
 @inject NavigationManager NavigationManager
 
 <PageTitle>Generar liquidación</PageTitle>
@@ -96,7 +99,22 @@
                 <dt class="col-sm-3 fw-bold">Total neto a pagar</dt><dd class="col-sm-9 fw-bold fs-5">@Formato.Monto(vista.TotalNeto, vista.Moneda)</dd>
             </dl>
 
-            <button class="btn btn-primary" disabled="@confirmando" @onclick="ConfirmarAsync">@(confirmando ? "Confirmando…" : "Confirmar liquidación")</button>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <button class="btn btn-primary" disabled="@confirmando" @onclick="ConfirmarAsync">@(confirmando ? "Confirmando…" : "Confirmar liquidación")</button>
+                <a class="btn btn-outline-secondary" href="@EnlacePdfVistaPrevia()" target="_blank">Descargar PDF (sin confirmar)</a>
+                @if (!string.IsNullOrWhiteSpace(vista.ArtistaCorreo))
+                {
+                    <a class="btn btn-outline-secondary" href="@EnlaceMail()" title="Avisar por mail, sin confirmar">✉ Mail</a>
+                }
+                @if (!string.IsNullOrWhiteSpace(vista.ArtistaCelular))
+                {
+                    <a class="btn btn-outline-success" href="@EnlaceWhatsApp()" target="_blank" title="Avisar por WhatsApp, sin confirmar">WA</a>
+                }
+            </div>
+            <p class="text-body-secondary small mt-2">
+                Esto no confirma nada, es solo para mostrarle al artista cuánto le tocaría cobrar.
+                "✉ Mail" y "WA" no adjuntan el PDF solos — bajalo primero y adjuntalo a mano.
+            </p>
         }
     </div>
 }
@@ -113,15 +131,46 @@
     private int confirmandoFlag;
     private bool confirmando => confirmandoFlag != 0;
 
+    // Mismo texto por defecto que Ver.razor (sin prometer un adjunto que el mailto:/wa.me no manda
+    // solo — ver comentario de ArmarMensaje ahí).
+    private string plantilla = "Estimado [nombre], le enviamos su liquidación por [monto], emitida el [fecha].";
+
     protected override async Task OnInitializedAsync()
     {
         artistas = await ArtistaService.ListarParaSeleccionAsync();
+
+        var plantillaGuardada = await ParametroRepository.ObtenerAsync(Parametro.Claves.PlantillaLiqui);
+        if (!string.IsNullOrWhiteSpace(plantillaGuardada))
+        {
+            plantilla = plantillaGuardada;
+        }
 
         if (ArtistaPreseleccionado is > 0)
         {
             artistaId = ArtistaPreseleccionado.Value;
             await GenerarVistaPreviaAsync();
         }
+    }
+
+    private string EnlacePdfVistaPrevia() => $"liquidaciones/vista-previa/{artistaId}/{moneda}/pdf";
+
+    private string ArmarMensaje() => plantilla
+        .Replace("[nombre]", vista!.ArtistaNombre)
+        .Replace("[monto]", Formato.Monto(vista.TotalNeto, vista.Moneda))
+        .Replace("[fecha]", DateOnly.FromDateTime(DateTime.Now).ToString("dd/MM/yyyy"));
+
+    private string EnlaceMail()
+    {
+        var asunto = Uri.EscapeDataString("Su liquidación (vista previa, sin confirmar)");
+        var cuerpo = Uri.EscapeDataString(ArmarMensaje());
+        return $"mailto:{vista!.ArtistaCorreo}?subject={asunto}&body={cuerpo}";
+    }
+
+    private string EnlaceWhatsApp()
+    {
+        var numero = new string(vista!.ArtistaCelular!.Where(char.IsDigit).ToArray());
+        var texto = Uri.EscapeDataString(ArmarMensaje());
+        return $"https://wa.me/{numero}?text={texto}";
     }
 
     private async Task GenerarVistaPreviaAsync()

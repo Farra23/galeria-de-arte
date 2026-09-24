@@ -11,7 +11,52 @@ namespace Galeria.Web.Pdf;
 // fecha de emisión bien visible y datos de la galería en el encabezado.
 public static class LiquidacionPdfGenerator
 {
-    public static byte[] Generar(LiquidacionDetalle detalle, string nombreGaleria, string? direccionGaleria, string? telefonoGaleria)
+    public static byte[] Generar(LiquidacionDetalle detalle, string nombreGaleria, string? direccionGaleria, string? telefonoGaleria) =>
+        GenerarInterno(
+            $"Liquidación N.º {detalle.NumeroCorrelativo:D6}",
+            detalle.Fecha,
+            detalle.ArtistaNombre,
+            detalle.Moneda,
+            detalle.Lineas,
+            detalle.TotalBruto,
+            detalle.TotalAdelantos,
+            detalle.TotalNeto,
+            nombreGaleria,
+            direccionGaleria,
+            telefonoGaleria,
+            "Esta liquidación deja constancia de las piezas vendidas, alquiladas o adelantadas que se pagaron en esta fecha.");
+
+    // Item 2 del testeo del cliente ("¿se puede imprimir/enviar sin liquidar?"): mismo diseño,
+    // pero antes de confirmar nada, así que no hay N.º correlativo ni Fecha de emisión real —
+    // se deja explícito que es un borrador para que nadie lo confunda con el comprobante oficial.
+    public static byte[] GenerarVistaPrevia(VistaPreviaLiquidacion vista, string nombreGaleria, string? direccionGaleria, string? telefonoGaleria) =>
+        GenerarInterno(
+            "Vista previa — sin confirmar",
+            DateOnly.FromDateTime(DateTime.Now),
+            vista.ArtistaNombre,
+            vista.Moneda,
+            vista.Lineas,
+            vista.TotalBruto,
+            vista.TotalAdelantos,
+            vista.TotalNeto,
+            nombreGaleria,
+            direccionGaleria,
+            telefonoGaleria,
+            $"Vista previa sin confirmar, hasta el {vista.FechaCorte:dd/MM/yyyy} — no reemplaza al comprobante oficial, que se emite al confirmar la liquidación.");
+
+    private static byte[] GenerarInterno(
+        string tituloDocumento,
+        DateOnly fecha,
+        string artistaNombre,
+        Moneda moneda,
+        IReadOnlyList<LineaPendiente> lineas,
+        decimal totalBruto,
+        decimal totalAdelantos,
+        decimal totalNeto,
+        string nombreGaleria,
+        string? direccionGaleria,
+        string? telefonoGaleria,
+        string pieDePagina)
     {
         return Document.Create(contenedor =>
         {
@@ -39,8 +84,8 @@ public static class LiquidacionPdfGenerator
 
                     fila.ConstantItem(180).AlignRight().Column(col =>
                     {
-                        col.Item().Text($"Liquidación N.º {detalle.NumeroCorrelativo:D6}").FontSize(14).Bold();
-                        col.Item().Text($"Fecha de emisión: {detalle.Fecha:dd/MM/yyyy}").FontSize(10).Bold();
+                        col.Item().Text(tituloDocumento).FontSize(14).Bold();
+                        col.Item().Text($"Fecha: {fecha:dd/MM/yyyy}").FontSize(10).Bold();
                     });
                 });
 
@@ -48,7 +93,7 @@ public static class LiquidacionPdfGenerator
                 {
                     col.Spacing(10);
 
-                    col.Item().Text($"Artista: {detalle.ArtistaNombre}    Moneda: {Formato.Simbolo(detalle.Moneda)}").Bold();
+                    col.Item().Text($"Artista: {artistaNombre}    Moneda: {Formato.Simbolo(moneda)}").Bold();
 
                     col.Item().Table(tabla =>
                     {
@@ -74,27 +119,26 @@ public static class LiquidacionPdfGenerator
                             EncabezadoCelda(header, "Detalle");
                         });
 
-                        foreach (var linea in detalle.Lineas)
+                        foreach (var linea in lineas)
                         {
                             Celda(tabla, linea.Fecha.ToString("dd/MM/yyyy"));
                             Celda(tabla, TipoTexto(linea.Tipo));
                             Celda(tabla, linea.CodigoObra);
                             Celda(tabla, linea.NombreObra);
                             Celda(tabla, linea.Cantidad.ToString());
-                            Celda(tabla, Formato.Monto(linea.MontoTotal, detalle.Moneda));
+                            Celda(tabla, Formato.Monto(linea.MontoTotal, moneda));
                             Celda(tabla, linea.Observaciones ?? "");
                         }
                     });
 
                     col.Item().PaddingTop(10).AlignRight().Column(totales =>
                     {
-                        totales.Item().Text($"Total bruto: {Formato.Monto(detalle.TotalBruto, detalle.Moneda)}");
-                        totales.Item().Text($"Adelantos: {Formato.Monto(detalle.TotalAdelantos, detalle.Moneda)}");
-                        totales.Item().PaddingTop(4).Text($"Total neto pagado: {Formato.Monto(detalle.TotalNeto, detalle.Moneda)}").FontSize(13).Bold();
+                        totales.Item().Text($"Total bruto: {Formato.Monto(totalBruto, moneda)}");
+                        totales.Item().Text($"Adelantos: {Formato.Monto(totalAdelantos, moneda)}");
+                        totales.Item().PaddingTop(4).Text($"Total neto pagado: {Formato.Monto(totalNeto, moneda)}").FontSize(13).Bold();
                     });
 
-                    col.Item().PaddingTop(15).Text(
-                        "Esta liquidación deja constancia de las piezas vendidas, alquiladas o adelantadas que se pagaron en esta fecha.")
+                    col.Item().PaddingTop(15).Text(pieDePagina)
                         .FontSize(9).Italic().FontColor(Colors.Grey.Darken1);
                 });
 

@@ -102,7 +102,9 @@ public class LiquidacionService(ILiquidacionRepository repositorio, IArtistaRepo
             totalDevoluciones,
             totalNeto,
             corte,
-            todasPendientes.Count - lineas.Count);
+            todasPendientes.Count - lineas.Count,
+            artista.Correo,
+            artista.Celular);
     }
 
     // Irreversible a propósito (decisión del requerimiento 10.4, la más segura de las dos

@@ -463,6 +463,43 @@ app.MapGet("/liquidaciones/{id:int}/pdf", async (int id, LiquidacionService liqu
     return Results.File(pdf, "application/pdf", $"liquidacion-{detalle.NumeroCorrelativo:D6}.pdf");
 }).RequireAuthorization();
 
+// Vista previa imprimible sin confirmar (item 2 del testeo del cliente).
+app.MapGet("/liquidaciones/vista-previa/{artistaId:int}/{moneda}/pdf", async (int artistaId, string moneda, LiquidacionService liquidaciones, IParametroRepository parametros) =>
+{
+    if (!Enum.TryParse<Moneda>(moneda, ignoreCase: true, out var monedaValor))
+    {
+        return Results.NotFound();
+    }
+
+    VistaPreviaLiquidacion vista;
+    try
+    {
+        vista = await liquidaciones.GenerarVistaPreviaAsync(artistaId, monedaValor);
+    }
+    catch (InvalidOperationException)
+    {
+        return Results.NotFound();
+    }
+
+    var valores = await parametros.ObtenerVariosAsync(
+    [
+        Parametro.Claves.NombreGaleria,
+        Parametro.Claves.DireccionGaleria,
+        Parametro.Claves.TelefonoGaleria
+    ]);
+
+    var nombreGaleria = valores.GetValueOrDefault(Parametro.Claves.NombreGaleria) is { Length: > 0 } nombre
+        ? nombre
+        : "Galería ACATRAS";
+
+    var pdf = LiquidacionPdfGenerator.GenerarVistaPrevia(
+        vista, nombreGaleria,
+        valores.GetValueOrDefault(Parametro.Claves.DireccionGaleria),
+        valores.GetValueOrDefault(Parametro.Claves.TelefonoGaleria));
+
+    return Results.File(pdf, "application/pdf", $"vista-previa-liquidacion-{vista.ArtistaId}.pdf");
+}).RequireAuthorization();
+
 // Exportar a Excel/CSV (requerimiento 0.2 "+"): cada endpoint respeta el mismo filtro activo que
 // su lista, parseado de la querystring con las mismas claves que SupplyParameterFromQuery usa en
 // la página — se repite acá porque un endpoint mínimo no tiene ese mecanismo de Blazor disponible.
