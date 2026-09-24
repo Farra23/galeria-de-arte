@@ -408,6 +408,34 @@ app.MapGet("/certificados/{certificadoId:int}/pdf", async (int certificadoId, Ce
     return Results.File(pdf, "application/pdf", $"certificado-{datos.NumeroCertificado:D6}.pdf");
 }).RequireAuthorization();
 
+// Vista previa desde la ficha de la obra (item 13 del testeo del cliente), sin pasar por una
+// venta — ver comentario en CertificadoDatos.NumeroCertificado.
+app.MapGet("/obras/{obraId:int}/certificado.pdf", async (int obraId, CertificadoService certificados, IParametroRepository parametros, IWebHostEnvironment env) =>
+{
+    var datos = await certificados.ObtenerVistaPreviaAsync(obraId);
+    if (datos is null)
+    {
+        return Results.NotFound();
+    }
+
+    var nombreGaleria = await parametros.ObtenerAsync(Parametro.Claves.NombreGaleria) is { Length: > 0 } nombre
+        ? nombre
+        : "Galería ACATRAS";
+
+    byte[]? imagenBytes = null;
+    if (datos.ImagenUrl is not null)
+    {
+        var rutaFisica = Path.Combine(env.WebRootPath, datos.ImagenUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+        if (File.Exists(rutaFisica))
+        {
+            imagenBytes = await File.ReadAllBytesAsync(rutaFisica);
+        }
+    }
+
+    var pdf = CertificadoPdfGenerator.Generar(datos, nombreGaleria, imagenBytes);
+    return Results.File(pdf, "application/pdf", $"certificado-{datos.CodigoObra}.pdf");
+}).RequireAuthorization();
+
 app.MapGet("/liquidaciones/{id:int}/pdf", async (int id, LiquidacionService liquidaciones, IParametroRepository parametros) =>
 {
     var detalle = await liquidaciones.ObtenerDetalleAsync(id);

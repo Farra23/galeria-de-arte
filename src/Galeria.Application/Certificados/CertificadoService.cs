@@ -11,6 +11,11 @@ public class CertificadoService(ICertificadoRepository certificados, AuditoriaSe
     public Task<CertificadoDatos?> ObtenerDatosAsync(int certificadoId, CancellationToken ct = default) =>
         certificados.ObtenerDatosAsync(certificadoId, ct);
 
+    // Vista previa desde Obras (item 13): no registra nada ni consume numeración, por eso no pasa
+    // por AuditoriaService como sí hace EmitirAsync.
+    public Task<CertificadoDatos?> ObtenerVistaPreviaAsync(int obraId, CancellationToken ct = default) =>
+        certificados.ObtenerVistaPreviaAsync(obraId, ct);
+
     // Idempotente a propósito: "emitir" dos veces la misma venta devuelve el certificado que ya
     // existía en vez de duplicar numeración correlativa (requerimiento 5.3: "numeración correlativa").
     public async Task<int> EmitirAsync(int ventaId, CancellationToken ct = default)

@@ -42,5 +42,26 @@ public class CertificadoRepository(GaleriaDbContext db) : ICertificadoRepository
                 c.Venta.Obra.ImagenPrincipalPath))
             .FirstOrDefaultAsync(ct);
 
+    public async Task<CertificadoDatos?> ObtenerVistaPreviaAsync(int obraId, CancellationToken ct = default) =>
+        await db.Obras.AsNoTracking()
+            .Include(o => o.Artista)
+            .Include(o => o.Rubro)
+            .Include(o => o.Tecnica)
+            .Where(o => o.Id == obraId)
+            .Select(o => new CertificadoDatos(
+                null,
+                DateOnly.FromDateTime(DateTime.Now),
+                o.Artista.Codigo.ToString("D3") + o.NumeroObra.ToString("D3"),
+                o.Titulo,
+                o.Artista.Apellido + ", " + o.Artista.Nombre,
+                o.Rubro != null ? o.Rubro.Nombre : null,
+                o.Tecnica != null ? o.Tecnica.Nombre : null,
+                o.AltoCm,
+                o.AnchoCm,
+                o.LargoCm,
+                o.FechaIngreso.Year,
+                o.ImagenPrincipalPath))
+            .FirstOrDefaultAsync(ct);
+
     public Task GuardarCambiosAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
 }

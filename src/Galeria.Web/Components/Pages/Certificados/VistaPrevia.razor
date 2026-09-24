@@ -1,11 +1,11 @@
-@page "/certificados/emitir/{VentaId:int}"
+@page "/obras/{ObraId:int}/certificado"
 @attribute [Authorize]
 @using Galeria.Application.Certificados
 @inject CertificadoService CertificadoService
 
 <PageTitle>Certificado de autenticidad</PageTitle>
 <HeadContent>
-    <meta name="description" content="Certificado de autenticidad de la pieza vendida, imprimible." />
+    <meta name="description" content="Vista previa imprimible del certificado de autenticidad de la obra." />
 </HeadContent>
 
 @if (cargando)
@@ -14,24 +14,26 @@
 }
 else if (datos is null)
 {
-    <div class="page-narrow">
-        <h1>Emitir certificado</h1>
-        <p>Todavía no se emitió el certificado de esta venta.</p>
-        <button class="btn btn-primary" disabled="@emitiendo" @onclick="EmitirAsync">@(emitiendo ? "Emitiendo…" : "Emitir certificado")</button>
-    </div>
+    <h1>Obra no encontrada</h1>
+    <a href="obras" class="btn btn-link">Volver a Obras</a>
 }
 else
 {
     <div class="page-narrow">
         <div class="mb-3 d-print-none">
             <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
-            <a class="btn btn-outline-primary" href="@($"certificados/{certificadoId}/pdf")" target="_blank">Descargar PDF</a>
-            <a class="btn btn-link" href="ventas">Volver a Ventas</a>
+            <a class="btn btn-outline-primary" href="@($"obras/{ObraId}/certificado.pdf")" target="_blank">Descargar PDF</a>
+            <a class="btn btn-link" href="@($"obras/{ObraId}")">Volver a la obra</a>
+        </div>
+
+        <div class="alert alert-secondary d-print-none py-2">
+            Vista previa sin numerar. Si la obra ya se vendió, el certificado oficial (numerado) se
+            emite y reimprime desde la venta correspondiente.
         </div>
 
         <div class="border rounded p-4">
             <h1 class="h3">Certificado de autenticidad</h1>
-            <p class="text-body-secondary">N.º @datos.NumeroCertificado?.ToString("D6") — emitido el @datos.FechaEmision.ToString("dd/MM/yyyy")</p>
+            <p class="text-body-secondary">Vista previa (código @datos.CodigoObra) — @datos.FechaEmision.ToString("dd/MM/yyyy")</p>
             @if (datos.ImagenUrl is not null)
             {
                 <img src="@datos.ImagenUrl" alt="@datos.Titulo" class="img-thumbnail mb-3" style="max-height:260px" />
@@ -58,39 +60,15 @@ else
 
 @code {
     [Parameter]
-    public int VentaId { get; set; }
+    public int ObraId { get; set; }
 
     private bool cargando = true;
     private CertificadoDatos? datos;
-    private int certificadoId;
-    private bool emitiendo;
 
     protected override async Task OnInitializedAsync()
     {
-        var certificado = await CertificadoService.ObtenerPorVentaAsync(VentaId);
-        if (certificado is not null)
-        {
-            certificadoId = certificado.Id;
-            datos = await CertificadoService.ObtenerDatosAsync(certificado.Id);
-        }
-
+        datos = await CertificadoService.ObtenerVistaPreviaAsync(ObraId);
         cargando = false;
-    }
-
-    private async Task EmitirAsync()
-    {
-        if (emitiendo) return;
-        emitiendo = true;
-
-        try
-        {
-            certificadoId = await CertificadoService.EmitirAsync(VentaId);
-            datos = await CertificadoService.ObtenerDatosAsync(certificadoId);
-        }
-        finally
-        {
-            emitiendo = false;
-        }
     }
 
     private string MedidasTexto()

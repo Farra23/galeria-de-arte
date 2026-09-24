@@ -23,7 +23,11 @@ public static class CertificadoPdfGenerator
                 {
                     col.Item().Text("Certificado de autenticidad").FontSize(18).Bold();
                     col.Item().Text(nombreGaleria).FontSize(10).FontColor(Colors.Grey.Darken1);
-                    col.Item().PaddingTop(4).Text($"N.º {datos.NumeroCertificado:D6} — emitido el {datos.FechaEmision:dd/MM/yyyy}").FontSize(9);
+                    col.Item().PaddingTop(4).Text(
+                        datos.NumeroCertificado is { } numero
+                            ? $"N.º {numero:D6} — emitido el {datos.FechaEmision:dd/MM/yyyy}"
+                            : $"Vista previa (código {datos.CodigoObra}) — {datos.FechaEmision:dd/MM/yyyy}, sin numerar")
+                        .FontSize(9);
                 });
 
                 pagina.Content().PaddingTop(15).Column(col =>
@@ -47,6 +51,13 @@ public static class CertificadoPdfGenerator
                     col.Item().PaddingTop(20).Text(
                         "La galería certifica que la obra descripta en este documento es una pieza original, " +
                         "y garantiza la autenticidad de los datos consignados.").Italic();
+
+                    if (datos.NumeroCertificado is null)
+                    {
+                        col.Item().PaddingTop(8).Text(
+                            "Vista previa sin numerar — no reemplaza al certificado oficial, que se emite al " +
+                            "registrar la venta.").FontSize(9).FontColor(Colors.Grey.Darken1);
+                    }
                 });
 
                 pagina.Footer().AlignCenter().Text(x => x.CurrentPageNumber());

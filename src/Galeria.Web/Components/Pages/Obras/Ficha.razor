@@ -65,6 +65,9 @@ else
                        @onclick="() => ficha = ficha with { FechaEtiquetaImpresa = DateOnly.FromDateTime(DateTime.Now) }">
                         @(ficha.FechaEtiquetaImpresa is null ? "Imprimir etiqueta" : "Reimprimir etiqueta")
                     </a>
+                    <a class="btn btn-sm btn-outline-secondary ms-2" href="@($"obras/{Id}/certificado")" target="_blank">
+                        Certificado de autenticidad
+                    </a>
                 </dd>
                 @if (ficha.SerieNombre is not null)
                 {
