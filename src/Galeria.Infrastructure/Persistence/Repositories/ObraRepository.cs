@@ -89,6 +89,7 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.Existencia,
                 o.Estado,
                 o.FechaIngreso,
+                o.FechaUltimoIngreso,
                 o.PagoContado,
                 o.SerieId,
                 o.Serie != null ? o.Serie.Nombre : null,
@@ -142,7 +143,7 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
             OrdenObra.Existencia => Aplicar(o => o.Existencia),
             OrdenObra.Estado => Aplicar(o => o.Estado),
             OrdenObra.Serie => Aplicar(o => o.SerieNombre ?? ""),
-            _ => Aplicar(o => o.FechaIngreso)
+            _ => Aplicar(o => o.FechaActividad)
         };
 
         return ordenado.ThenByDescending(o => o.Id).ToList();
@@ -184,12 +185,6 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
         return Task.CompletedTask;
     }
 
-    public async Task AumentarExistenciaAsync(int obraId, int cantidad, CancellationToken ct = default)
-    {
-        var obra = await db.Obras.FirstAsync(o => o.Id == obraId, ct);
-        obra.Existencia += cantidad;
-    }
-
     public async Task<ObraFicha?> ObtenerFichaAsync(int id, CancellationToken ct = default) =>
         await db.Obras.AsNoTracking()
             .Where(o => o.Id == id)
@@ -214,6 +209,7 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
                 o.Observaciones,
                 o.Estado,
                 o.FechaIngreso,
+                o.FechaUltimoIngreso,
                 o.Serie != null ? o.Serie.Nombre : null,
                 o.Serie != null ? o.Serie.Obras.Count(x => x.NumeroObra <= o.NumeroObra) : (int?)null,
                 o.Serie != null ? o.Serie.Obras.Count() : (int?)null,

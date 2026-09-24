@@ -30,11 +30,18 @@ public record ObraListItem(
     int Existencia,
     EstadoObra Estado,
     DateOnly FechaIngreso,
+    DateOnly? FechaUltimoIngreso,
     bool PagoContado,
     int? SerieId,
     string? SerieNombre,
     string? ImagenUrl,
-    DateOnly? FechaEtiquetaImpresa);
+    DateOnly? FechaEtiquetaImpresa)
+{
+    // Fecha efectiva para "actividad reciente" (requerimiento del cliente: reponer stock de una
+    // pieza ya cargada tiene que hacerla aparecer como reciente en el orden por defecto de la
+    // Lista de Obras, sin pisar la fecha de ingreso original).
+    public DateOnly FechaActividad => FechaUltimoIngreso ?? FechaIngreso;
+}
 
 // Para el combo de filtro por Serie en la Lista de Obras (requerimiento 3.3, "agrupar/filtrar por
 // serie") — solo series que tienen al menos una obra tienen sentido para filtrar.
@@ -125,6 +132,7 @@ public record ObraFicha(
     string? Observaciones,
     EstadoObra Estado,
     DateOnly FechaIngreso,
+    DateOnly? FechaUltimoIngreso,
     string? SerieNombre,
     int? SeriePosicion,
     int? SerieTotal,

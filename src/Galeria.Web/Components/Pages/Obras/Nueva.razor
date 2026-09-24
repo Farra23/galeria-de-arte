@@ -76,16 +76,19 @@ else
             <div class="col-md-6">
                 <div class="mb-3">
                     <label class="form-label">Artista</label>
-                    <div class="input-group">
-                        <InputSelect TValue="int?" class="form-select" Value="Input.ArtistaId" ValueChanged="OnArtistaIdChanged" ValueExpression="() => Input.ArtistaId">
-                            <option value="">Seleccioná un artista...</option>
-                            @foreach (var artista in artistas)
-                            {
-                                <option value="@artista.Id">@artista.Codigo.ToString("D3") — @artista.NombreCompleto</option>
-                            }
-                        </InputSelect>
+                    <div class="input-group mb-1">
+                        <input class="form-control" placeholder="Escribí para filtrar por nombre o código..."
+                               @bind="artistaBusqueda" @bind:event="oninput" @bind:after="FiltrarArtistas" />
                         <button type="button" class="btn btn-outline-secondary" @onclick="RecargarArtistasAsync" title="Releer la lista de artistas">↻</button>
                     </div>
+                    <InputSelect TValue="int?" class="form-select" Value="Input.ArtistaId" ValueChanged="OnArtistaIdChanged" ValueExpression="() => Input.ArtistaId"
+                                 size="@(string.IsNullOrEmpty(artistaBusqueda) ? 1 : Math.Clamp(artistasFiltrados.Count + 1, 2, 8))">
+                        <option value="">Seleccioná un artista...</option>
+                        @foreach (var artista in artistasFiltrados)
+                        {
+                            <option value="@artista.Id">@artista.Codigo.ToString("D3") — @artista.NombreCompleto</option>
+                        }
+                    </InputSelect>
                     <div class="form-text">
                         ¿Es nuevo? <a href="artistas/nuevo" target="_blank">Crealo acá</a> y apretá ↻.
                     </div>
@@ -231,6 +234,8 @@ else
     private InputModel Input { get; set; } = new();
 
     private List<ArtistaOpcion>? artistas;
+    private List<ArtistaOpcion> artistasFiltrados = [];
+    private string artistaBusqueda = "";
     private List<OpcionCatalogo> rubros = [];
     private List<OpcionCatalogo> tecnicas = [];
     private ParametrosCalculoPrecio? parametros;
@@ -271,6 +276,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         artistas = await ArtistaService.ListarParaSeleccionAsync();
+        artistasFiltrados = artistas;
         rubros = await CatalogoRepository.ListarRubrosAsync();
         tecnicas = await CatalogoRepository.ListarTecnicasAsync();
         parametros = await ObraService.ObtenerParametrosCalculoAsync();
@@ -281,6 +287,38 @@ else
     private async Task RecargarArtistasAsync()
     {
         artistas = await ArtistaService.ListarParaSeleccionAsync();
+        FiltrarArtistas();
+    }
+
+    // Filtro en memoria (la lista de artistas ya está completa en el cliente) por nombre o código
+    // — pedido del cliente: el <select> nativo solo hacía "salto" por la primera letra del texto
+    // visible, que además arrancaba con el código numérico, no con el nombre.
+    private void FiltrarArtistas()
+    {
+        if (artistas is null)
+        {
+            artistasFiltrados = [];
+            return;
+        }
+
+        var texto = artistaBusqueda.Trim();
+        artistasFiltrados = string.IsNullOrEmpty(texto)
+            ? artistas
+            : artistas.Where(a =>
+                a.NombreCompleto.Contains(texto, StringComparison.OrdinalIgnoreCase) ||
+                a.Codigo.ToString("D3").Contains(texto, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+        // No sacar de la lista al artista ya elegido aunque no matchee el filtro nuevo: perderlo
+        // de las <option> vaciaría la selección del combo por debajo del usuario.
+        if (Input.ArtistaId is not null && artistasFiltrados.All(a => a.Id != Input.ArtistaId))
+        {
+            var actual = artistas.FirstOrDefault(a => a.Id == Input.ArtistaId);
+            if (actual is not null)
+            {
+                artistasFiltrados = [actual, .. artistasFiltrados];
+            }
+        }
     }
 
     private async Task VerificarCoincidenciaAsync()

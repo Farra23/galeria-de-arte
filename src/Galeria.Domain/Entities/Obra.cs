@@ -18,6 +18,12 @@ public class Obra
     public int Existencia { get; set; }
     public bool PagoContado { get; set; }
     public DateOnly FechaIngreso { get; set; }
+
+    // Distinta de FechaIngreso (que es la fecha del alta original): se completa cada vez que se
+    // suma existencia a una pieza ya cargada (AgregarExistenciaAsync), para que una reposición se
+    // note como actividad reciente sin reescribir la fecha de ingreso real de la obra.
+    public DateOnly? FechaUltimoIngreso { get; set; }
+
     public Enums.EstadoObra Estado { get; set; } = Enums.EstadoObra.Disponible;
 
     public decimal? AltoCm { get; set; }

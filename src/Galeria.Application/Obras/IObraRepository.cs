@@ -20,8 +20,6 @@ public interface IObraRepository
     // Solo series con al menos una obra (para el combo de filtro de la Lista — requerimiento 3.3).
     Task<List<SerieOpcion>> ListarSeriesAsync(CancellationToken ct = default);
 
-    Task AumentarExistenciaAsync(int obraId, int cantidad, CancellationToken ct = default);
-
     Task<ObraFicha?> ObtenerFichaAsync(int id, CancellationToken ct = default);
 
     Task ActualizarAsync(ActualizarObraRequest request, CancellationToken ct = default);

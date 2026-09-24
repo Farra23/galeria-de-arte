@@ -137,6 +137,11 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
         Estado = EstadoObra.Disponible
     };
 
+    // Mismo patrón que Ventas/Retiros/Alquileres: Existencia y Estado se mutan juntos sobre la
+    // entidad rastreada, y el movimiento de stock queda asentado en el libro (Movimiento) para que
+    // la pestaña "Historial de movimientos" de la ficha lo muestre. Antes esto solo sumaba
+    // Existencia directo en el repositorio: una pieza en "Sin stock" (Existencia 0) quedaba con
+    // ese estado aunque se le repusiera stock, y no quedaba registro del ingreso.
     public async Task AgregarExistenciaAsync(int obraId, int cantidad, CancellationToken ct = default)
     {
         if (cantidad < 1 || cantidad > 9999)
@@ -144,7 +149,33 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
             throw new InvalidOperationException("La cantidad a agregar tiene que estar entre 1 y 9999.");
         }
 
-        await obras.AumentarExistenciaAsync(obraId, cantidad, ct);
+        var obra = await obras.ObtenerEntidadAsync(obraId, ct)
+            ?? throw new InvalidOperationException("La obra ya no existe.");
+
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+        obra.Existencia += cantidad;
+        obra.Estado = EstadoObra.Disponible;
+        obra.FechaUltimoIngreso = hoy;
+
+        await obras.RegistrarMovimientoAsync(new Movimiento
+        {
+            ObraId = obra.Id,
+            Fecha = hoy,
+            Tipo = TipoMovimiento.Ingreso,
+            Cantidad = cantidad,
+            Moneda = obra.Moneda
+        }, ct);
+
+        await auditoria.RegistrarAsync(new RegistrarAuditoriaRequest(
+            Pantalla: "Obras",
+            TipoOperacion: "Actualización",
+            Tabla: "Obra",
+            Columna: "Existencia",
+            ValorNuevo: $"+{cantidad}",
+            ArtistaId: obra.ArtistaId,
+            ObraId: obra.Id,
+            EntidadId: obra.Id.ToString()), ct);
+
         await obras.GuardarCambiosAsync(ct);
     }
 

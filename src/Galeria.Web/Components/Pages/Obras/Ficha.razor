@@ -29,6 +29,14 @@ else
     <div class="page-form">
     <h1>@ficha.CodigoVisible — @ficha.Titulo</h1>
 
+    @if (mensaje is not null)
+    {
+        <div class="alert alert-success alert-dismissible">
+            @mensaje
+            <button type="button" class="btn-close" @onclick="() => mensaje = null"></button>
+        </div>
+    }
+
     <div class="row mb-3">
         <div class="col-md-8">
             <dl class="row mb-0">
@@ -41,7 +49,13 @@ else
                 <dt class="col-sm-3">Estado</dt>
                 <dd class="col-sm-3"><span class="badge bg-secondary">@Formato.Estado(ficha.Estado)</span></dd>
                 <dt class="col-sm-3">Fecha de ingreso</dt>
-                <dd class="col-sm-3">@ficha.FechaIngreso.ToString("dd/MM/yyyy")</dd>
+                <dd class="col-sm-3">
+                    @ficha.FechaIngreso.ToString("dd/MM/yyyy")
+                    @if (ficha.FechaUltimoIngreso is not null)
+                    {
+                        <span class="text-body-secondary">(última reposición: @ficha.FechaUltimoIngreso.Value.ToString("dd/MM/yyyy"))</span>
+                    }
+                </dd>
                 <dt class="col-sm-3">Etiqueta</dt>
                 <dd class="col-sm-9">
                     <span class="text-body-secondary">
@@ -265,6 +279,7 @@ else
     private int guardandoFlag;
     private bool guardando => guardandoFlag != 0;
     private bool unidadMm;
+    private string? mensaje;
 
     // Alterna cm/mm solo para lo que se ve y se tipea acá — la obra siempre se guarda en cm
     // (misma unidad de siempre en el dominio). Sirve en particular para corregir piezas que
@@ -435,7 +450,10 @@ else
 
             await ObraService.ActualizarAsync(request);
 
-            NavigationManager.NavigateTo("obras");
+            // Se queda en la ficha (pestaña "datos") en vez de volver al listado: el pedido del
+            // cliente era justamente no perder el contexto al guardar.
+            ficha = await ObraService.ObtenerFichaAsync(Id);
+            mensaje = "Cambios guardados.";
         }
         finally
         {
