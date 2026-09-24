@@ -115,4 +115,27 @@ public class LiquidacionServiceTests
         devoluciones.Should().Be(0);
         neto.Should().Be(750);
     }
+
+    // Item 5 del testeo del cliente: no se liquida lo vendido en el mes en curso, solo hasta el
+    // cierre del mes anterior.
+    [Fact]
+    public void Fecha_de_corte_es_el_ultimo_dia_del_mes_anterior()
+    {
+        LiquidacionService.FechaCorteLiquidable(new DateOnly(2026, 9, 24))
+            .Should().Be(new DateOnly(2026, 8, 31));
+    }
+
+    [Fact]
+    public void Fecha_de_corte_el_primer_dia_del_mes_tambien_cae_en_el_mes_anterior()
+    {
+        LiquidacionService.FechaCorteLiquidable(new DateOnly(2026, 9, 1))
+            .Should().Be(new DateOnly(2026, 8, 31));
+    }
+
+    [Fact]
+    public void Fecha_de_corte_en_enero_retrocede_al_diciembre_anterior()
+    {
+        LiquidacionService.FechaCorteLiquidable(new DateOnly(2026, 1, 15))
+            .Should().Be(new DateOnly(2025, 12, 31));
+    }
 }

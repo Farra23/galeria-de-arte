@@ -28,8 +28,11 @@ public class LiquidacionService(ILiquidacionRepository repositorio, IArtistaRepo
         repositorio.BuscarPendientesAsync(artistaId, moneda, ct);
 
     // Saldo actual a pagar en las dos monedas (requerimiento 4.2, encabezado de la ficha del
-    // artista): misma fuente que usa Generar liquidación, así el número de la ficha nunca queda
-    // desincronizado de lo que efectivamente se liquidaría si se confirma ahora.
+    // artista): misma "columna saldo a pagar" del requerimiento 4.1 que ya muestra la Lista de
+    // Artistas — el total adeudado, sin el corte de FechaCorteLiquidable. Ese corte solo aplica
+    // al generar/confirmar la liquidación en sí (item 5 del testeo del cliente): la plata sigue
+    // debida igual, lo único que cambia es hasta qué fecha se la puede saldar hoy. Mostrar acá un
+    // número más chico que en la Lista sería la inconsistencia real, no lo contrario.
     public async Task<(decimal Pesos, decimal Dolares)> ObtenerSaldoAsync(int artistaId, CancellationToken ct = default)
     {
         var pendientesPesos = await repositorio.BuscarPendientesAsync(artistaId, Moneda.Pesos, ct);
@@ -40,6 +43,19 @@ public class LiquidacionService(ILiquidacionRepository repositorio, IArtistaRepo
 
         return (netoPesos, netoDolares);
     }
+
+    // Item 5 del testeo del cliente: no se liquida lo vendido en el mes en curso, para no cerrar
+    // un período que todavía puede cambiar (una devolución, una corrección de precio) antes de
+    // que termine el mes. El corte es fijo -- hasta el último día del mes anterior -- y no editable
+    // desde la pantalla, a propósito ("sin poder incluir lo vendido en el mes en curso").
+    public static DateOnly FechaCorteLiquidable(DateOnly? hoy = null)
+    {
+        var fecha = hoy ?? DateOnly.FromDateTime(DateTime.Now);
+        return new DateOnly(fecha.Year, fecha.Month, 1).AddDays(-1);
+    }
+
+    private static List<LineaPendiente> SoloLiquidables(List<LineaPendiente> lineas, DateOnly corte) =>
+        lineas.Where(l => l.Fecha <= corte).ToList();
 
     // GRASP Information Expert + método puro y testable (sin acceso a datos): dado un conjunto de
     // líneas ya armado, calcula los totales. Separarlo de la consulta a la base es lo que permite
@@ -69,7 +85,9 @@ public class LiquidacionService(ILiquidacionRepository repositorio, IArtistaRepo
         var artista = await artistas.ObtenerFichaAsync(artistaId, ct)
             ?? throw new InvalidOperationException("El artista no existe.");
 
-        var lineas = await repositorio.BuscarPendientesAsync(artistaId, moneda, ct);
+        var corte = FechaCorteLiquidable();
+        var todasPendientes = await repositorio.BuscarPendientesAsync(artistaId, moneda, ct);
+        var lineas = SoloLiquidables(todasPendientes, corte);
         var ultimaFecha = await repositorio.ObtenerUltimaFechaAsync(artistaId, ct);
         var (totalBruto, totalAdelantos, totalDevoluciones, totalNeto) = CalcularTotales(lineas);
 
@@ -82,7 +100,9 @@ public class LiquidacionService(ILiquidacionRepository repositorio, IArtistaRepo
             totalBruto,
             totalAdelantos,
             totalDevoluciones,
-            totalNeto);
+            totalNeto,
+            corte,
+            todasPendientes.Count - lineas.Count);
     }
 
     // Irreversible a propósito (decisión del requerimiento 10.4, la más segura de las dos
@@ -96,7 +116,7 @@ public class LiquidacionService(ILiquidacionRepository repositorio, IArtistaRepo
     // volvían a descontar en la liquidación siguiente — y una liquidación no se puede anular.
     private async Task<int> ConfirmarInternoAsync(int artistaId, Moneda moneda, CancellationToken ct)
     {
-        var lineas = await repositorio.BuscarPendientesAsync(artistaId, moneda, ct);
+        var lineas = SoloLiquidables(await repositorio.BuscarPendientesAsync(artistaId, moneda, ct), FechaCorteLiquidable());
 
         if (lineas.Count == 0)
         {

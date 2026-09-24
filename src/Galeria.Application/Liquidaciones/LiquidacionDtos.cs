@@ -26,7 +26,12 @@ public record VistaPreviaLiquidacion(
     decimal TotalBruto,
     decimal TotalAdelantos,
     decimal TotalDevoluciones,
-    decimal TotalNeto);
+    decimal TotalNeto,
+    // Item 5 del testeo del cliente: no se liquida lo vendido en el mes en curso, solo hasta el
+    // cierre del mes anterior. FechaCorte es el último día incluido; CantidadExcluidasDelMes
+    // cuenta lo que quedó afuera por eso, para que la vista previa lo pueda avisar.
+    DateOnly FechaCorte,
+    int CantidadExcluidasDelMes);
 
 public record LiquidacionListItem(
     int Id,

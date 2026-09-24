@@ -54,6 +54,13 @@
         <p class="text-body-secondary">
             Última liquidación: @(vista.UltimaLiquidacion?.ToString("dd/MM/yyyy") ?? "nunca se le liquidó")
         </p>
+        <p class="text-body-secondary">
+            Se liquida todo lo pendiente hasta el @vista.FechaCorte.ToString("dd/MM/yyyy").
+            @if (vista.CantidadExcluidasDelMes > 0)
+            {
+                <span>Lo vendido en el mes en curso (@vista.CantidadExcluidasDelMes movimiento(s)) se liquida recién el mes que viene.</span>
+            }
+        </p>
 
         @if (vista.Lineas.Count == 0)
         {
