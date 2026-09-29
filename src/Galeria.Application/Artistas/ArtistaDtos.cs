@@ -43,6 +43,10 @@ public record CrearArtistaRequest(
     string? Correo,
     string? Perfil);
 
+// Punto 21 del testeo de cliente: mostrar el código asignado apenas se crea el artista, en vez de
+// que el usuario tenga que ir a buscarlo después a la lista.
+public record CrearArtistaResult(int Id, int Codigo);
+
 // Código no viaja como editable: es la clave visible del artista, ya comunicada/impresa
 // en sus obras — cambiarla post-alta rompería esa referencia.
 public record ArtistaFicha(

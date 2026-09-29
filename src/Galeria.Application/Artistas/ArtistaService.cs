@@ -11,7 +11,7 @@ public class ArtistaService(IArtistaRepository repositorio, AuditoriaService aud
     public Task<List<ArtistaOpcion>> ListarParaSeleccionAsync(CancellationToken ct = default) =>
         repositorio.ListarActivosAsync(ct);
 
-    public async Task<int> CrearAsync(CrearArtistaRequest request, CancellationToken ct = default)
+    public async Task<CrearArtistaResult> CrearAsync(CrearArtistaRequest request, CancellationToken ct = default)
     {
         // GRASP Creator: quien mejor sabe cuál es el próximo código libre es el repositorio
         // (es el único que puede consultar la tabla), el servicio solo orquesta.
@@ -41,7 +41,7 @@ public class ArtistaService(IArtistaRepository repositorio, AuditoriaService aud
             ArtistaId: artista.Id,
             EntidadId: artista.Id.ToString()), ct);
 
-        return artista.Id;
+        return new CrearArtistaResult(artista.Id, artista.Codigo);
     }
 
     public Task<ArtistaFicha?> ObtenerFichaAsync(int id, CancellationToken ct = default) =>
