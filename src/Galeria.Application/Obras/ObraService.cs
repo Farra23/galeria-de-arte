@@ -23,6 +23,9 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
             ? Task.FromResult<ObraCoincidente?>(null)
             : obras.BuscarPorCodigoAsync(codigoTexto, ct);
 
+    public Task<List<string>> ListarTitulosPorArtistaAsync(int artistaId, CancellationToken ct = default) =>
+        obras.ListarTitulosPorArtistaAsync(artistaId, ct);
+
     // Se leen una sola vez al entrar al formulario de Alta — evita ir a la base en cada tecla
     // que tipea el usuario en Costo/Utilidad.
     public async Task<ParametrosCalculoPrecio> ObtenerParametrosCalculoAsync(CancellationToken ct = default)

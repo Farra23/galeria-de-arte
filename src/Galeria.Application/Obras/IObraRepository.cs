@@ -15,6 +15,10 @@ public interface IObraRepository
 
     Task<int> ProximoNumeroObraAsync(int artistaId, CancellationToken ct = default);
 
+    // Punto 17 del testeo de cliente: nombres ya usados por este artista, para sugerirlos al
+    // escribir el título de una obra nueva y evitar variantes del mismo nombre.
+    Task<List<string>> ListarTitulosPorArtistaAsync(int artistaId, CancellationToken ct = default);
+
     Task AgregarAsync(Domain.Entities.Obra obra, CancellationToken ct = default);
 
     // Serie (requerimiento 3.3): un conjunto de piezas que comparten formulario de alta pero no

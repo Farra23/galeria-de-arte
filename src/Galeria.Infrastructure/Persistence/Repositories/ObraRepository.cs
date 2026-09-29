@@ -198,6 +198,17 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
         return (maximo ?? 0) + 1;
     }
 
+    // Punto 17 del testeo de cliente: sugerir nombres ya usados por el mismo artista al escribir
+    // (ej. Taller Tacuari repite "HINDU" en varias tandas) para no generar variantes del mismo
+    // nombre. Distinct porque el título repetido es justamente el caso normal acá.
+    public async Task<List<string>> ListarTitulosPorArtistaAsync(int artistaId, CancellationToken ct = default) =>
+        await db.Obras.AsNoTracking()
+            .Where(o => o.ArtistaId == artistaId)
+            .Select(o => o.Titulo)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToListAsync(ct);
+
     public Task AgregarAsync(Obra obra, CancellationToken ct = default)
     {
         db.Obras.Add(obra);

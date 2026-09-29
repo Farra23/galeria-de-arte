@@ -109,7 +109,17 @@ else
 
                 <div class="mb-3">
                     <label class="form-label">Nombre de la obra</label>
-                    <InputText class="form-control" Value="@Input.Titulo" ValueChanged="OnTituloChanged" ValueExpression="() => Input.Titulo" />
+                    <InputText class="form-control" Value="@Input.Titulo" ValueChanged="OnTituloChanged" ValueExpression="() => Input.Titulo" list="titulos-del-artista" autocomplete="off" />
+                    <datalist id="titulos-del-artista">
+                        @foreach (var titulo in titulosDelArtista)
+                        {
+                            <option value="@titulo" />
+                        }
+                    </datalist>
+                    @if (titulosDelArtista.Count > 0)
+                    {
+                        <div class="form-text">Este artista ya tiene @titulosDelArtista.Count nombre(s) de obra distintos cargados — sugeridos al escribir.</div>
+                    }
                 </div>
 
                 <div class="row">
@@ -261,6 +271,7 @@ else
     private bool unidadMm;
     private string codigoBusqueda = "";
     private bool codigoNoEncontrado;
+    private List<string> titulosDelArtista = [];
 
     // Alterna cm/mm solo para lo que se ve y se tipea acá — la obra siempre se guarda en cm
     // (misma unidad de siempre en el dominio), esto solo evita tener que hacer la cuenta a mano
@@ -362,6 +373,7 @@ else
             Input.ArtistaId = artistaId;
             artistaBusqueda = resultado.ArtistaNombre ?? "";
             FiltrarArtistas();
+            await CargarTitulosDelArtistaAsync();
         }
     }
 
@@ -384,6 +396,16 @@ else
     {
         Input.ArtistaId = valor;
         await VerificarCoincidenciaAsync();
+        await CargarTitulosDelArtistaAsync();
+    }
+
+    // Punto 17 del testeo de cliente: nombres ya usados por este artista, para sugerirlos como
+    // <datalist> del campo "Nombre de la obra" y evitar variantes del mismo nombre.
+    private async Task CargarTitulosDelArtistaAsync()
+    {
+        titulosDelArtista = Input.ArtistaId is null
+            ? []
+            : await ObraService.ListarTitulosPorArtistaAsync(Input.ArtistaId.Value);
     }
 
     private async Task OnTituloChanged(string valor)
