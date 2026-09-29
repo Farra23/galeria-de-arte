@@ -25,7 +25,7 @@
 <div class="row g-2 mb-3">
     <div class="col-md-4">
         <label class="form-label">Artista</label>
-        <select class="form-select" @bind="artistaId">
+        <select class="form-select" @bind="artistaId" @bind:after="OnArtistaSeleccionadoAsync">
             <option value="0">Seleccioná un artista...</option>
             @if (artistas is not null)
             {
@@ -35,6 +35,14 @@
                 }
             }
         </select>
+        @if (advertirDobleMoneda)
+        {
+            <div class="form-text text-warning-emphasis">
+                ⚠ Este artista tiene saldo pendiente en las dos monedas:
+                @Formato.Monto(saldoPesosArtista, Moneda.Pesos) y @Formato.Monto(saldoDolaresArtista, Moneda.USD).
+                Acordate de generar la liquidación en la otra moneda también.
+            </div>
+        }
     </div>
     <div class="col-md-3">
         <label class="form-label">Moneda</label>
@@ -130,6 +138,13 @@
     private string? error;
     private int confirmandoFlag;
     private bool confirmando => confirmandoFlag != 0;
+    private decimal saldoPesosArtista;
+    private decimal saldoDolaresArtista;
+
+    // Punto 7 del testeo de cliente: recordar que hay que liquidar las dos monedas cuando el
+    // artista tiene saldo pendiente en ambas -- el selector de Moneda de acá arriba solo deja
+    // elegir una por vez, así que es fácil generar la de Pesos y olvidarse de Dólares.
+    private bool advertirDobleMoneda => artistaId != 0 && saldoPesosArtista != 0 && saldoDolaresArtista != 0;
 
     // Mismo texto por defecto que Ver.razor (sin prometer un adjunto que el mailto:/wa.me no manda
     // solo — ver comentario de ArmarMensaje ahí).
@@ -148,8 +163,21 @@
         if (ArtistaPreseleccionado is > 0)
         {
             artistaId = ArtistaPreseleccionado.Value;
+            await OnArtistaSeleccionadoAsync();
             await GenerarVistaPreviaAsync();
         }
+    }
+
+    private async Task OnArtistaSeleccionadoAsync()
+    {
+        if (artistaId == 0)
+        {
+            saldoPesosArtista = 0;
+            saldoDolaresArtista = 0;
+            return;
+        }
+
+        (saldoPesosArtista, saldoDolaresArtista) = await LiquidacionService.ObtenerSaldoAsync(artistaId);
     }
 
     private string EnlacePdfVistaPrevia() => $"liquidaciones/vista-previa/{artistaId}/{moneda}/pdf";
