@@ -18,6 +18,11 @@ public class ObraService(IObraRepository obras, IParametroRepository parametros,
             ? Task.FromResult<ObraCoincidente?>(null)
             : obras.BuscarCoincidenciaAsync(artistaId, titulo.Trim(), ct);
 
+    public Task<ObraCoincidente?> BuscarPorCodigoAsync(string codigoTexto, CancellationToken ct = default) =>
+        string.IsNullOrWhiteSpace(codigoTexto)
+            ? Task.FromResult<ObraCoincidente?>(null)
+            : obras.BuscarPorCodigoAsync(codigoTexto, ct);
+
     // Se leen una sola vez al entrar al formulario de Alta — evita ir a la base en cada tecla
     // que tipea el usuario en Costo/Utilidad.
     public async Task<ParametrosCalculoPrecio> ObtenerParametrosCalculoAsync(CancellationToken ct = default)

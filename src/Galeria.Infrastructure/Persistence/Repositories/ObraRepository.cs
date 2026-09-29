@@ -164,6 +164,31 @@ public class ObraRepository(GaleriaDbContext db) : IObraRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<ObraCoincidente?> BuscarPorCodigoAsync(string codigoTexto, CancellationToken ct = default)
+    {
+        var partes = CodigoObraParser.Parsear(codigoTexto);
+        if (partes is null)
+        {
+            return null;
+        }
+
+        var (codigoArtista, numeroObra) = partes.Value;
+
+        // Comparación por enteros, no por el CodigoVisible ya formateado (ToString("D3") no se
+        // traduce a SQL con SQLite, ver comentario en BuscarAsync más arriba).
+        return await db.Obras.AsNoTracking()
+            .Where(o => o.Artista.Codigo == codigoArtista && o.NumeroObra == numeroObra)
+            .Select(o => new ObraCoincidente(
+                o.Id,
+                o.Artista.Codigo.ToString("D3") + o.NumeroObra.ToString("D3"),
+                o.Titulo,
+                o.Existencia,
+                o.Costo,
+                o.ArtistaId,
+                o.Artista.Apellido + ", " + o.Artista.Nombre))
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<int> ProximoNumeroObraAsync(int artistaId, CancellationToken ct = default)
     {
         // Correlativo por artista (decisión #1): cada artista arranca en 1, no hay contador global.

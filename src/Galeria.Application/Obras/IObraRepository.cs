@@ -8,6 +8,11 @@ public interface IObraRepository
     // en vez de crear una obra duplicada.
     Task<ObraCoincidente?> BuscarCoincidenciaAsync(int artistaId, string titulo, CancellationToken ct = default);
 
+    // Punto 18 del testeo de cliente: encontrar la obra por su código físico (sin acotar por
+    // artista, porque el código ya lo identifica) para poder agregarle existencia sin tener que
+    // escribir el título exacto.
+    Task<ObraCoincidente?> BuscarPorCodigoAsync(string codigoTexto, CancellationToken ct = default);
+
     Task<int> ProximoNumeroObraAsync(int artistaId, CancellationToken ct = default);
 
     Task AgregarAsync(Domain.Entities.Obra obra, CancellationToken ct = default);

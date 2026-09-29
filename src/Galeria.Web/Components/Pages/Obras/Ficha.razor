@@ -238,6 +238,9 @@ else
                     <div class="col-md-4 mb-3">
                         <label class="form-label" title="Calculado automático a partir de Costo/Utilidad/IVA — se puede ajustar a mano.">Precio de venta ⓘ</label>
                         <InputNumber TValue="decimal" class="form-control fw-bold" Value="Input.PrecioVenta" ValueChanged="OnPrecioVentaChanged" ValueExpression="() => Input.PrecioVenta" ParsingErrorMessage="Ese valor no es un número válido." />
+                        <div class="form-text">
+                            Se redondea al múltiplo de @Formato.Monto(parametros!.RedondeoPara(ficha!.Moneda), ficha!.Moneda) más cercano (se configura en Parámetros).
+                        </div>
                     </div>
                 </div>
 

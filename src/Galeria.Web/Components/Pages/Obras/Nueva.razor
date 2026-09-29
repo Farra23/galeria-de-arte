@@ -41,6 +41,19 @@ else
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
+        <div class="mb-3">
+            <label class="form-label">¿Tenés el código de la pieza a mano?</label>
+            <div class="input-group" style="max-width: 26rem;">
+                <input class="form-control" placeholder="Ej. 025014 (código de la etiqueta)"
+                       @bind="codigoBusqueda" @bind:event="oninput" @onkeydown="OnCodigoKeyDown" />
+                <button type="button" class="btn btn-outline-secondary" @onclick="BuscarPorCodigoAsync">Buscar</button>
+            </div>
+            @if (codigoNoEncontrado)
+            {
+                <div class="text-danger small mt-1">No se encontró ninguna obra con ese código.</div>
+            }
+        </div>
+
         @if (coincidencia is not null)
         {
             <div class="alert alert-warning py-2">
@@ -189,6 +202,9 @@ else
                     <div class="col-md-4 mb-3">
                         <label class="form-label" title="Calculado automático a partir de Costo/Utilidad/IVA — se puede ajustar a mano.">Precio de venta ⓘ</label>
                         <InputNumber TValue="decimal" class="form-control fw-bold" Value="Input.PrecioVenta" ValueChanged="OnPrecioVentaChanged" ValueExpression="() => Input.PrecioVenta" ParsingErrorMessage="Ese valor no es un número válido." />
+                        <div class="form-text">
+                            Se redondea al múltiplo de @Formato.Monto(parametros!.RedondeoPara(Input.Moneda), Input.Moneda) más cercano (se configura en Parámetros).
+                        </div>
                     </div>
                 </div>
 
@@ -243,6 +259,8 @@ else
     private int cantidadAAgregar = 1;
     private string? errorExistencia;
     private bool unidadMm;
+    private string codigoBusqueda = "";
+    private bool codigoNoEncontrado;
 
     // Alterna cm/mm solo para lo que se ve y se tipea acá — la obra siempre se guarda en cm
     // (misma unidad de siempre en el dominio), esto solo evita tener que hacer la cuenta a mano
@@ -318,6 +336,40 @@ else
             {
                 artistasFiltrados = [actual, .. artistasFiltrados];
             }
+        }
+    }
+
+    // Punto 18 del testeo de cliente: buscar la pieza por su código físico en vez de tener que
+    // escribir el título exacto. Reutiliza el mismo cartel/flujo de "coincidencia" que ya existe
+    // para el título — la diferencia es que acá también se conoce el artista, así que se
+    // sincroniza el combo de Artista para que el resto del formulario (o "Agregar existencia")
+    // quede coherente con lo encontrado.
+    private async Task BuscarPorCodigoAsync()
+    {
+        codigoNoEncontrado = false;
+        var resultado = await ObraService.BuscarPorCodigoAsync(codigoBusqueda);
+
+        if (resultado is null)
+        {
+            codigoNoEncontrado = true;
+            coincidencia = null;
+            return;
+        }
+
+        coincidencia = resultado;
+        if (resultado.ArtistaId is int artistaId)
+        {
+            Input.ArtistaId = artistaId;
+            artistaBusqueda = resultado.ArtistaNombre ?? "";
+            FiltrarArtistas();
+        }
+    }
+
+    private async Task OnCodigoKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await BuscarPorCodigoAsync();
         }
     }
 

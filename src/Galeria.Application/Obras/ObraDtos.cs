@@ -84,7 +84,9 @@ public record ObraFiltro(
 
 // Lo que se ofrece cuando el nombre tipeado coincide con una obra ya cargada al mismo artista
 // (decisión #6, docs/CONTEXTO.md): en vez de crear una obra nueva, se suma existencia a esta.
-public record ObraCoincidente(int Id, string CodigoVisible, string Titulo, int Existencia, decimal Costo);
+// ArtistaId/ArtistaNombre solo se completan cuando la coincidencia vino de buscar por código
+// (punto 18 del testeo de cliente) en vez de por título dentro de un artista ya elegido.
+public record ObraCoincidente(int Id, string CodigoVisible, string Titulo, int Existencia, decimal Costo, int? ArtistaId = null, string? ArtistaNombre = null);
 
 public record CrearObraRequest(
     int ArtistaId,
