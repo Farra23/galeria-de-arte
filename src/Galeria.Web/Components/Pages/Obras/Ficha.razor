@@ -45,7 +45,25 @@ else
                 <dt class="col-sm-3">Moneda</dt>
                 <dd class="col-sm-3">@Formato.Simbolo(ficha.Moneda)</dd>
                 <dt class="col-sm-3">Existencia</dt>
-                <dd class="col-sm-3">@ficha.Existencia</dd>
+                <dd class="col-sm-3">
+                    @ficha.Existencia
+                    @if (mostrarAgregarExistencia)
+                    {
+                        <span class="d-inline-flex align-items-center gap-1 ms-2">
+                            <InputNumber class="form-control form-control-sm" style="width:5rem;" @bind-Value="cantidadAAgregarFicha" min="1" max="9999" />
+                            <button type="button" class="btn btn-sm btn-warning" @onclick="AgregarExistenciaDesdeFichaAsync" disabled="@agregandoExistencia">Confirmar</button>
+                            <button type="button" class="btn btn-sm btn-link" @onclick="() => mostrarAgregarExistencia = false">Cancelar</button>
+                        </span>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" @onclick="() => mostrarAgregarExistencia = true">+ Agregar existencia</button>
+                    }
+                    @if (errorAgregarExistencia is not null)
+                    {
+                        <div class="text-danger small mt-1">@errorAgregarExistencia</div>
+                    }
+                </dd>
                 <dt class="col-sm-3">Estado</dt>
                 <dd class="col-sm-3"><span class="badge bg-secondary">@Formato.Estado(ficha.Estado)</span></dd>
                 <dt class="col-sm-3">Fecha de ingreso</dt>
@@ -79,7 +97,9 @@ else
         <div class="col-md-4">
             @if (ficha.ImagenUrl is not null)
             {
-                <img src="@ficha.ImagenUrl" alt="@ficha.Titulo" class="img-thumbnail mb-1" style="max-height:110px" />
+                <a href="@ficha.ImagenUrl" target="_blank" title="Ver la imagen en tamaño completo">
+                    <img src="@ficha.ImagenUrl" alt="@ficha.Titulo" class="img-thumbnail mb-1" style="max-height:110px;cursor:zoom-in" />
+                </a>
                 <div>
                     <button type="button" class="btn btn-sm btn-outline-danger" @onclick="QuitarImagenAsync">Quitar imagen</button>
                 </div>
@@ -286,6 +306,10 @@ else
     private bool guardando => guardandoFlag != 0;
     private bool unidadMm;
     private string? mensaje;
+    private bool mostrarAgregarExistencia;
+    private int cantidadAAgregarFicha = 1;
+    private string? errorAgregarExistencia;
+    private bool agregandoExistencia;
 
     // Alterna cm/mm solo para lo que se ve y se tipea acá — la obra siempre se guarda en cm
     // (misma unidad de siempre en el dominio). Sirve en particular para corregir piezas que
@@ -400,6 +424,39 @@ else
         await ObraService.ActualizarImagenAsync(Id, null);
         ImagenObraHelper.Eliminar(Id, WebHostEnvironment.WebRootPath);
         ficha = ficha! with { ImagenUrl = null };
+    }
+
+    // Punto 20 del testeo de cliente: reponer stock sin tener que ir a Nueva Obra a buscar el
+    // nombre exacto — acá ya se sabe qué obra es. Mismo AgregarExistenciaAsync que usa Nueva
+    // Obra (corrige Estado, guarda FechaUltimoIngreso, registra el Movimiento).
+    private async Task AgregarExistenciaDesdeFichaAsync()
+    {
+        errorAgregarExistencia = null;
+        agregandoExistencia = true;
+
+        try
+        {
+            await ObraService.AgregarExistenciaAsync(Id, cantidadAAgregarFicha);
+
+            ficha = ficha! with
+            {
+                Existencia = ficha!.Existencia + cantidadAAgregarFicha,
+                Estado = EstadoObra.Disponible,
+                FechaUltimoIngreso = DateOnly.FromDateTime(DateTime.Now)
+            };
+            movimientos = null;
+            mensaje = $"Se agregaron {cantidadAAgregarFicha} unidad(es). Existencia actual: {ficha.Existencia}.";
+            mostrarAgregarExistencia = false;
+            cantidadAAgregarFicha = 1;
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorAgregarExistencia = ex.Message;
+        }
+        finally
+        {
+            agregandoExistencia = false;
+        }
     }
 
     // Cada pestaña carga sus datos recién la primera vez que se abre — evita dos consultas de
