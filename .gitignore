@@ -32,3 +32,6 @@ appsettings.Local.json
 # Sistema
 Thumbs.db
 .DS_Store
+
+# Paquete publicado para llevar a la PC de la galería (salida de dotnet publish) — se regenera, no se versiona
+ParaLlevar/
